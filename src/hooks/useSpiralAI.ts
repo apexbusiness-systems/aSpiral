@@ -46,6 +46,9 @@ interface SpiralAIResponse {
   connections: ConnectionResult[];
   question: string;
   response: string;
+  friction?: string;
+  grease?: string;
+  insight?: string;
 }
 
 interface BreakthroughData {
@@ -355,17 +358,26 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }
         } else {
           // No question = breakthrough time
-          // Try to parse breakthrough data from response
-          try {
-            const breakthroughMatch = data.response?.match(/\{[\s\S]*"friction"[\s\S]*"grease"[\s\S]*"insight"[\s\S]*\}/);
-            if (breakthroughMatch) {
-              const btData = JSON.parse(breakthroughMatch[0]) as BreakthroughData;
-              forceBreakthrough(btData);
-            } else {
+          // Use friction/grease/insight directly from parsed AI response
+          if (data.friction && data.grease && data.insight) {
+            forceBreakthrough({
+              friction: data.friction,
+              grease: data.grease,
+              insight: data.insight,
+            });
+          } else {
+            // Fallback: try to parse from response text
+            try {
+              const breakthroughMatch = data.response?.match(/\{[\s\S]*"friction"[\s\S]*"grease"[\s\S]*"insight"[\s\S]*\}/);
+              if (breakthroughMatch) {
+                const btData = JSON.parse(breakthroughMatch[0]) as BreakthroughData;
+                forceBreakthrough(btData);
+              } else {
+                forceBreakthrough();
+              }
+            } catch {
               forceBreakthrough();
             }
-          } catch {
-            forceBreakthrough();
           }
         }
 

@@ -28,7 +28,6 @@ export function SpiralChat() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -99,9 +98,16 @@ export function SpiralChat() {
 
   const [liveTranscript, setLiveTranscript] = useState("");
 
-  const { isRecording, isSupported, transcript, toggleRecording, stopRecording } = useVoiceInput({
+  const { 
+    isRecording, 
+    isSupported, 
+    isPaused: isRecordingPaused,
+    transcript, 
+    toggleRecording, 
+    stopRecording,
+    togglePause: toggleRecordingPause,
+  } = useVoiceInput({
     onTranscript: (text) => {
-      // Accumulate transcript for AI processing
       accumulateTranscript(text);
     },
   });
@@ -128,25 +134,22 @@ export function SpiralChat() {
 
   // When recording stops, send buffer
   useEffect(() => {
-    if (!isRecording && liveTranscript) {
+    if (!isRecording && !isRecordingPaused && liveTranscript) {
       sendBuffer();
       setLiveTranscript("");
     }
-  }, [isRecording, liveTranscript, sendBuffer]);
+  }, [isRecording, isRecordingPaused, liveTranscript, sendBuffer]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isAIProcessing) {
-      // Add user message
       addMessage({
         role: "user",
         content: input.trim(),
       });
-      
-      // Process through AI
       processTranscript(input.trim());
       setInput("");
-      dismissQuestion(); // Clear current question when user responds
+      dismissQuestion();
     }
   };
 
@@ -154,7 +157,7 @@ export function SpiralChat() {
     if (isRecording) {
       stopRecording();
     } else {
-      dismissQuestion(); // Clear question when starting new input
+      dismissQuestion();
       toggleRecording();
     }
   };
@@ -228,31 +231,43 @@ export function SpiralChat() {
     useSessionStore.getState().reset();
     dismissBreakthroughCard();
     setSessionElapsed(0);
-    setIsPaused(false);
-  }, [resetSession, dismissBreakthroughCard]);
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording]);
 
-  // Session timer
+  // Session timer - pauses when recording is paused or during breakthrough
   useEffect(() => {
-    if (currentSession && !isPaused && currentStage !== "breakthrough") {
+    if (currentSession && !isRecordingPaused && currentStage !== "breakthrough") {
       const interval = setInterval(() => {
         setSessionElapsed((prev) => prev + 1);
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [currentSession, isPaused, currentStage]);
+  }, [currentSession, isRecordingPaused, currentStage]);
 
   // Derive session state for menu
   const sessionState = !currentSession
     ? "idle"
     : currentStage === "breakthrough" || showBreakthroughCard
     ? "breakthrough"
-    : isPaused
+    : isRecordingPaused
     ? "paused"
     : "active";
 
-  // Menu handlers
-  const handlePause = useCallback(() => setIsPaused(true), []);
-  const handleResume = useCallback(() => setIsPaused(false), []);
+  // Menu handlers - now tied to recording pause
+  const handlePause = useCallback(() => {
+    if (isRecording && !isRecordingPaused) {
+      toggleRecordingPause();
+    }
+  }, [isRecording, isRecordingPaused, toggleRecordingPause]);
+  
+  const handleResume = useCallback(() => {
+    if (isRecordingPaused) {
+      toggleRecordingPause();
+    }
+  }, [isRecordingPaused, toggleRecordingPause]);
+  
   const handleStop = useCallback(() => {
     handleNewSession();
     toast({ title: "Session Stopped", description: "Your session has been ended." });
@@ -292,7 +307,7 @@ export function SpiralChat() {
   // Keyboard shortcuts
   const shortcuts = [
     { ...ASPIRAL_SHORTCUTS.toggleMenu, action: () => setIsMenuOpen((prev) => !prev), enabled: true },
-    { ...ASPIRAL_SHORTCUTS.pauseResume, action: () => (isPaused ? handleResume() : handlePause()), enabled: sessionState === "active" || sessionState === "paused" },
+    { ...ASPIRAL_SHORTCUTS.pauseResume, action: () => (isRecordingPaused ? handleResume() : handlePause()), enabled: sessionState === "active" || sessionState === "paused" },
     { ...ASPIRAL_SHORTCUTS.skipBreakthrough, action: skipToBreakthrough, enabled: sessionState === "active" },
     { ...ASPIRAL_SHORTCUTS.save, action: handleSave, enabled: sessionState !== "idle" },
     { ...ASPIRAL_SHORTCUTS.stop, action: handleStop, enabled: sessionState !== "idle" },
@@ -373,12 +388,6 @@ export function SpiralChat() {
         isVisible={showBreakthroughCard}
         onDismiss={dismissBreakthroughCard}
         onNewSession={handleNewSession}
-      />
-
-      {/* Settings Panel */}
-      <SettingsPanel
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
       />
 
       {/* 3D Visualization Panel */}
@@ -536,9 +545,9 @@ export function SpiralChat() {
                 isRecording={isRecording}
                 isProcessing={isAIProcessing}
                 isSupported={isSupported}
-                isPaused={isPaused}
+                isPaused={isRecordingPaused}
                 onClick={handleMicToggle}
-                onPause={isRecording ? (isPaused ? handleResume : handlePause) : undefined}
+                onPause={isRecording ? toggleRecordingPause : undefined}
                 onStop={isRecording ? stopRecording : undefined}
               />
             </div>

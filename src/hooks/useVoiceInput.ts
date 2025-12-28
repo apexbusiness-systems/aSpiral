@@ -12,7 +12,9 @@ interface UseVoiceInputOptions {
 export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const [isSupported, setIsSupported] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const accumulatedTranscriptRef = useRef("");
 
   const { isRecording, setRecording, setError } = useSessionStore();
 
@@ -47,7 +49,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       recognition.onstart = () => {
         logger.info("Recording started");
         setRecording(true);
+        setIsPaused(false);
         setTranscript("");
+        accumulatedTranscriptRef.current = "";
       };
 
       recognition.onresult = (event) => {
@@ -67,6 +71,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         setTranscript(currentTranscript);
 
         if (finalTranscript) {
+          accumulatedTranscriptRef.current += " " + finalTranscript;
           options.onTranscript?.(finalTranscript);
         }
       };
@@ -75,12 +80,14 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         logger.error("Recognition error", new Error(event.error));
         setError(`Voice recognition error: ${event.error}`);
         setRecording(false);
+        setIsPaused(false);
         options.onError?.(new Error(event.error));
       };
 
       recognition.onend = () => {
         logger.info("Recording ended");
         setRecording(false);
+        setIsPaused(false);
       };
 
       recognitionRef.current = recognition;
@@ -99,7 +106,72 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       logger.info("Recording stopped");
     }
     setRecording(false);
+    setIsPaused(false);
   }, [setRecording]);
+
+  const pauseRecording = useCallback(() => {
+    if (recognitionRef.current && isRecording && !isPaused) {
+      recognitionRef.current.stop();
+      setIsPaused(true);
+      logger.info("Recording paused");
+    }
+  }, [isRecording, isPaused]);
+
+  const resumeRecording = useCallback(() => {
+    if (isPaused) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onresult = (event) => {
+          let finalTranscript = "";
+          let interimTranscript = "";
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (result.isFinal) {
+              finalTranscript += result[0].transcript;
+            } else {
+              interimTranscript += result[0].transcript;
+            }
+          }
+
+          const currentTranscript = finalTranscript || interimTranscript;
+          setTranscript(currentTranscript);
+
+          if (finalTranscript) {
+            accumulatedTranscriptRef.current += " " + finalTranscript;
+            options.onTranscript?.(finalTranscript);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          logger.error("Recognition error", new Error(event.error));
+          setError(`Voice recognition error: ${event.error}`);
+          setRecording(false);
+          setIsPaused(false);
+          options.onError?.(new Error(event.error));
+        };
+
+        recognition.onend = () => {
+          if (!isPaused) {
+            logger.info("Recording ended");
+            setRecording(false);
+          }
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+        setIsPaused(false);
+        logger.info("Recording resumed");
+      }
+    }
+  }, [isPaused, setRecording, setError, options]);
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
@@ -108,6 +180,14 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       startRecording();
     }
   }, [isRecording, startRecording, stopRecording]);
+
+  const togglePause = useCallback(() => {
+    if (isPaused) {
+      resumeRecording();
+    } else {
+      pauseRecording();
+    }
+  }, [isPaused, pauseRecording, resumeRecording]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -121,10 +201,14 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   return {
     isRecording,
     isSupported,
+    isPaused,
     transcript,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
     toggleRecording,
+    togglePause,
   };
 }
 
