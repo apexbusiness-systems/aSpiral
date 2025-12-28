@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "@/components/ChatMessage";
 import { MicButton } from "@/components/MicButton";
+import { LiveTranscript } from "@/components/LiveTranscript";
+import { QuestionBubble } from "@/components/QuestionBubble";
 import { SpiralScene } from "@/components/3d/SpiralScene";
-import { useChat } from "@/hooks/useChat";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { EntityType } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -19,8 +21,29 @@ export function SpiralChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const { createSession, currentSession, isProcessing, addEntity, addConnection } = useSessionStore();
-  const { messages, sendMessage, isStreaming } = useChat({
+  const { 
+    createSession, 
+    currentSession, 
+    messages, 
+    addMessage, 
+    addEntity, 
+    addConnection 
+  } = useSessionStore();
+
+  const {
+    isProcessing: isAIProcessing,
+    currentQuestion,
+    processTranscript,
+    accumulateTranscript,
+    sendBuffer,
+    dismissQuestion,
+  } = useSpiralAI({
+    onEntitiesExtracted: (entities) => {
+      toast({
+        title: "Entities Discovered",
+        description: `Found ${entities.length} new ${entities.length === 1 ? 'element' : 'elements'} in your story`,
+      });
+    },
     onError: (error) => {
       toast({
         title: "Connection Issue",
@@ -30,20 +53,24 @@ export function SpiralChat() {
     },
   });
 
-  const { isRecording, isSupported, transcript, toggleRecording } = useVoiceInput({
+  const [liveTranscript, setLiveTranscript] = useState("");
+
+  const { isRecording, isSupported, transcript, toggleRecording, stopRecording } = useVoiceInput({
     onTranscript: (text) => {
-      if (text.trim()) {
-        sendMessage(text);
-      }
+      // Accumulate transcript for AI processing
+      accumulateTranscript(text);
     },
   });
+
+  // Update live transcript display
+  useEffect(() => {
+    setLiveTranscript(transcript);
+  }, [transcript]);
 
   // Initialize session on mount
   useEffect(() => {
     if (!currentSession) {
       const session = createSession("anonymous");
-      
-      // Publish to OMNiLiNK if enabled
       OmniLinkAdapter.publishSessionStarted(session.id, session.userId);
     }
   }, [currentSession, createSession]);
@@ -55,11 +82,36 @@ export function SpiralChat() {
     }
   }, [messages]);
 
+  // When recording stops, send buffer
+  useEffect(() => {
+    if (!isRecording && liveTranscript) {
+      sendBuffer();
+      setLiveTranscript("");
+    }
+  }, [isRecording, liveTranscript, sendBuffer]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isProcessing) {
-      sendMessage(input);
+    if (input.trim() && !isAIProcessing) {
+      // Add user message
+      addMessage({
+        role: "user",
+        content: input.trim(),
+      });
+      
+      // Process through AI
+      processTranscript(input.trim());
       setInput("");
+      dismissQuestion(); // Clear current question when user responds
+    }
+  };
+
+  const handleMicToggle = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      dismissQuestion(); // Clear question when starting new input
+      toggleRecording();
     }
   };
 
@@ -85,7 +137,6 @@ export function SpiralChat() {
       createdEntities.push(entity.id);
     });
 
-    // Add some connections after a brief delay to ensure entities exist
     setTimeout(() => {
       if (createdEntities.length >= 4) {
         addConnection({ fromEntityId: createdEntities[0], toEntityId: createdEntities[1], type: "causes", strength: 0.8 });
@@ -108,6 +159,13 @@ export function SpiralChat() {
         }`}
       >
         <SpiralScene />
+        
+        {/* Question Bubble - positioned in 3D area */}
+        <QuestionBubble
+          question={currentQuestion || ""}
+          isVisible={!!currentQuestion && !isRecording}
+          onAnswer={() => dismissQuestion()}
+        />
         
         {/* Expand/Collapse Button */}
         <Button
@@ -161,8 +219,11 @@ export function SpiralChat() {
                 <h2 className="text-2xl font-semibold text-gradient-spiral mb-2">
                   Welcome to aSpiral
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground mb-4">
                   Share what's on your mind. I'll help you untangle it.
+                </p>
+                <p className="text-sm text-muted-foreground/70">
+                  🎤 Tap the mic and start speaking
                 </p>
               </div>
             )}
@@ -172,14 +233,12 @@ export function SpiralChat() {
           </div>
         </ScrollArea>
 
-        {/* Voice Transcript Preview */}
-        {isRecording && transcript && (
-          <div className="border-t border-border bg-muted/50 px-4 py-2">
-            <p className="text-sm text-muted-foreground animate-pulse">
-              {transcript}...
-            </p>
-          </div>
-        )}
+        {/* Live Transcript Preview */}
+        <LiveTranscript
+          transcript={liveTranscript}
+          isRecording={isRecording}
+          isProcessing={isAIProcessing}
+        />
 
         {/* Input Area */}
         <div className="border-t border-border bg-card/50 p-4">
@@ -188,9 +247,9 @@ export function SpiralChat() {
             <div className="mb-4 flex justify-center">
               <MicButton
                 isRecording={isRecording}
-                isProcessing={isProcessing || isStreaming}
+                isProcessing={isAIProcessing}
                 isSupported={isSupported}
-                onClick={toggleRecording}
+                onClick={handleMicToggle}
               />
             </div>
 
@@ -200,12 +259,12 @@ export function SpiralChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Or type your thoughts here..."
-                disabled={isProcessing || isRecording}
+                disabled={isAIProcessing || isRecording}
                 className="bg-input"
               />
               <Button
                 type="submit"
-                disabled={!input.trim() || isProcessing}
+                disabled={!input.trim() || isAIProcessing}
                 className="gradient-spiral"
               >
                 <Send className="h-4 w-4" />

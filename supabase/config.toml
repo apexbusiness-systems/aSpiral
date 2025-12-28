@@ -3,5 +3,8 @@ project_id = "eqtwatyodujxofrdznen"
 [functions.chat]
 verify_jwt = false
 
+[functions.spiral-ai]
+verify_jwt = false
+
 [functions.omnilink-health]
 verify_jwt = false

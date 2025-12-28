@@ -1,7 +1,7 @@
 import { useMemo, Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stars, Environment } from "@react-three/drei";
-import { EntityOrb } from "./EntityOrb";
+import { OrbitControls, Stars } from "@react-three/drei";
+import { EntityShape } from "./EntityShape";
 import { ConnectionLine } from "./ConnectionLine";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { Entity } from "@/lib/types";
@@ -37,13 +37,13 @@ function SpiralEntities() {
 
   return (
     <>
-      {/* Render entities as orbs */}
+      {/* Render entities as shapes */}
       {entities.map((entity) => {
         const position = entityPositions.get(entity.id);
         if (!position) return null;
         
         return (
-          <EntityOrb
+          <EntityShape
             key={entity.id}
             entity={entity}
             position={position}
