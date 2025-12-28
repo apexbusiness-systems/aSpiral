@@ -80,6 +80,8 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const [breakthroughData, setBreakthroughData] = useState<BreakthroughData | null>(null);
   const [showBreakthroughCard, setShowBreakthroughCard] = useState(false);
   const [ultraFastMode, setUltraFastMode] = useState(false);
+  const [showCinematic, setShowCinematic] = useState(false);
+  const [cinematicComplete, setCinematicComplete] = useState(false);
   const transcriptBufferRef = useRef<string>("");
   const lastSendTimeRef = useRef<number>(0);
   const conversationHistoryRef = useRef<string[]>([]);
@@ -94,42 +96,70 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     triggerBreakthrough,
   } = useSessionStore();
 
-  // Force breakthrough immediately
+  // Force breakthrough with cinematic sequence
   const forceBreakthrough = useCallback((data?: BreakthroughData) => {
-    logger.info("FORCING BREAKTHROUGH", { 
+    logger.info("FORCING BREAKTHROUGH", {
       reason: data ? "synthesis_complete" : "user_action",
       patterns: patternsRef.current.map(p => p.name),
+      hasData: !!data,
     });
-    
+
     setCurrentQuestion(null);
     setCurrentStage("breakthrough");
     fastTrackRef.current = createFastTrackState();
-    triggerBreakthrough();
-    
+
+    // Store breakthrough data first
     if (data) {
       setBreakthroughData(data);
+      logger.info("Breakthrough data set", {
+        friction: data.friction?.substring(0, 50),
+        grease: data.grease?.substring(0, 50),
+        insight: data.insight?.substring(0, 50),
+      });
+    }
+
+    // Trigger cinematic first (it will call completion handlers)
+    setShowCinematic(true);
+    setCinematicComplete(false);
+
+    logger.info("Cinematic triggered, waiting for completion before showing card");
+  }, []);
+
+  // Handle cinematic completion
+  const handleCinematicComplete = useCallback(() => {
+    logger.info("Cinematic complete, triggering breakthrough effects");
+
+    setCinematicComplete(true);
+    triggerBreakthrough(); // Visual effects in 3D scene
+
+    // Show breakthrough card after cinematic
+    setTimeout(() => {
       setShowBreakthroughCard(true);
-      options.onBreakthrough?.(data);
-      
-      // Format breakthrough message
-      addMessage({
-        role: "assistant",
-        content: `✨ **BREAKTHROUGH** ✨
+
+      const data = breakthroughData;
+      if (data) {
+        options.onBreakthrough?.(data);
+
+        // Format breakthrough message
+        addMessage({
+          role: "assistant",
+          content: `✨ **BREAKTHROUGH** ✨
 
 **The Friction:** ${data.friction}
 
 **The Grease:** ${data.grease}
 
 **💡 ${data.insight}**`,
-      });
-    } else {
-      options.onBreakthrough?.();
-      addMessage({
-        role: "assistant",
-        content: "✨ **BREAKTHROUGH** ✨\n\nLet's cut to what matters.",
-      });
-    }
-  }, [triggerBreakthrough, addMessage, options]);
+        });
+      } else {
+        options.onBreakthrough?.();
+        addMessage({
+          role: "assistant",
+          content: "✨ **BREAKTHROUGH** ✨\n\nLet's cut to what matters.",
+        });
+      }
+    }, 300); // Brief delay for visual polish
+  }, [breakthroughData, triggerBreakthrough, addMessage, options]);
 
   // Dismiss breakthrough card
   const dismissBreakthroughCard = useCallback(() => {
@@ -358,26 +388,75 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }
         } else {
           // No question = breakthrough time
-          // Use friction/grease/insight directly from parsed AI response
-          if (data.friction && data.grease && data.insight) {
-            forceBreakthrough({
-              friction: data.friction,
-              grease: data.grease,
-              insight: data.insight,
-            });
-          } else {
-            // Fallback: try to parse from response text
-            try {
-              const breakthroughMatch = data.response?.match(/\{[\s\S]*"friction"[\s\S]*"grease"[\s\S]*"insight"[\s\S]*\}/);
-              if (breakthroughMatch) {
-                const btData = JSON.parse(breakthroughMatch[0]) as BreakthroughData;
-                forceBreakthrough(btData);
-              } else {
-                forceBreakthrough();
-              }
-            } catch {
-              forceBreakthrough();
+          // Extract breakthrough data with robust parsing
+          try {
+            let btData: BreakthroughData | null = null;
+
+            // Method 1: Check if data has explicit fields (best)
+            if (data.friction && data.grease && data.insight) {
+              btData = {
+                friction: data.friction,
+                grease: data.grease,
+                insight: data.insight,
+              };
+              logger.info("Breakthrough data from explicit fields", { btData });
             }
+
+            // Method 2: Try JSON code block
+            if (!btData) {
+              const jsonBlockMatch = data.response?.match(/```json\s*([\s\S]*?)\s*```/);
+              if (jsonBlockMatch) {
+                try {
+                  btData = JSON.parse(jsonBlockMatch[1]) as BreakthroughData;
+                  logger.info("Breakthrough data from JSON block", { btData });
+                } catch (e) {
+                  logger.warn("Failed to parse JSON block", e);
+                }
+              }
+            }
+
+            // Method 3: Try inline JSON object
+            if (!btData) {
+              const objMatch = data.response?.match(/\{[\s\S]*?"friction"[\s\S]*?"grease"[\s\S]*?"insight"[\s\S]*?\}/);
+              if (objMatch) {
+                try {
+                  btData = JSON.parse(objMatch[0]) as BreakthroughData;
+                  logger.info("Breakthrough data from inline JSON", { btData });
+                } catch (e) {
+                  logger.warn("Failed to parse inline JSON", e);
+                }
+              }
+            }
+
+            // Method 4: Try parsing entire response as JSON
+            if (!btData && data.response) {
+              try {
+                const parsed = JSON.parse(data.response);
+                if (parsed.friction && parsed.grease && parsed.insight) {
+                  btData = parsed as BreakthroughData;
+                  logger.info("Breakthrough data from full response parse", { btData });
+                }
+              } catch (e) {
+                // Not valid JSON, that's okay
+              }
+            }
+
+            // Method 5: Fallback data
+            if (!btData) {
+              logger.warn("No breakthrough data found, using fallback");
+              btData = {
+                friction: "The challenge you're working through",
+                grease: "The path forward is becoming clear",
+                insight: "Trust the process and move forward with clarity",
+              };
+            }
+
+            // Trigger breakthrough with data
+            forceBreakthrough(btData);
+          } catch (error) {
+            logger.error("Failed to extract breakthrough data", error);
+            // Fallback to basic breakthrough
+            forceBreakthrough();
           }
         }
 
@@ -499,5 +578,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     resetSession,
     dismissBreakthroughCard,
     toggleUltraFastMode,
+    showCinematic,
+    cinematicComplete,
+    handleCinematicComplete,
+    setShowCinematic,
+    setCinematicComplete,
   };
 }

@@ -14,6 +14,7 @@ import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
 import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel, KeyboardShortcutsModal } from "@/components/menu";
+import { CinematicPlayer } from "@/components/cinematics/CinematicPlayer";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -63,6 +64,11 @@ export function SpiralChat() {
     dismissBreakthroughCard,
     toggleUltraFastMode,
     resetSession,
+    showCinematic,
+    cinematicComplete,
+    handleCinematicComplete,
+    setShowCinematic,
+    setCinematicComplete,
   } = useSpiralAI({
     onEntitiesExtracted: (entities) => {
       toast({
@@ -234,6 +240,10 @@ export function SpiralChat() {
     if (isRecording) {
       stopRecording();
     }
+
+    // Reset cinematic state
+    setShowCinematic(false);
+    setCinematicComplete(false);
   }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording]);
 
   // Session timer - pauses when recording is paused or during breakthrough
@@ -382,11 +392,28 @@ export function SpiralChat() {
         {processingStage && <LoadingState stage={processingStage} />}
       </AnimatePresence>
 
+      {/* Cinematic Player - plays before breakthrough card shows */}
+      {showCinematic && !cinematicComplete && (
+        <CinematicPlayer
+          variant={undefined} // Random variant selection
+          onComplete={handleCinematicComplete}
+          onSkip={handleCinematicComplete}
+          allowSkip={true}
+          autoPlay={true}
+          enableAnalytics={true}
+          className="z-[200]"
+        />
+      )}
+
       {/* Breakthrough Overlay Card */}
       <BreakthroughCard
         data={breakthroughData}
-        isVisible={showBreakthroughCard}
-        onDismiss={dismissBreakthroughCard}
+        isVisible={showBreakthroughCard && cinematicComplete}
+        onDismiss={() => {
+          dismissBreakthroughCard();
+          setShowCinematic(false);
+          setCinematicComplete(false);
+        }}
         onNewSession={handleNewSession}
       />
 
