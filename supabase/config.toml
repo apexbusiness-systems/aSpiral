@@ -14,3 +14,15 @@ verify_jwt = false
 
 [functions.generate-breakthrough]
 verify_jwt = false
+
+[functions.api-sessions]
+verify_jwt = true
+
+[functions.api-entities]
+verify_jwt = true
+
+[functions.api-insights]
+verify_jwt = true
+
+[functions.api-export]
+verify_jwt = true

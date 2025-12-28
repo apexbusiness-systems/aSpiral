@@ -12,6 +12,9 @@ import Story from "./pages/Story";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Sessions from "./pages/Sessions";
+import Workspaces from "./pages/Workspaces";
+import ApiKeys from "./pages/ApiKeys";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,23 +31,11 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/story" element={<Story />} />
-              <Route 
-                path="/app" 
-                element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/sessions" 
-                element={
-                  <ProtectedRoute>
-                    <Sessions />
-                  </ProtectedRoute>
-                } 
-              />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
+              <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
+              <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
