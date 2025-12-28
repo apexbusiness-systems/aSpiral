@@ -94,6 +94,17 @@
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     --transition-journey: all 3s cubic-bezier(0.4, 0, 0.2, 1);
 
+    /* Z-Index Hierarchy (proper stacking order) */
+    --z-base: 0;
+    --z-entity: 10;
+    --z-content: 50;
+    --z-header: 100;
+    --z-dropdown: 200;
+    --z-tooltip: 300;
+    --z-modal: 400;
+    --z-cinematic: 500;
+    --z-critical: 1000;
+
     /* Sidebar */
     --sidebar-background: 271 45% 10%;
     --sidebar-foreground: 0 0% 98%;

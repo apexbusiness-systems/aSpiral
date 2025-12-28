@@ -6,12 +6,16 @@ interface QuestionBubbleProps {
   question: string;
   isVisible: boolean;
   onAnswer?: () => void;
+  questionNumber?: number;
+  totalQuestions?: number;
 }
 
 export function QuestionBubble({
   question,
   isVisible,
   onAnswer,
+  questionNumber = 1,
+  totalQuestions = 3,
 }: QuestionBubbleProps) {
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -54,17 +58,41 @@ export function QuestionBubble({
         {/* Ambient glow */}
         <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 via-secondary/15 to-accent/20 blur-2xl -z-10 opacity-60" />
 
-        {/* Header */}
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="relative">
-            <Sparkles className="h-5 w-5 text-secondary" />
-            <div className="absolute inset-0 text-secondary blur-sm opacity-50">
-              <Sparkles className="h-5 w-5" />
+        {/* Header with Progress */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <Sparkles className="h-5 w-5 text-secondary" />
+              <div className="absolute inset-0 text-secondary blur-sm opacity-50">
+                <Sparkles className="h-5 w-5" />
+              </div>
             </div>
+            <span className="text-xs font-medium text-secondary uppercase tracking-widest">
+              Discovery Question
+            </span>
           </div>
-          <span className="text-xs font-medium text-secondary uppercase tracking-widest">
-            Discovery Question
-          </span>
+          
+          {/* Progress Indicator */}
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {Array.from({ length: totalQuestions }).map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all duration-300",
+                    i < questionNumber
+                      ? "bg-accent scale-110"
+                      : i === questionNumber
+                      ? "bg-secondary animate-pulse"
+                      : "bg-muted-foreground/30"
+                  )}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground ml-1">
+              {questionNumber} of {totalQuestions}
+            </span>
+          </div>
         </div>
 
         {/* Question text with typewriter - using warm conversational font */}

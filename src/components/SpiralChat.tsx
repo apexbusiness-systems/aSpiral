@@ -442,6 +442,8 @@ export function SpiralChat() {
           question={currentQuestion || ""}
           isVisible={!!currentQuestion && !isRecording}
           onAnswer={() => dismissQuestion()}
+          questionNumber={questionCount + 1}
+          totalQuestions={maxQuestions}
         />
         
         {/* Skip to Breakthrough Button - shows when there's a question */}
