@@ -43,13 +43,13 @@ const Landing = () => {
           <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
             From{" "}
             <span className="text-primary relative">
-              spiralling
+              Spiralling
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 8" preserveAspectRatio="none">
                 <path d="M0,4 Q50,8 100,4 T200,4" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary/50" />
               </svg>
             </span>{" "}
             to{" "}
-            <span className="text-secondary">aspiring</span>
+            <span className="text-secondary">Aspiring</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-muted-foreground mb-4 font-light">
