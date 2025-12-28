@@ -1,11 +1,16 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { createLogger } from "@/lib/logger";
+import { isUserFrustrated, wantsToSkip } from "@/lib/frustrationDetector";
 import type { EntityType } from "@/lib/types";
 
 const logger = createLogger("useSpiralAI");
 
 const SPIRAL_AI_URL = "https://eqtwatyodujxofrdznen.supabase.co/functions/v1/spiral-ai";
+
+// EMERGENCY LIMITS
+const MAX_QUESTIONS = 2;
+const ABSOLUTE_MAX_ENTITIES = 5;
 
 interface EntityResult {
   type: EntityType;
@@ -29,8 +34,9 @@ interface SpiralAIResponse {
 interface UseSpiralAIOptions {
   onEntitiesExtracted?: (entities: EntityResult[]) => void;
   onQuestion?: (question: string) => void;
+  onBreakthrough?: () => void;
   onError?: (error: Error) => void;
-  autoSendInterval?: number; // ms between auto-sends
+  autoSendInterval?: number;
 }
 
 export function useSpiralAI(options: UseSpiralAIOptions = {}) {
@@ -42,20 +48,53 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const transcriptBufferRef = useRef<string>("");
   const lastSendTimeRef = useRef<number>(0);
   const recentQuestionsRef = useRef<string[]>([]);
+  const questionCountRef = useRef<number>(0);
 
   const {
     currentSession,
     addEntity,
     addConnection,
     addMessage,
+    triggerBreakthrough,
   } = useSessionStore();
+
+  // Force breakthrough immediately
+  const forceBreakthrough = useCallback(() => {
+    logger.info("FORCING BREAKTHROUGH - user frustrated or limit reached");
+    setCurrentQuestion(null);
+    questionCountRef.current = 0;
+    triggerBreakthrough();
+    options.onBreakthrough?.();
+    
+    addMessage({
+      role: "assistant",
+      content: "✨ **BREAKTHROUGH** ✨\n\nLet's cut to what matters.",
+    });
+  }, [triggerBreakthrough, addMessage, options]);
 
   // Process transcript through AI
   const processTranscript = useCallback(
     async (transcript: string): Promise<SpiralAIResponse | null> => {
       if (!transcript.trim() || isProcessing) return null;
 
-      logger.info("Processing transcript", { length: transcript.length });
+      // FRUSTRATION CHECK - Stop immediately if user is annoyed
+      if (isUserFrustrated(transcript) || wantsToSkip(transcript)) {
+        logger.warn("User frustrated or wants to skip - forcing breakthrough");
+        forceBreakthrough();
+        return null;
+      }
+
+      // QUESTION LIMIT CHECK
+      if (questionCountRef.current >= MAX_QUESTIONS) {
+        logger.info("Question limit reached - forcing breakthrough");
+        forceBreakthrough();
+        return null;
+      }
+
+      logger.info("Processing transcript", { 
+        length: transcript.length,
+        questionCount: questionCountRef.current,
+      });
       setIsProcessing(true);
 
       try {
@@ -72,7 +111,9 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
                 label: e.label,
               })),
               recentQuestions: recentQuestionsRef.current.slice(-3),
+              questionCount: questionCountRef.current,
             } : undefined,
+            forceBreakthrough: questionCountRef.current >= MAX_QUESTIONS - 1,
           }),
         });
 
@@ -87,10 +128,16 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           hasQuestion: !!data.question,
         });
 
+        // HARD CAP entities at 5 on client side too
+        const cappedEntities = data.entities.slice(0, ABSOLUTE_MAX_ENTITIES);
+        if (data.entities.length > ABSOLUTE_MAX_ENTITIES) {
+          logger.warn(`Capped entities from ${data.entities.length} to ${ABSOLUTE_MAX_ENTITIES}`);
+        }
+
         // Add entities to session
         const createdEntityIds: string[] = [];
-        if (data.entities.length > 0) {
-          data.entities.forEach((entity) => {
+        if (cappedEntities.length > 0) {
+          cappedEntities.forEach((entity) => {
             const created = addEntity({
               type: entity.type,
               label: entity.label,
@@ -98,7 +145,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             createdEntityIds.push(created.id);
           });
 
-          options.onEntitiesExtracted?.(data.entities);
+          options.onEntitiesExtracted?.(cappedEntities);
         }
 
         // Add connections (after entities are created)
@@ -117,14 +164,23 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }, 50);
         }
 
-        // Track question
+        // Track question and count
         if (data.question) {
+          questionCountRef.current++;
           recentQuestionsRef.current.push(data.question);
           if (recentQuestionsRef.current.length > 5) {
             recentQuestionsRef.current.shift();
           }
           setCurrentQuestion(data.question);
           options.onQuestion?.(data.question);
+          
+          // Check if this was the last allowed question
+          if (questionCountRef.current >= MAX_QUESTIONS) {
+            logger.info("Max questions reached, next response will be breakthrough");
+          }
+        } else {
+          // No question = breakthrough time
+          forceBreakthrough();
         }
 
         // Store response
@@ -147,8 +203,21 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         setIsProcessing(false);
       }
     },
-    [currentSession, addEntity, addConnection, addMessage, isProcessing, options]
+    [currentSession, addEntity, addConnection, addMessage, isProcessing, options, forceBreakthrough]
   );
+
+  // Skip to breakthrough button handler
+  const skipToBreakthrough = useCallback(() => {
+    forceBreakthrough();
+  }, [forceBreakthrough]);
+
+  // Reset question count for new session
+  const resetSession = useCallback(() => {
+    questionCountRef.current = 0;
+    recentQuestionsRef.current = [];
+    setCurrentQuestion(null);
+    setLastResponse(null);
+  }, []);
 
   // Accumulate transcript and auto-send periodically
   const accumulateTranscript = useCallback((text: string) => {
@@ -208,10 +277,14 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     isProcessing,
     currentQuestion,
     lastResponse,
+    questionCount: questionCountRef.current,
+    maxQuestions: MAX_QUESTIONS,
     processTranscript,
     accumulateTranscript,
     sendBuffer,
     clearBuffer,
     dismissQuestion,
+    skipToBreakthrough,
+    resetSession,
   };
 }

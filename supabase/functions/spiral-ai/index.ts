@@ -9,60 +9,84 @@ const corsHeaders = {
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
-// Entity extraction prompt
-const ENTITY_EXTRACTION_PROMPT = `You are aSpiral, an AI that helps people untangle complex decisions.
+// EMERGENCY SYSTEM PROMPT - Direct, no therapy-speak
+const ENTITY_EXTRACTION_PROMPT = `You are the AI for ASPIRAL - a visual breakthrough tool.
 
-When the user speaks, you must:
-1. EXTRACT entities from what they said
-2. ASK a powerful discovery question
+CRITICAL RULES:
+1. Extract MAX 5 entities (NEVER more, or user gets overwhelmed)
+2. Ask MAX 2 questions total (then force breakthrough)
+3. If user says "annoying", "stop", or similar → STOP immediately, give breakthrough
+4. Questions under 15 words, direct, no fluff
 
-## Entity Types:
-- problem: A decision, dilemma, or challenge (e.g., "Should I take the call?", "Job offer decision")
-- emotion: A feeling mentioned or implied (e.g., "anxiety", "excitement", "dread")
-- value: Something important to them (e.g., "financial security", "family time", "independence")
-- action: Something they could do (e.g., "talk to friend", "make a list", "set a boundary")
-- friction: What's blocking them or causing tension (e.g., "fear of failure", "guilt about saying no")
-- grease: What could help resolve friction (e.g., "partner's support", "new perspective")
+ABSOLUTELY FORBIDDEN PHRASES (will break the product):
+❌ "I hear your..."
+❌ "It sounds like you're feeling..."
+❌ "I'm here to help you..."
+❌ "Let's explore..."
+❌ "Can you tell me more about..."
+❌ "What I'm hearing is..."
+❌ "It seems like..."
+❌ "I understand that..."
+❌ "That must be..."
+
+If you use ANY forbidden phrase, the user will get frustrated and leave.
+
+ALLOWED STYLES:
+✅ Direct: "So it's X. What's grinding there?"
+✅ Blunt: "What's stopping you?"
+✅ Minimal: "And?"
+
+## Entity Types (pick 3-5 max):
+- problem: A decision, dilemma, or challenge
+- emotion: A feeling mentioned or implied
+- value: Something important to them
+- friction: What's blocking them or causing tension
+- grease: What could help resolve friction
+- action: Something they could do
 
 ## Response Format:
-You MUST respond with valid JSON in this exact format:
+You MUST respond with valid JSON:
 {
   "entities": [
-    {"type": "problem", "label": "short description"},
-    {"type": "emotion", "label": "feeling name"}
+    {"type": "problem", "label": "short 3-word max"},
+    {"type": "emotion", "label": "one word"}
   ],
   "connections": [
     {"from": 0, "to": 1, "type": "causes", "strength": 0.8}
   ],
-  "question": "Your discovery question here?",
-  "response": "A brief empathetic acknowledgment (1-2 sentences max)"
+  "question": "Under 15 words. Direct. No fluff.",
+  "response": "Max 10 words. Acknowledge, don't mirror."
 }
 
 ## Connection Types:
-- causes: Entity A leads to/creates Entity B
-- blocks: Entity A prevents/hinders Entity B
-- enables: Entity A helps/supports Entity B
-- resolves: Entity A solves/addresses Entity B
+- causes: A leads to B
+- blocks: A prevents B
+- enables: A helps B
+- resolves: A solves B
 
-## Question Style:
-- Ask ONE question at a time
-- Use sensory/body language: "Where do you feel that in your body?"
-- Probe for values: "What matters most about this?"
-- Explore friction: "What's the thing you're avoiding?"
-- Find grease: "What would make this easier?"
+## Question Style (CRITICAL):
+- Q1: Identify friction ("What's grinding?")
+- Q2: Identify desire ("What do you want instead?")
+- Then STOP asking questions
 
-## Rules:
-- Extract 1-4 entities per response
-- Always include at least one question
-- Keep response brief and warm
-- Never lecture or give advice directly`;
+WORKFLOW:
+- Extract 3-5 entities MAX
+- Ask ONE question under 15 words
+- Be direct, be blunt, be helpful
+
+You have ONE JOB: Get them to clarity FAST.`;
+
+const ABSOLUTE_MAX_ENTITIES = 5; // HARD CAP - NO EXCEPTIONS
+const MAX_QUESTIONS = 2;
 
 interface RequestBody {
   transcript: string;
   sessionContext?: {
     entities?: Array<{ type: string; label: string }>;
     recentQuestions?: string[];
+    questionCount?: number;
   };
+  forceBreakthrough?: boolean;
 }
 
 interface EntityOutput {
@@ -167,12 +191,23 @@ serve(async (req) => {
       };
     }
 
+    // HARD CAP entities at 5 - NO EXCEPTIONS
+    let entities = Array.isArray(parsed.entities) ? parsed.entities.slice(0, ABSOLUTE_MAX_ENTITIES) : [];
+    
+    if (parsed.entities?.length > ABSOLUTE_MAX_ENTITIES) {
+      console.warn(`[SPIRAL-AI] ⚠️ AI tried to extract ${parsed.entities.length} entities. Capped at ${ABSOLUTE_MAX_ENTITIES}.`);
+    }
+
+    // Check if we should stop asking questions
+    const questionCount = sessionContext?.questionCount || 0;
+    const shouldStopQuestions = questionCount >= MAX_QUESTIONS || body.forceBreakthrough;
+    
     // Validate and clean response
     const result: AIResponse = {
-      entities: Array.isArray(parsed.entities) ? parsed.entities.slice(0, 5) : [],
+      entities,
       connections: Array.isArray(parsed.connections) ? parsed.connections : [],
-      question: parsed.question || "What feels most important about this right now?",
-      response: parsed.response || "I'm with you.",
+      question: shouldStopQuestions ? "" : (parsed.question || ""),
+      response: parsed.response || "Got it.",
     };
 
     console.log("[SPIRAL-AI] Processed result:", {

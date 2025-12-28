@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap } from "lucide-react";
+import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,15 +37,24 @@ export function SpiralChat() {
   const {
     isProcessing: isAIProcessing,
     currentQuestion,
+    questionCount,
+    maxQuestions,
     processTranscript,
     accumulateTranscript,
     sendBuffer,
     dismissQuestion,
+    skipToBreakthrough,
   } = useSpiralAI({
     onEntitiesExtracted: (entities) => {
       toast({
         title: "Entities Discovered",
         description: `Found ${entities.length} new ${entities.length === 1 ? 'element' : 'elements'} in your story`,
+      });
+    },
+    onBreakthrough: () => {
+      toast({
+        title: "✨ BREAKTHROUGH",
+        description: "You've reached clarity!",
       });
     },
     onError: (error) => {
@@ -202,6 +211,21 @@ export function SpiralChat() {
           isVisible={!!currentQuestion && !isRecording}
           onAnswer={() => dismissQuestion()}
         />
+        
+        {/* Skip to Breakthrough Button - shows when there's a question */}
+        {currentQuestion && !isRecording && (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={skipToBreakthrough}
+              className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2"
+            >
+              <SkipForward className="h-3 w-3 mr-1.5" />
+              Skip to breakthrough ({questionCount}/{maxQuestions})
+            </Button>
+          </div>
+        )}
         
         {/* Expand/Collapse Button */}
         <Button
