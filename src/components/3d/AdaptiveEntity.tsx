@@ -165,7 +165,7 @@ export function AdaptiveEntity({
             center
             distanceFactor={8}
             style={{ pointerEvents: "none" }}
-            zIndexRange={[10, 50]}
+            zIndexRange={[0, 10]}
           >
             <div
               className="entity-label"
@@ -181,8 +181,6 @@ export function AdaptiveEntity({
                 color: "white",
                 whiteSpace: "nowrap",
                 animation: "labelFadeIn 0.2s ease-out",
-                zIndex: 10,
-                position: "relative",
               }}
             >
               {entity.label}
