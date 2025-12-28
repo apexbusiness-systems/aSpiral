@@ -1,0 +1,136 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "next": "Suivant",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "settings": "Paramètres",
+    "profile": "Profil",
+    "signOut": "Déconnexion",
+    "signIn": "Connexion",
+    "or": "ou"
+  },
+  "auth": {
+    "title": "Bienvenue sur Spiral",
+    "subtitle": "Votre compagnon de réflexion alimenté par l'IA pour des percées",
+    "loginTab": "Connexion",
+    "signupTab": "Inscription",
+    "email": "E-mail",
+    "emailPlaceholder": "vous@exemple.com",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "••••••••",
+    "displayName": "Nom d'affichage",
+    "displayNamePlaceholder": "Votre nom",
+    "loginButton": "Se connecter",
+    "signupButton": "Créer un compte",
+    "loggingIn": "Connexion en cours...",
+    "creatingAccount": "Création du compte...",
+    "continueWithGoogle": "Continuer avec Google",
+    "backToHome": "Retour à l'accueil",
+    "checkEmail": "Vérifiez votre e-mail pour le lien de confirmation",
+    "loginSuccess": "Connecté avec succès",
+    "alreadyRegistered": "Cet e-mail est déjà enregistré. Veuillez vous connecter.",
+    "invalidCredentials": "E-mail ou mot de passe invalide. Veuillez réessayer."
+  },
+  "landing": {
+    "hero": {
+      "title": "Transformez votre pensée",
+      "subtitle": "Percées alimentées par l'IA grâce à l'exploration vocale",
+      "cta": "Commencer l'exploration",
+      "watchDemo": "Voir la démo"
+    },
+    "features": {
+      "title": "Comment fonctionne Spiral",
+      "voice": {
+        "title": "Interface vocale",
+        "description": "Parlez naturellement et regardez vos pensées prendre vie en 3D"
+      },
+      "entities": {
+        "title": "Extraction d'entités",
+        "description": "L'IA identifie les concepts clés et cartographie leurs relations"
+      },
+      "breakthroughs": {
+        "title": "Moments de percée",
+        "description": "Découvrez des connexions et des insights inattendus"
+      }
+    }
+  },
+  "spiral": {
+    "placeholder": "Posez une question ou exprimez vos pensées...",
+    "thinking": "Réflexion...",
+    "listening": "Écoute...",
+    "micTooltip": "Maintenez pour parler",
+    "ultraFastMode": "Mode ultra-rapide",
+    "entities": "Entités",
+    "connections": "Connexions",
+    "frictionPoints": "Points de friction"
+  },
+  "menu": {
+    "newSession": "Nouvelle session",
+    "saveSession": "Enregistrer la session",
+    "exportSession": "Exporter la session",
+    "sessionHistory": "Historique des sessions",
+    "keyboardShortcuts": "Raccourcis clavier",
+    "settings": "Paramètres",
+    "help": "Aide et support",
+    "about": "À propos de Spiral"
+  },
+  "sessions": {
+    "title": "Vos sessions",
+    "subtitle": "Reprenez vos explorations passées ou recommencez",
+    "empty": "Aucune session",
+    "emptyDescription": "Démarrez une nouvelle session pour explorer",
+    "newSession": "Nouvelle session",
+    "resume": "Reprendre",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer cette session ?",
+    "deleteWarning": "Cette action est irréversible.",
+    "entities": "entités",
+    "messages": "messages",
+    "lastUpdated": "Dernière mise à jour"
+  },
+  "shortcuts": {
+    "title": "Raccourcis clavier",
+    "holdToSpeak": "Maintenir pour parler",
+    "newSession": "Nouvelle session",
+    "saveSession": "Enregistrer la session",
+    "toggleMenu": "Basculer le menu",
+    "showShortcuts": "Afficher les raccourcis",
+    "closeModal": "Fermer la fenêtre"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeSystem": "Système",
+    "sound": "Effets sonores",
+    "soundOn": "Activé",
+    "soundOff": "Désactivé",
+    "notifications": "Notifications",
+    "autoSave": "Sauvegarde automatique"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "network": "Erreur réseau. Vérifiez votre connexion.",
+    "auth": "Erreur d'authentification",
+    "notFound": "Page non trouvée",
+    "sessionLoad": "Échec du chargement de la session",
+    "sessionSave": "Échec de l'enregistrement de la session"
+  },
+  "time": {
+    "justNow": "À l'instant",
+    "minutesAgo": "Il y a {{count}} minute",
+    "minutesAgo_plural": "Il y a {{count}} minutes",
+    "hoursAgo": "Il y a {{count}} heure",
+    "hoursAgo_plural": "Il y a {{count}} heures",
+    "daysAgo": "Il y a {{count}} jour",
+    "daysAgo_plural": "Il y a {{count}} jours"
+  }
+}

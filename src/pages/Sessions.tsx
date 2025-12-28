@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -39,6 +40,7 @@ interface SessionListItem {
 }
 
 const Sessions = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { loadSessions, loadSession, deleteSession, isLoading } = useSessionPersistence();
@@ -135,16 +137,16 @@ const Sessions = () => {
             </Button>
             <div>
               <h1 className="font-display text-2xl font-bold text-foreground">
-                Session History
+                {t('sessions.title')}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {sessions.length} {sessions.length === 1 ? 'session' : 'sessions'} found
+                {t('sessions.subtitle')}
               </p>
             </div>
           </div>
           <Button onClick={handleNewSession} className="rounded-xl">
             <Sparkles className="w-4 h-4 mr-2" />
-            New Session
+            {t('sessions.newSession')}
           </Button>
         </div>
 
@@ -157,14 +159,14 @@ const Sessions = () => {
           <div className="glass-card p-12 text-center">
             <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-lg font-medium text-foreground mb-2">
-              No sessions yet
+              {t('sessions.empty')}
             </h2>
             <p className="text-muted-foreground mb-6">
-              Start your first spiral session to explore your thoughts and find breakthroughs.
+              {t('sessions.emptyDescription')}
             </p>
             <Button onClick={handleNewSession}>
               <Sparkles className="w-4 h-4 mr-2" />
-              Start First Session
+              {t('sessions.newSession')}
             </Button>
           </div>
         ) : (
@@ -212,7 +214,7 @@ const Sessions = () => {
                         className="rounded-lg"
                       >
                         <Play className="w-4 h-4 mr-1.5" />
-                        Resume
+                        {t('sessions.resume')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -235,13 +237,13 @@ const Sessions = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent className="bg-popover border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete Session?</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">{t('sessions.deleteConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this session and all its data. This action cannot be undone.
+              {t('sessions.deleteWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border">{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteSession}
               disabled={isDeleting}
@@ -250,7 +252,7 @@ const Sessions = () => {
               {isDeleting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                'Delete'
+                t('common.delete')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

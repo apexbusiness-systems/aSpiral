@@ -1,0 +1,136 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "confirm": "Confirmar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "settings": "Configuración",
+    "profile": "Perfil",
+    "signOut": "Cerrar sesión",
+    "signIn": "Iniciar sesión",
+    "or": "o"
+  },
+  "auth": {
+    "title": "Bienvenido a Spiral",
+    "subtitle": "Tu compañero de pensamiento impulsado por IA para insights revolucionarios",
+    "loginTab": "Iniciar sesión",
+    "signupTab": "Registrarse",
+    "email": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "password": "Contraseña",
+    "passwordPlaceholder": "••••••••",
+    "displayName": "Nombre para mostrar",
+    "displayNamePlaceholder": "Tu nombre",
+    "loginButton": "Iniciar sesión",
+    "signupButton": "Crear cuenta",
+    "loggingIn": "Iniciando sesión...",
+    "creatingAccount": "Creando cuenta...",
+    "continueWithGoogle": "Continuar con Google",
+    "backToHome": "Volver al inicio",
+    "checkEmail": "Revisa tu correo para el enlace de confirmación",
+    "loginSuccess": "Sesión iniciada correctamente",
+    "alreadyRegistered": "Este correo ya está registrado. Por favor, inicia sesión.",
+    "invalidCredentials": "Correo o contraseña inválidos. Inténtalo de nuevo."
+  },
+  "landing": {
+    "hero": {
+      "title": "Transforma tu pensamiento",
+      "subtitle": "Insights revolucionarios impulsados por IA a través de exploración por voz",
+      "cta": "Comenzar a explorar",
+      "watchDemo": "Ver demo"
+    },
+    "features": {
+      "title": "Cómo funciona Spiral",
+      "voice": {
+        "title": "Interfaz de voz primero",
+        "description": "Habla naturalmente y observa cómo tus pensamientos cobran vida en 3D"
+      },
+      "entities": {
+        "title": "Extracción de entidades",
+        "description": "La IA identifica conceptos clave y mapea sus relaciones"
+      },
+      "breakthroughs": {
+        "title": "Momentos de descubrimiento",
+        "description": "Descubre conexiones e insights inesperados"
+      }
+    }
+  },
+  "spiral": {
+    "placeholder": "Pregunta algo o habla tus pensamientos...",
+    "thinking": "Pensando...",
+    "listening": "Escuchando...",
+    "micTooltip": "Mantén presionado para hablar",
+    "ultraFastMode": "Modo ultra rápido",
+    "entities": "Entidades",
+    "connections": "Conexiones",
+    "frictionPoints": "Puntos de fricción"
+  },
+  "menu": {
+    "newSession": "Nueva sesión",
+    "saveSession": "Guardar sesión",
+    "exportSession": "Exportar sesión",
+    "sessionHistory": "Historial de sesiones",
+    "keyboardShortcuts": "Atajos de teclado",
+    "settings": "Configuración",
+    "help": "Ayuda y soporte",
+    "about": "Acerca de Spiral"
+  },
+  "sessions": {
+    "title": "Tus sesiones",
+    "subtitle": "Retoma exploraciones pasadas o comienza de nuevo",
+    "empty": "Sin sesiones aún",
+    "emptyDescription": "Inicia una nueva sesión para comenzar a explorar",
+    "newSession": "Nueva sesión",
+    "resume": "Reanudar",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Eliminar esta sesión?",
+    "deleteWarning": "Esta acción no se puede deshacer.",
+    "entities": "entidades",
+    "messages": "mensajes",
+    "lastUpdated": "Última actualización"
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "holdToSpeak": "Mantener para hablar",
+    "newSession": "Nueva sesión",
+    "saveSession": "Guardar sesión",
+    "toggleMenu": "Alternar menú",
+    "showShortcuts": "Mostrar atajos",
+    "closeModal": "Cerrar modal"
+  },
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "themeSystem": "Sistema",
+    "sound": "Efectos de sonido",
+    "soundOn": "Activado",
+    "soundOff": "Desactivado",
+    "notifications": "Notificaciones",
+    "autoSave": "Guardar sesiones automáticamente"
+  },
+  "errors": {
+    "generic": "Algo salió mal",
+    "network": "Error de red. Verifica tu conexión.",
+    "auth": "Error de autenticación",
+    "notFound": "Página no encontrada",
+    "sessionLoad": "Error al cargar la sesión",
+    "sessionSave": "Error al guardar la sesión"
+  },
+  "time": {
+    "justNow": "Ahora mismo",
+    "minutesAgo": "Hace {{count}} minuto",
+    "minutesAgo_plural": "Hace {{count}} minutos",
+    "hoursAgo": "Hace {{count}} hora",
+    "hoursAgo_plural": "Hace {{count}} horas",
+    "daysAgo": "Hace {{count}} día",
+    "daysAgo_plural": "Hace {{count}} días"
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "search": "Search",
+    "settings": "Settings",
+    "profile": "Profile",
+    "signOut": "Sign out",
+    "signIn": "Sign In",
+    "or": "or"
+  },
+  "auth": {
+    "title": "Welcome to Spiral",
+    "subtitle": "Your AI-powered thinking companion for breakthrough insights",
+    "loginTab": "Login",
+    "signupTab": "Sign Up",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "Your name",
+    "loginButton": "Login",
+    "signupButton": "Create Account",
+    "loggingIn": "Logging in...",
+    "creatingAccount": "Creating account...",
+    "continueWithGoogle": "Continue with Google",
+    "backToHome": "Back to Home",
+    "checkEmail": "Check your email for a confirmation link",
+    "loginSuccess": "Logged in successfully",
+    "alreadyRegistered": "This email is already registered. Please try logging in instead.",
+    "invalidCredentials": "Invalid email or password. Please try again."
+  },
+  "landing": {
+    "hero": {
+      "title": "Transform Your Thinking",
+      "subtitle": "AI-powered breakthrough insights through voice-driven exploration",
+      "cta": "Start Exploring",
+      "watchDemo": "Watch Demo"
+    },
+    "features": {
+      "title": "How Spiral Works",
+      "voice": {
+        "title": "Voice-First Interface",
+        "description": "Speak naturally and watch your thoughts come alive in 3D space"
+      },
+      "entities": {
+        "title": "Entity Extraction",
+        "description": "AI identifies key concepts and maps their relationships"
+      },
+      "breakthroughs": {
+        "title": "Breakthrough Moments",
+        "description": "Discover unexpected connections and insights"
+      }
+    }
+  },
+  "spiral": {
+    "placeholder": "Ask anything or speak your thoughts...",
+    "thinking": "Thinking...",
+    "listening": "Listening...",
+    "micTooltip": "Hold to speak",
+    "ultraFastMode": "Ultra-Fast Mode",
+    "entities": "Entities",
+    "connections": "Connections",
+    "frictionPoints": "Friction Points"
+  },
+  "menu": {
+    "newSession": "New Session",
+    "saveSession": "Save Session",
+    "exportSession": "Export Session",
+    "sessionHistory": "Session History",
+    "keyboardShortcuts": "Keyboard Shortcuts",
+    "settings": "Settings",
+    "help": "Help & Support",
+    "about": "About Spiral"
+  },
+  "sessions": {
+    "title": "Your Sessions",
+    "subtitle": "Resume past explorations or start fresh",
+    "empty": "No sessions yet",
+    "emptyDescription": "Start a new session to begin exploring",
+    "newSession": "New Session",
+    "resume": "Resume",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this session?",
+    "deleteWarning": "This action cannot be undone.",
+    "entities": "entities",
+    "messages": "messages",
+    "lastUpdated": "Last updated"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "holdToSpeak": "Hold to speak",
+    "newSession": "New session",
+    "saveSession": "Save session",
+    "toggleMenu": "Toggle menu",
+    "showShortcuts": "Show shortcuts",
+    "closeModal": "Close modal"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "sound": "Sound Effects",
+    "soundOn": "On",
+    "soundOff": "Off",
+    "notifications": "Notifications",
+    "autoSave": "Auto-save Sessions"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error. Please check your connection.",
+    "auth": "Authentication error",
+    "notFound": "Page not found",
+    "sessionLoad": "Failed to load session",
+    "sessionSave": "Failed to save session"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minute ago",
+    "minutesAgo_plural": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hour ago",
+    "hoursAgo_plural": "{{count}} hours ago",
+    "daysAgo": "{{count}} day ago",
+    "daysAgo_plural": "{{count}} days ago"
+  }
+}

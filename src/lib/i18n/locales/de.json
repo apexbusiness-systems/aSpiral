@@ -1,0 +1,136 @@
+{
+  "common": {
+    "loading": "Laden...",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "close": "Schließen",
+    "search": "Suchen",
+    "settings": "Einstellungen",
+    "profile": "Profil",
+    "signOut": "Abmelden",
+    "signIn": "Anmelden",
+    "or": "oder"
+  },
+  "auth": {
+    "title": "Willkommen bei Spiral",
+    "subtitle": "Ihr KI-gestützter Denkbegleiter für bahnbrechende Erkenntnisse",
+    "loginTab": "Anmelden",
+    "signupTab": "Registrieren",
+    "email": "E-Mail",
+    "emailPlaceholder": "du@beispiel.de",
+    "password": "Passwort",
+    "passwordPlaceholder": "••••••••",
+    "displayName": "Anzeigename",
+    "displayNamePlaceholder": "Dein Name",
+    "loginButton": "Anmelden",
+    "signupButton": "Konto erstellen",
+    "loggingIn": "Anmeldung läuft...",
+    "creatingAccount": "Konto wird erstellt...",
+    "continueWithGoogle": "Mit Google fortfahren",
+    "backToHome": "Zurück zur Startseite",
+    "checkEmail": "Prüfe deine E-Mail für den Bestätigungslink",
+    "loginSuccess": "Erfolgreich angemeldet",
+    "alreadyRegistered": "Diese E-Mail ist bereits registriert. Bitte melde dich an.",
+    "invalidCredentials": "Ungültige E-Mail oder Passwort. Bitte versuche es erneut."
+  },
+  "landing": {
+    "hero": {
+      "title": "Transformiere dein Denken",
+      "subtitle": "KI-gestützte Durchbrüche durch sprachgesteuerte Erkundung",
+      "cta": "Erkundung starten",
+      "watchDemo": "Demo ansehen"
+    },
+    "features": {
+      "title": "Wie Spiral funktioniert",
+      "voice": {
+        "title": "Sprach-First-Interface",
+        "description": "Sprich natürlich und beobachte, wie deine Gedanken in 3D lebendig werden"
+      },
+      "entities": {
+        "title": "Entitäts-Extraktion",
+        "description": "KI identifiziert Schlüsselkonzepte und kartiert ihre Beziehungen"
+      },
+      "breakthroughs": {
+        "title": "Durchbruch-Momente",
+        "description": "Entdecke unerwartete Verbindungen und Erkenntnisse"
+      }
+    }
+  },
+  "spiral": {
+    "placeholder": "Frage etwas oder sprich deine Gedanken...",
+    "thinking": "Denke nach...",
+    "listening": "Höre zu...",
+    "micTooltip": "Gedrückt halten zum Sprechen",
+    "ultraFastMode": "Ultra-Schnell-Modus",
+    "entities": "Entitäten",
+    "connections": "Verbindungen",
+    "frictionPoints": "Reibungspunkte"
+  },
+  "menu": {
+    "newSession": "Neue Sitzung",
+    "saveSession": "Sitzung speichern",
+    "exportSession": "Sitzung exportieren",
+    "sessionHistory": "Sitzungsverlauf",
+    "keyboardShortcuts": "Tastenkürzel",
+    "settings": "Einstellungen",
+    "help": "Hilfe & Support",
+    "about": "Über Spiral"
+  },
+  "sessions": {
+    "title": "Deine Sitzungen",
+    "subtitle": "Setze vergangene Erkundungen fort oder starte neu",
+    "empty": "Noch keine Sitzungen",
+    "emptyDescription": "Starte eine neue Sitzung zum Erkunden",
+    "newSession": "Neue Sitzung",
+    "resume": "Fortsetzen",
+    "delete": "Löschen",
+    "deleteConfirm": "Diese Sitzung löschen?",
+    "deleteWarning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+    "entities": "Entitäten",
+    "messages": "Nachrichten",
+    "lastUpdated": "Zuletzt aktualisiert"
+  },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "holdToSpeak": "Halten zum Sprechen",
+    "newSession": "Neue Sitzung",
+    "saveSession": "Sitzung speichern",
+    "toggleMenu": "Menü umschalten",
+    "showShortcuts": "Kürzel anzeigen",
+    "closeModal": "Modal schließen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "theme": "Design",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System",
+    "sound": "Soundeffekte",
+    "soundOn": "An",
+    "soundOff": "Aus",
+    "notifications": "Benachrichtigungen",
+    "autoSave": "Automatisch speichern"
+  },
+  "errors": {
+    "generic": "Etwas ist schiefgelaufen",
+    "network": "Netzwerkfehler. Bitte prüfe deine Verbindung.",
+    "auth": "Authentifizierungsfehler",
+    "notFound": "Seite nicht gefunden",
+    "sessionLoad": "Sitzung konnte nicht geladen werden",
+    "sessionSave": "Sitzung konnte nicht gespeichert werden"
+  },
+  "time": {
+    "justNow": "Gerade eben",
+    "minutesAgo": "Vor {{count}} Minute",
+    "minutesAgo_plural": "Vor {{count}} Minuten",
+    "hoursAgo": "Vor {{count}} Stunde",
+    "hoursAgo_plural": "Vor {{count}} Stunden",
+    "daysAgo": "Vor {{count}} Tag",
+    "daysAgo_plural": "Vor {{count}} Tagen"
+  }
+}
