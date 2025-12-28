@@ -2,6 +2,7 @@ import { SpiralChat } from "@/components/SpiralChat";
 import { Toaster } from "@/components/ui/toaster";
 import { AuroraBackground } from "@/components/effects/AuroraBackground";
 import { BreakthroughOverlay } from "@/components/effects/BreakthroughOverlay";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 const Index = () => {
   return (
@@ -27,9 +28,12 @@ const Index = () => {
               <div className="absolute -bottom-1 left-0 h-0.5 w-full bg-gradient-to-r from-primary/50 via-secondary/50 to-transparent" />
             </div>
           </div>
-          <span className="text-fluid-sm text-muted-foreground font-display tracking-wide">
-            Decision Intelligence
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-fluid-sm text-muted-foreground font-display tracking-wide hidden sm:block">
+              Decision Intelligence
+            </span>
+            <UserMenu />
+          </div>
         </div>
       </header>
 
