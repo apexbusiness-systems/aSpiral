@@ -12,7 +12,7 @@ import { SpiralScene } from "@/components/3d/SpiralScene";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
-import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel } from "@/components/menu";
+import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel, KeyboardShortcutsModal } from "@/components/menu";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -26,6 +26,7 @@ export function SpiralChat() {
   const [is3DExpanded, setIs3DExpanded] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -283,6 +284,10 @@ export function SpiralChat() {
     });
   }, [toast]);
 
+  const handleShowShortcuts = useCallback(() => {
+    setIsShortcutsOpen(true);
+  }, []);
+
   // Keyboard shortcuts
   const shortcuts = [
     { ...ASPIRAL_SHORTCUTS.toggleMenu, action: () => setIsMenuOpen((prev) => !prev), enabled: true },
@@ -294,7 +299,7 @@ export function SpiralChat() {
     { ...ASPIRAL_SHORTCUTS.export, action: handleExport, enabled: sessionState === "breakthrough" },
     { ...ASPIRAL_SHORTCUTS.history, action: handleViewHistory, enabled: true },
     { ...ASPIRAL_SHORTCUTS.settings, action: handleSettings, enabled: true },
-    { ...ASPIRAL_SHORTCUTS.help, action: handleHelp, enabled: true },
+    { ...ASPIRAL_SHORTCUTS.help, action: handleShowShortcuts, enabled: true },
   ];
 
   useKeyboardShortcuts(shortcuts);
@@ -344,6 +349,12 @@ export function SpiralChat() {
         onSkip={skipToBreakthrough}
         onSave={handleSave}
       />
+
+      {/* Settings Panel */}
+      <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
 
       {/* Loading State Overlay */}
       <AnimatePresence>
