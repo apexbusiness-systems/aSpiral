@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -371,39 +371,38 @@ interface MenuActionProps {
   onClick: () => void;
 }
 
-function MenuAction({
-  icon: Icon,
-  label,
-  shortcut,
-  variant = "default",
-  onClick,
-}: MenuActionProps) {
-  return (
-    <button
-      className={cn(
-        "flex items-center gap-3 w-full p-4",
-        "border rounded-xl",
-        "text-left font-medium text-foreground",
-        "cursor-pointer transition-all duration-200",
-        "hover:translate-x-[-2px]",
-        variant === "default" &&
-          "bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border",
-        variant === "primary" &&
-          "bg-primary/20 border-primary/40 hover:bg-primary/30 hover:border-primary/60",
-        variant === "accent" &&
-          "bg-green-500/20 border-green-500/40 hover:bg-green-500/30 hover:border-green-500/60",
-        variant === "danger" &&
-          "bg-destructive/10 border-destructive/30 hover:bg-destructive/20 hover:border-destructive/50"
-      )}
-      onClick={onClick}
-    >
-      <Icon size={20} className="text-muted-foreground flex-shrink-0" />
-      <span className="flex-1">{label}</span>
-      {shortcut && (
-        <kbd className="px-2 py-1 bg-background/30 border border-border/50 rounded text-xs font-mono text-muted-foreground">
-          {shortcut}
-        </kbd>
-      )}
-    </button>
-  );
-}
+const MenuAction = forwardRef<HTMLButtonElement, MenuActionProps>(
+  ({ icon: Icon, label, shortcut, variant = "default", onClick }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={cn(
+          "flex items-center gap-3 w-full p-4",
+          "border rounded-xl",
+          "text-left font-medium text-foreground",
+          "cursor-pointer transition-all duration-200",
+          "hover:translate-x-[-2px]",
+          variant === "default" &&
+            "bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border",
+          variant === "primary" &&
+            "bg-primary/20 border-primary/40 hover:bg-primary/30 hover:border-primary/60",
+          variant === "accent" &&
+            "bg-green-500/20 border-green-500/40 hover:bg-green-500/30 hover:border-green-500/60",
+          variant === "danger" &&
+            "bg-destructive/10 border-destructive/30 hover:bg-destructive/20 hover:border-destructive/50"
+        )}
+        onClick={onClick}
+      >
+        <Icon size={20} className="text-muted-foreground flex-shrink-0" />
+        <span className="flex-1">{label}</span>
+        {shortcut && (
+          <kbd className="px-2 py-1 bg-background/30 border border-border/50 rounded text-xs font-mono text-muted-foreground">
+            {shortcut}
+          </kbd>
+        )}
+      </button>
+    );
+  }
+);
+
+MenuAction.displayName = "MenuAction";
