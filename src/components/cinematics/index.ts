@@ -6,6 +6,10 @@
 // Main Player
 export { CinematicPlayer } from './CinematicPlayer';
 
+// Thumbnail & Selector
+export { CinematicThumbnail } from './CinematicThumbnail';
+export { CinematicSelector } from './CinematicSelector';
+
 // Individual Variants
 export { SpiralAscend } from './SpiralAscend';
 export { ParticleExplosion } from './ParticleExplosion';
