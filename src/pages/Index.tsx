@@ -1,9 +1,15 @@
 import { SpiralChat } from "@/components/SpiralChat";
 import { Toaster } from "@/components/ui/toaster";
+import { AuroraBackground } from "@/components/effects/AuroraBackground";
+import { BreakthroughOverlay } from "@/components/effects/BreakthroughOverlay";
 
 const Index = () => {
   return (
     <div className="app-container flex min-h-screen flex-col">
+      {/* Aurora background system */}
+      <AuroraBackground />
+      <BreakthroughOverlay />
+      
       {/* Ambient background orbs */}
       <div className="ambient-orb w-96 h-96 bg-primary/30 top-0 left-0" />
       <div className="ambient-orb w-80 h-80 bg-secondary/20 bottom-20 right-10" style={{ animationDelay: '-5s' }} />
