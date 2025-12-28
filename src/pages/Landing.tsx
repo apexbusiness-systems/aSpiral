@@ -145,7 +145,7 @@ const Landing = () => {
 
             <div className="space-y-6 text-muted-foreground leading-relaxed">
               <p className="text-lg">
-                I'm <span className="text-foreground font-medium">JR</span>. 48 hours ago, I was spiralling from trauma.
+                I'm <span className="text-foreground font-medium">JR</span>. I was spiralling from trauma.
                 <br />
                 My coping mechanism? Building things.
               </p>
@@ -164,13 +164,13 @@ const Landing = () => {
             </div>
 
             <div className="mt-8 text-center">
-              <a
-                href="#"
+              <Link
+                to="/story"
                 className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium"
               >
                 Read the full story
                 <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </div>
