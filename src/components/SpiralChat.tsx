@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Send, Maximize2, Minimize2 } from "lucide-react";
+import { Send, Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,16 +9,17 @@ import { SpiralScene } from "@/components/3d/SpiralScene";
 import { useChat } from "@/hooks/useChat";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSessionStore } from "@/stores/sessionStore";
+import type { EntityType } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { OmniLinkAdapter } from "@/integrations/omnilink";
 
 export function SpiralChat() {
   const [input, setInput] = useState("");
-  const [is3DExpanded, setIs3DExpanded] = useState(false);
+  const [is3DExpanded, setIs3DExpanded] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const { createSession, currentSession, isProcessing } = useSessionStore();
+  const { createSession, currentSession, isProcessing, addEntity, addConnection } = useSessionStore();
   const { messages, sendMessage, isStreaming } = useChat({
     onError: (error) => {
       toast({
@@ -64,6 +65,38 @@ export function SpiralChat() {
 
   const entityCount = currentSession?.entities?.length || 0;
 
+  const addTestEntities = () => {
+    const testEntities: Array<{ type: EntityType; label: string }> = [
+      { type: "problem", label: "Should I take the job offer?" },
+      { type: "emotion", label: "Anxiety about change" },
+      { type: "emotion", label: "Excitement for growth" },
+      { type: "value", label: "Financial security" },
+      { type: "value", label: "Work-life balance" },
+      { type: "problem", label: "Moving to new city" },
+      { type: "action", label: "Research the company" },
+      { type: "friction", label: "Fear of leaving comfort zone" },
+      { type: "grease", label: "Partner is supportive" },
+    ];
+
+    const createdEntities: string[] = [];
+    
+    testEntities.forEach((e) => {
+      const entity = addEntity({ type: e.type, label: e.label });
+      createdEntities.push(entity.id);
+    });
+
+    // Add some connections after a brief delay to ensure entities exist
+    setTimeout(() => {
+      if (createdEntities.length >= 4) {
+        addConnection({ fromEntityId: createdEntities[0], toEntityId: createdEntities[1], type: "causes", strength: 0.8 });
+        addConnection({ fromEntityId: createdEntities[0], toEntityId: createdEntities[2], type: "causes", strength: 0.6 });
+        addConnection({ fromEntityId: createdEntities[3], toEntityId: createdEntities[0], type: "enables", strength: 0.7 });
+        addConnection({ fromEntityId: createdEntities[7], toEntityId: createdEntities[0], type: "blocks", strength: 0.9 });
+        addConnection({ fromEntityId: createdEntities[8], toEntityId: createdEntities[7], type: "resolves", strength: 0.85 });
+      }
+    }, 100);
+  };
+
   return (
     <div className="flex h-[calc(100vh-73px)] flex-col lg:flex-row">
       {/* 3D Visualization Panel */}
@@ -90,12 +123,24 @@ export function SpiralChat() {
           )}
         </Button>
         
-        {/* Entity Counter */}
-        {entityCount > 0 && (
-          <div className="absolute bottom-2 left-2 rounded-md bg-background/80 backdrop-blur-sm px-3 py-1 text-xs text-muted-foreground">
-            {entityCount} {entityCount === 1 ? "entity" : "entities"} discovered
-          </div>
-        )}
+        {/* Entity Counter & Test Button */}
+        <div className="absolute bottom-2 left-2 flex gap-2">
+          {entityCount > 0 ? (
+            <div className="rounded-md bg-background/80 backdrop-blur-sm px-3 py-1 text-xs text-muted-foreground">
+              {entityCount} {entityCount === 1 ? "entity" : "entities"} discovered
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addTestEntities}
+              className="bg-background/80 backdrop-blur-sm text-xs"
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              Add Test Entities
+            </Button>
+          )}
+        </div>
         
         {/* OMNiLiNK Status */}
         {OmniLinkAdapter.isEnabled() && (
