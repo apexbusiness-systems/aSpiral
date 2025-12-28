@@ -1,0 +1,136 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "confirm": "確認",
+    "back": "戻る",
+    "next": "次へ",
+    "close": "閉じる",
+    "search": "検索",
+    "settings": "設定",
+    "profile": "プロフィール",
+    "signOut": "ログアウト",
+    "signIn": "ログイン",
+    "or": "または"
+  },
+  "auth": {
+    "title": "Spiralへようこそ",
+    "subtitle": "AIを活用した思考パートナーで画期的な洞察を得よう",
+    "loginTab": "ログイン",
+    "signupTab": "新規登録",
+    "email": "メールアドレス",
+    "emailPlaceholder": "you@example.com",
+    "password": "パスワード",
+    "passwordPlaceholder": "••••••••",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "あなたの名前",
+    "loginButton": "ログイン",
+    "signupButton": "アカウント作成",
+    "loggingIn": "ログイン中...",
+    "creatingAccount": "アカウント作成中...",
+    "continueWithGoogle": "Googleで続ける",
+    "backToHome": "ホームに戻る",
+    "checkEmail": "確認リンクをメールで送信しました",
+    "loginSuccess": "ログインしました",
+    "alreadyRegistered": "このメールアドレスは既に登録されています。ログインしてください。",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません。"
+  },
+  "landing": {
+    "hero": {
+      "title": "思考を変革する",
+      "subtitle": "音声探索によるAI駆動のブレークスルー体験",
+      "cta": "探索を始める",
+      "watchDemo": "デモを見る"
+    },
+    "features": {
+      "title": "Spiralの仕組み",
+      "voice": {
+        "title": "音声ファーストインターフェース",
+        "description": "自然に話すと、あなたの思考が3D空間で生き生きと表現されます"
+      },
+      "entities": {
+        "title": "エンティティ抽出",
+        "description": "AIが重要な概念を識別し、その関係性をマッピングします"
+      },
+      "breakthroughs": {
+        "title": "ブレークスルーの瞬間",
+        "description": "予想外のつながりと洞察を発見しましょう"
+      }
+    }
+  },
+  "spiral": {
+    "placeholder": "質問するか、考えを話してください...",
+    "thinking": "考え中...",
+    "listening": "聞いています...",
+    "micTooltip": "長押しで話す",
+    "ultraFastMode": "超高速モード",
+    "entities": "エンティティ",
+    "connections": "接続",
+    "frictionPoints": "摩擦点"
+  },
+  "menu": {
+    "newSession": "新規セッション",
+    "saveSession": "セッションを保存",
+    "exportSession": "セッションをエクスポート",
+    "sessionHistory": "セッション履歴",
+    "keyboardShortcuts": "キーボードショートカット",
+    "settings": "設定",
+    "help": "ヘルプ＆サポート",
+    "about": "Spiralについて"
+  },
+  "sessions": {
+    "title": "あなたのセッション",
+    "subtitle": "過去の探索を再開するか、新しく始める",
+    "empty": "セッションがありません",
+    "emptyDescription": "新しいセッションを開始して探索を始めましょう",
+    "newSession": "新規セッション",
+    "resume": "再開",
+    "delete": "削除",
+    "deleteConfirm": "このセッションを削除しますか？",
+    "deleteWarning": "この操作は取り消せません。",
+    "entities": "エンティティ",
+    "messages": "メッセージ",
+    "lastUpdated": "最終更新"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "holdToSpeak": "長押しで話す",
+    "newSession": "新規セッション",
+    "saveSession": "セッションを保存",
+    "toggleMenu": "メニュー切替",
+    "showShortcuts": "ショートカット表示",
+    "closeModal": "モーダルを閉じる"
+  },
+  "settings": {
+    "title": "設定",
+    "language": "言語",
+    "theme": "テーマ",
+    "themeLight": "ライト",
+    "themeDark": "ダーク",
+    "themeSystem": "システム",
+    "sound": "サウンドエフェクト",
+    "soundOn": "オン",
+    "soundOff": "オフ",
+    "notifications": "通知",
+    "autoSave": "自動保存"
+  },
+  "errors": {
+    "generic": "エラーが発生しました",
+    "network": "ネットワークエラー。接続を確認してください。",
+    "auth": "認証エラー",
+    "notFound": "ページが見つかりません",
+    "sessionLoad": "セッションの読み込みに失敗しました",
+    "sessionSave": "セッションの保存に失敗しました"
+  },
+  "time": {
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "minutesAgo_plural": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "hoursAgo_plural": "{{count}}時間前",
+    "daysAgo": "{{count}}日前",
+    "daysAgo_plural": "{{count}}日前"
+  }
+}
