@@ -17,50 +17,45 @@ export function FloatingMenuButton({
   return (
     <motion.button
       className={cn(
-        "fixed top-4 right-4 z-[999] w-14 h-14",
+        "fixed top-3 right-3 sm:top-4 sm:right-4 z-[999]",
+        "w-12 h-12 sm:w-14 sm:h-14",
         "flex items-center justify-center",
-        "bg-background/60 backdrop-blur-xl",
-        "border border-border/50 rounded-full",
-        "cursor-pointer transition-all duration-300",
-        "hover:bg-background/80 hover:border-primary/50 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)]"
+        // Solid background on mobile for contrast
+        "bg-card sm:bg-background/60 sm:backdrop-blur-xl",
+        "border-2 border-foreground/20 sm:border-border/50 rounded-full",
+        "cursor-pointer transition-all duration-200",
+        "hover:bg-card/90 sm:hover:bg-background/80 hover:border-primary/50"
       )}
       onClick={onMenuOpen}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
-      whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.5 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3 }}
     >
-      <motion.div
-        animate={{ rotate: isHovered ? 90 : 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Menu size={24} className="text-foreground" />
-      </motion.div>
+      <Menu size={22} className="text-foreground" />
 
       {/* State indicator */}
-      <motion.div
+      <div
         className={cn(
-          "absolute bottom-1 right-1 w-3 h-3 rounded-full",
-          "border-2 border-background",
+          "absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full",
+          "border-2 border-card sm:border-background",
           sessionState === "idle" && "bg-muted-foreground",
           sessionState === "active" && "bg-green-500 animate-pulse",
           sessionState === "paused" && "bg-yellow-500",
-          sessionState === "breakthrough" && "bg-primary animate-[glow_1s_ease-in-out_infinite]"
+          sessionState === "breakthrough" && "bg-primary"
         )}
-        layoutId="state-indicator"
       />
 
-      {/* Keyboard hint */}
+      {/* Keyboard hint - desktop only */}
       <AnimatePresence>
         {isHovered && (
           <motion.div
             className={cn(
-              "absolute -left-14",
+              "hidden sm:block absolute -left-14",
               "px-2 py-1",
-              "bg-background/90 border border-border/50 rounded-md",
+              "bg-card border border-border/50 rounded-md",
               "whitespace-nowrap text-sm text-muted-foreground"
             )}
             initial={{ opacity: 0, x: 10 }}

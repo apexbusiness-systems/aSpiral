@@ -47,97 +47,96 @@ export function QuickActionsBar({
         <motion.header
           className={cn(
             "fixed top-0 left-0 right-0 z-[98]",
-            "flex items-center justify-center gap-6 px-6 py-3",
-            "bg-background/60 backdrop-blur-xl",
-            "border-b border-border/30"
+            "flex items-center justify-between sm:justify-center gap-2 sm:gap-6 px-3 sm:px-6 py-2 sm:py-3",
+            // Solid background on mobile for contrast, glass on desktop
+            "bg-card sm:bg-background/60 sm:backdrop-blur-xl",
+            "border-b border-border/50"
           )}
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
         >
           {/* Session Info - Left */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Timer */}
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Clock className="h-4 w-4" />
+            <div className="flex items-center gap-1.5 sm:gap-2 text-foreground sm:text-muted-foreground text-xs sm:text-sm">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="font-mono">{formatTime(timeElapsed)}</span>
             </div>
             
-            {/* Progress Indicator */}
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
+            {/* Progress Indicator - hidden on very small screens */}
+            <div className="hidden xs:flex items-center gap-1.5 sm:gap-2">
+              <div className="flex gap-0.5 sm:gap-1">
                 {Array.from({ length: maxQuestions }).map((_, i) => (
                   <div
                     key={i}
                     className={cn(
-                      "w-2 h-2 rounded-full transition-all",
+                      "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all",
                       i < questionCount
                         ? "bg-accent"
-                        : "bg-muted-foreground/30"
+                        : "bg-foreground/30 sm:bg-muted-foreground/30"
                     )}
                   />
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[10px] sm:text-xs text-foreground/70 sm:text-muted-foreground">
                 {questionCount}/{maxQuestions}
               </span>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-6 w-px bg-border/50" />
+          {/* Divider - hidden on mobile */}
+          <div className="hidden sm:block h-6 w-px bg-border/50" />
 
           {/* Action Buttons - Center */}
           <TooltipProvider delayDuration={300}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Pause/Resume - Primary visual hierarchy */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
                     className={cn(
-                      "h-10 w-10 flex items-center justify-center rounded-xl",
+                      "h-11 w-11 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
                       "transition-all cursor-pointer",
                       isPaused
-                        ? "bg-accent/20 border border-accent/40 text-accent hover:bg-accent/30"
-                        : "bg-warning/20 border border-warning/40 text-warning hover:bg-warning/30"
+                        ? "bg-accent/30 border-2 border-accent text-accent hover:bg-accent/40"
+                        : "bg-warning/30 border-2 border-warning text-warning hover:bg-warning/40"
                     )}
                     onClick={isPaused ? onResume : onPause}
-                    whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                    {isPaused ? <Play size={20} /> : <Pause size={20} />}
                   </motion.button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
+                <TooltipContent side="bottom" className="hidden sm:block">
                   <p>{isPaused ? "Resume" : "Pause"} <kbd className="ml-1 px-1.5 py-0.5 bg-muted rounded text-xs">Space</kbd></p>
                 </TooltipContent>
               </Tooltip>
 
-              {/* Stop - Destructive action, secondary hierarchy */}
+              {/* Stop - Destructive action */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
                     className={cn(
-                      "h-10 w-10 flex items-center justify-center rounded-xl",
-                      "bg-destructive/10 border border-destructive/30",
-                      "text-destructive/80 hover:text-destructive",
-                      "hover:bg-destructive/20 transition-all cursor-pointer"
+                      "h-11 w-11 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
+                      "bg-destructive/20 border-2 border-destructive/60",
+                      "text-destructive hover:bg-destructive/30",
+                      "transition-all cursor-pointer"
                     )}
                     onClick={onStop}
-                    whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Square size={16} />
+                    <Square size={18} />
                   </motion.button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
+                <TooltipContent side="bottom" className="hidden sm:block">
                   <p>Stop <kbd className="ml-1 px-1.5 py-0.5 bg-muted rounded text-xs">Esc</kbd></p>
                 </TooltipContent>
               </Tooltip>
 
-              {/* Divider */}
-              <div className="h-6 w-px bg-border/30 mx-1" />
+              {/* Divider - hidden on mobile */}
+              <div className="hidden sm:block h-6 w-px bg-border/30 mx-1" />
 
               {/* Skip to Breakthrough - Accent action */}
               {!isBreakthrough && (
@@ -145,37 +144,35 @@ export function QuickActionsBar({
                   <TooltipTrigger asChild>
                     <motion.button
                       className={cn(
-                        "h-10 px-4 flex items-center gap-2 rounded-xl",
-                        "bg-secondary/20 border border-secondary/40",
-                        "text-secondary hover:bg-secondary/30",
-                        "transition-all cursor-pointer font-medium text-sm"
+                        "h-11 sm:h-10 px-3 sm:px-4 flex items-center gap-1.5 sm:gap-2 rounded-xl",
+                        "bg-secondary/30 border-2 border-secondary",
+                        "text-secondary hover:bg-secondary/40",
+                        "transition-all cursor-pointer font-medium text-xs sm:text-sm"
                       )}
                       onClick={onSkip}
-                      whileHover={{ scale: 1.02, y: -1 }}
                       whileTap={{ scale: 0.98 }}
                     >
                       <Zap size={16} />
-                      <span className="hidden sm:inline">Breakthrough</span>
+                      <span className="hidden xs:inline">Breakthrough</span>
                     </motion.button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">
+                  <TooltipContent side="bottom" className="hidden sm:block">
                     <p>Skip to Breakthrough <kbd className="ml-1 px-1.5 py-0.5 bg-muted rounded text-xs">B</kbd></p>
                   </TooltipContent>
                 </Tooltip>
               )}
 
-              {/* Save - Tertiary hierarchy */}
+              {/* Save - hidden on mobile */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
                     className={cn(
-                      "h-10 w-10 flex items-center justify-center rounded-xl",
-                      "bg-accent/10 border border-accent/30",
-                      "text-accent/80 hover:text-accent",
-                      "hover:bg-accent/20 transition-all cursor-pointer"
+                      "hidden sm:flex h-10 w-10 items-center justify-center rounded-xl",
+                      "bg-accent/20 border-2 border-accent/50",
+                      "text-accent hover:bg-accent/30",
+                      "transition-all cursor-pointer"
                     )}
                     onClick={onSave}
-                    whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
                     <Save size={16} />
@@ -188,20 +185,20 @@ export function QuickActionsBar({
             </div>
           </TooltipProvider>
 
-          {/* Status Badge - Right */}
+          {/* Status Badge - Right - simplified on mobile */}
           <div className="flex items-center gap-2">
-            <div className="h-6 w-px bg-border/50" />
+            <div className="hidden sm:block h-6 w-px bg-border/50" />
             <div
               className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide",
-                sessionState === "active" && "bg-accent/20 text-accent border border-accent/30",
-                sessionState === "paused" && "bg-warning/20 text-warning border border-warning/30",
-                sessionState === "breakthrough" && "bg-secondary/20 text-secondary border border-secondary/30"
+                "px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wide",
+                sessionState === "active" && "bg-accent/30 text-accent border-2 border-accent/50",
+                sessionState === "paused" && "bg-warning/30 text-warning border-2 border-warning/50",
+                sessionState === "breakthrough" && "bg-secondary/30 text-secondary border-2 border-secondary/50"
               )}
             >
-              {sessionState === "active" && "Recording"}
-              {sessionState === "paused" && "Paused"}
-              {sessionState === "breakthrough" && "✨ Breakthrough"}
+              {sessionState === "active" && "REC"}
+              {sessionState === "paused" && "PAUSED"}
+              {sessionState === "breakthrough" && "✨"}
             </div>
           </div>
         </motion.header>
