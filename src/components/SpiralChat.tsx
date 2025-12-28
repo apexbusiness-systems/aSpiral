@@ -37,8 +37,10 @@ export function SpiralChat() {
   const {
     isProcessing: isAIProcessing,
     currentQuestion,
+    currentStage,
     questionCount,
     maxQuestions,
+    breakthroughData,
     processTranscript,
     accumulateTranscript,
     sendBuffer,
@@ -51,10 +53,21 @@ export function SpiralChat() {
         description: `Found ${entities.length} new ${entities.length === 1 ? 'element' : 'elements'} in your story`,
       });
     },
-    onBreakthrough: () => {
+    onQuestion: (question, stage) => {
+      console.log(`[SpiralChat] Question (${stage}):`, question);
+    },
+    onPatternDetected: (patterns) => {
+      if (patterns.length > 0 && patterns[0].confidence > 0.7) {
+        toast({
+          title: "Pattern Detected",
+          description: `I see a "${patterns[0].name.replace(/-/g, ' ')}" pattern...`,
+        });
+      }
+    },
+    onBreakthrough: (data) => {
       toast({
         title: "✨ BREAKTHROUGH",
-        description: "You've reached clarity!",
+        description: data?.insight || "You've reached clarity!",
       });
     },
     onError: (error) => {
@@ -213,7 +226,7 @@ export function SpiralChat() {
         />
         
         {/* Skip to Breakthrough Button - shows when there's a question */}
-        {currentQuestion && !isRecording && (
+        {currentQuestion && !isRecording && currentStage !== "breakthrough" && (
           <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
             <Button
               variant="ghost"
@@ -222,7 +235,7 @@ export function SpiralChat() {
               className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2"
             >
               <SkipForward className="h-3 w-3 mr-1.5" />
-              Skip to breakthrough ({questionCount}/{maxQuestions})
+              Skip to breakthrough ({questionCount + 1}/{maxQuestions})
             </Button>
           </div>
         )}

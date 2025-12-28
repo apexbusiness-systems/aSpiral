@@ -6,14 +6,24 @@ import { validateCoherence, deduplicateEntities, prioritizeEntities } from "@/li
 import { getEntityLimit, type UserTier } from "@/lib/entityLimits";
 import { matchEnergy, adjustQuestionEnergy } from "@/lib/energyMatcher";
 import { antiRepetition } from "@/lib/antiRepetition";
+import { 
+  detectPatternsEarly, 
+  shouldStopAsking, 
+  getStageQuestion, 
+  advanceStage,
+  createFastTrackState,
+  type ConversationStage,
+  type Pattern,
+  type FastTrackState,
+} from "@/lib/fastTrack";
 import type { EntityType, EntityMetadata, Entity } from "@/lib/types";
 
 const logger = createLogger("useSpiralAI");
 
 const SPIRAL_AI_URL = "https://eqtwatyodujxofrdznen.supabase.co/functions/v1/spiral-ai";
 
-// LIMITS
-const MAX_QUESTIONS = 2;
+// Hard cap: 3 questions max
+const MAX_QUESTIONS = 3;
 
 interface EntityResult {
   type: EntityType;
@@ -38,11 +48,18 @@ interface SpiralAIResponse {
   response: string;
 }
 
+interface BreakthroughData {
+  friction: string;
+  grease: string;
+  insight: string;
+}
+
 interface UseSpiralAIOptions {
   onEntitiesExtracted?: (entities: EntityResult[]) => void;
   onCoherenceCheck?: (result: { valid: boolean; score: number; removed: string[] }) => void;
-  onQuestion?: (question: string) => void;
-  onBreakthrough?: () => void;
+  onQuestion?: (question: string, stage: ConversationStage) => void;
+  onBreakthrough?: (data?: BreakthroughData) => void;
+  onPatternDetected?: (patterns: Pattern[]) => void;
   onError?: (error: Error) => void;
   autoSendInterval?: number;
   userTier?: UserTier;
@@ -54,11 +71,14 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [currentStage, setCurrentStage] = useState<ConversationStage>("friction");
   const [lastResponse, setLastResponse] = useState<string | null>(null);
+  const [breakthroughData, setBreakthroughData] = useState<BreakthroughData | null>(null);
   const transcriptBufferRef = useRef<string>("");
   const lastSendTimeRef = useRef<number>(0);
-  const recentQuestionsRef = useRef<string[]>([]);
-  const questionCountRef = useRef<number>(0);
+  const conversationHistoryRef = useRef<string[]>([]);
+  const fastTrackRef = useRef<FastTrackState>(createFastTrackState());
+  const patternsRef = useRef<Pattern[]>([]);
 
   const {
     currentSession,
@@ -69,23 +89,48 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   } = useSessionStore();
 
   // Force breakthrough immediately
-  const forceBreakthrough = useCallback(() => {
-    logger.info("FORCING BREAKTHROUGH - user frustrated or limit reached");
-    setCurrentQuestion(null);
-    questionCountRef.current = 0;
-    triggerBreakthrough();
-    options.onBreakthrough?.();
-    
-    addMessage({
-      role: "assistant",
-      content: "✨ **BREAKTHROUGH** ✨\n\nLet's cut to what matters.",
+  const forceBreakthrough = useCallback((data?: BreakthroughData) => {
+    logger.info("FORCING BREAKTHROUGH", { 
+      reason: data ? "synthesis_complete" : "user_action",
+      patterns: patternsRef.current.map(p => p.name),
     });
+    
+    setCurrentQuestion(null);
+    setCurrentStage("breakthrough");
+    fastTrackRef.current = createFastTrackState();
+    triggerBreakthrough();
+    
+    if (data) {
+      setBreakthroughData(data);
+      options.onBreakthrough?.(data);
+      
+      // Format breakthrough message
+      addMessage({
+        role: "assistant",
+        content: `✨ **BREAKTHROUGH** ✨
+
+**The Friction:** ${data.friction}
+
+**The Grease:** ${data.grease}
+
+**💡 ${data.insight}**`,
+      });
+    } else {
+      options.onBreakthrough?.();
+      addMessage({
+        role: "assistant",
+        content: "✨ **BREAKTHROUGH** ✨\n\nLet's cut to what matters.",
+      });
+    }
   }, [triggerBreakthrough, addMessage, options]);
 
   // Process transcript through AI
   const processTranscript = useCallback(
     async (transcript: string): Promise<SpiralAIResponse | null> => {
       if (!transcript.trim() || isProcessing) return null;
+
+      // Track conversation history
+      conversationHistoryRef.current.push(transcript);
 
       // FRUSTRATION CHECK - Stop immediately if user is annoyed
       if (isUserFrustrated(transcript) || wantsToSkip(transcript)) {
@@ -94,20 +139,40 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         return null;
       }
 
-      // QUESTION LIMIT CHECK
-      if (questionCountRef.current >= MAX_QUESTIONS) {
-        logger.info("Question limit reached - forcing breakthrough");
-        forceBreakthrough();
-        return null;
+      // EARLY PATTERN DETECTION - Don't wait for 5+ messages
+      const detectedPatterns = detectPatternsEarly(transcript, conversationHistoryRef.current);
+      if (detectedPatterns.length > 0) {
+        patternsRef.current = detectedPatterns;
+        fastTrackRef.current.detectedPatterns = detectedPatterns;
+        options.onPatternDetected?.(detectedPatterns);
+        logger.info("Patterns detected", { patterns: detectedPatterns.map(p => `${p.name}:${p.confidence}`) });
+      }
+
+      // SMART STOPPING - Check if we should force breakthrough
+      const stopCheck = shouldStopAsking(
+        transcript, 
+        conversationHistoryRef.current, 
+        patternsRef.current,
+        fastTrackRef.current.questionsAsked
+      );
+      
+      if (stopCheck.stop) {
+        logger.info("Stopping questions", { reason: stopCheck.reason });
+        fastTrackRef.current.readyForBreakthrough = true;
       }
 
       logger.info("Processing transcript", { 
         length: transcript.length,
-        questionCount: questionCountRef.current,
+        stage: fastTrackRef.current.stage,
+        questionsAsked: fastTrackRef.current.questionsAsked,
+        readyForBreakthrough: fastTrackRef.current.readyForBreakthrough,
       });
       setIsProcessing(true);
 
       try {
+        // Get stage-specific prompt hints
+        const stageConfig = getStageQuestion(fastTrackRef.current.stage);
+        
         const response = await fetch(SPIRAL_AI_URL, {
           method: "POST",
           headers: {
@@ -120,10 +185,13 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
                 type: e.type,
                 label: e.label,
               })),
-              recentQuestions: recentQuestionsRef.current.slice(-3),
-              questionCount: questionCountRef.current,
+              conversationHistory: conversationHistoryRef.current.slice(-5),
+              questionsAsked: fastTrackRef.current.questionsAsked,
+              stage: fastTrackRef.current.stage,
+              detectedPatterns: patternsRef.current,
             } : undefined,
-            forceBreakthrough: questionCountRef.current >= MAX_QUESTIONS - 1,
+            forceBreakthrough: fastTrackRef.current.readyForBreakthrough,
+            stagePrompt: stageConfig.systemPrompt,
           }),
         });
 
@@ -249,34 +317,47 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             original: data.question, 
             processed: processedQuestion,
             energy,
+            stage: fastTrackRef.current.stage,
             diversityScore: antiRepetition.getDiversityScore(),
           });
           
-          questionCountRef.current++;
-          recentQuestionsRef.current.push(processedQuestion);
-          if (recentQuestionsRef.current.length > 5) {
-            recentQuestionsRef.current.shift();
-          }
+          // Update fast track state
+          fastTrackRef.current.questionsAsked++;
+          fastTrackRef.current.stage = advanceStage(fastTrackRef.current.stage);
+          
           setCurrentQuestion(processedQuestion);
-          options.onQuestion?.(processedQuestion);
+          setCurrentStage(fastTrackRef.current.stage);
+          options.onQuestion?.(processedQuestion, fastTrackRef.current.stage);
           
           // Check if this was the last allowed question
-          if (questionCountRef.current >= MAX_QUESTIONS) {
+          if (fastTrackRef.current.questionsAsked >= MAX_QUESTIONS) {
             logger.info("Max questions reached, next response will be breakthrough");
+            fastTrackRef.current.readyForBreakthrough = true;
           }
         } else {
           // No question = breakthrough time
-          forceBreakthrough();
+          // Try to parse breakthrough data from response
+          try {
+            const breakthroughMatch = data.response?.match(/\{[\s\S]*"friction"[\s\S]*"grease"[\s\S]*"insight"[\s\S]*\}/);
+            if (breakthroughMatch) {
+              const btData = JSON.parse(breakthroughMatch[0]) as BreakthroughData;
+              forceBreakthrough(btData);
+            } else {
+              forceBreakthrough();
+            }
+          } catch {
+            forceBreakthrough();
+          }
         }
 
         // Store response
-        if (data.response) {
+        if (data.response && data.question) {
           setLastResponse(data.response);
           
           // Add as message in chat
           addMessage({
             role: "assistant",
-            content: data.response + (data.question ? `\n\n**${data.question}**` : ""),
+            content: data.response + `\n\n**${data.question}**`,
           });
         }
 
@@ -297,13 +378,16 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     forceBreakthrough();
   }, [forceBreakthrough]);
 
-  // Reset question count for new session
+  // Reset for new session
   const resetSession = useCallback(() => {
-    questionCountRef.current = 0;
-    recentQuestionsRef.current = [];
+    fastTrackRef.current = createFastTrackState();
+    conversationHistoryRef.current = [];
+    patternsRef.current = [];
     antiRepetition.reset();
     setCurrentQuestion(null);
+    setCurrentStage("friction");
     setLastResponse(null);
+    setBreakthroughData(null);
   }, []);
 
   // Accumulate transcript and auto-send periodically
@@ -363,9 +447,12 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   return {
     isProcessing,
     currentQuestion,
+    currentStage,
     lastResponse,
-    questionCount: questionCountRef.current,
+    breakthroughData,
+    questionCount: fastTrackRef.current.questionsAsked,
     maxQuestions: MAX_QUESTIONS,
+    detectedPatterns: patternsRef.current,
     processTranscript,
     accumulateTranscript,
     sendBuffer,

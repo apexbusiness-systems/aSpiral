@@ -119,6 +119,47 @@ WORKFLOW:
 4. Match their energy (casual if they're casual, intense if they're intense)
 5. Under 15 words. Reference their EXACT words when possible.`;
 
+// BREAKTHROUGH SYNTHESIS PROMPT
+const BREAKTHROUGH_PROMPT = `Synthesize the breakthrough from this conversation.
+
+You have all the context you need. Now deliver the insight.
+
+OUTPUT JSON:
+{
+  "friction": "The two gears grinding (concise, specific to their situation)",
+  "grease": "The solution that eases it (actionable, not generic)",
+  "insight": "The one-liner breakthrough (memorable, quotable)",
+  "entities": [],
+  "connections": [],
+  "question": "",
+  "response": ""
+}
+
+RULES:
+1. Be SPECIFIC to their situation - don't give generic advice
+2. Reference their actual words when possible
+3. Make the insight memorable - something they'll remember
+4. The grease must be ACTIONABLE
+5. Keep each field under 30 words
+
+EXAMPLES:
+
+Input: Traffic anger conversation with control pattern
+Output: {
+  "friction": "Your need for order vs the chaos of traffic",
+  "grease": "Accept what you can't control. Your only move is how YOU respond.",
+  "insight": "You can't change the drivers. You can change how much space they take in your head."
+}
+
+Input: Job decision with security vs fulfillment pattern
+Output: {
+  "friction": "Security pulling one way, fulfillment pulling the other",
+  "grease": "Test the water before burning the boats. Start small on the side.",
+  "insight": "You don't need to leap. You need to take the first step."
+}
+
+Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`;
+
 // Tier-based entity limits
 const ENTITY_LIMITS: Record<string, number> = {
   free: 5,
@@ -127,17 +168,28 @@ const ENTITY_LIMITS: Record<string, number> = {
   business: 10,
   enterprise: 10,
 };
-const MAX_QUESTIONS = 2;
+
+// Hard cap at 3 questions
+const MAX_QUESTIONS = 3;
+
+interface DetectedPattern {
+  name: string;
+  evidence: string;
+  confidence: number;
+}
 
 interface RequestBody {
   transcript: string;
   userTier?: string;
   sessionContext?: {
     entities?: Array<{ type: string; label: string }>;
-    recentQuestions?: string[];
-    questionCount?: number;
+    conversationHistory?: string[];
+    questionsAsked?: number;
+    stage?: "friction" | "desire" | "blocker" | "breakthrough";
+    detectedPatterns?: DetectedPattern[];
   };
   forceBreakthrough?: boolean;
+  stagePrompt?: string;
 }
 
 interface EntityOutput {
@@ -161,6 +213,9 @@ interface AIResponse {
   connections: ConnectionOutput[];
   question: string;
   response: string;
+  friction?: string;
+  grease?: string;
+  insight?: string;
 }
 
 serve(async (req) => {
@@ -175,27 +230,49 @@ serve(async (req) => {
     }
 
     const body: RequestBody = await req.json();
-    const { transcript, sessionContext, userTier = "free" } = body;
+    const { transcript, sessionContext, userTier = "free", stagePrompt } = body;
     const maxEntities = ENTITY_LIMITS[userTier] || ENTITY_LIMITS.free;
+    const questionsAsked = sessionContext?.questionsAsked || 0;
+    const stage = sessionContext?.stage || "friction";
+    const shouldBreakthrough = body.forceBreakthrough || questionsAsked >= MAX_QUESTIONS;
 
-    console.log("[SPIRAL-AI] Processing transcript:", transcript.slice(0, 100), "tier:", userTier, "maxEntities:", maxEntities);
+    console.log("[SPIRAL-AI] Processing:", {
+      stage,
+      questionsAsked,
+      shouldBreakthrough,
+      tier: userTier,
+      transcriptPreview: transcript.slice(0, 50),
+    });
 
-    // Build context with existing entities
+    // Build context with existing entities and patterns
     let contextInfo = "";
     if (sessionContext?.entities?.length) {
       contextInfo += `\nExisting entities (don't duplicate): ${JSON.stringify(sessionContext.entities)}`;
     }
-    if (sessionContext?.recentQuestions?.length) {
-      contextInfo += `\nRecent questions (don't repeat): ${sessionContext.recentQuestions.join(", ")}`;
+    if (sessionContext?.conversationHistory?.length) {
+      contextInfo += `\nConversation so far:\n${sessionContext.conversationHistory.map((m, i) => `[${i + 1}] ${m}`).join("\n")}`;
+    }
+    if (sessionContext?.detectedPatterns?.length) {
+      contextInfo += `\nDetected patterns (use these for insight): ${sessionContext.detectedPatterns.map(p => `${p.name} (${p.confidence})`).join(", ")}`;
     }
     
-    const questionCount = sessionContext?.questionCount || 0;
-    if (questionCount >= MAX_QUESTIONS - 1) {
-      contextInfo += `\n\nCRITICAL: This is the LAST question allowed. Make it count, then prepare for breakthrough.`;
+    // Add stage-specific guidance
+    if (stagePrompt && !shouldBreakthrough) {
+      contextInfo += `\n\nSTAGE GUIDANCE:\n${stagePrompt}`;
+    }
+    
+    // Mark last question
+    if (questionsAsked === MAX_QUESTIONS - 1 && !shouldBreakthrough) {
+      contextInfo += `\n\n⚠️ This is the LAST question. Make it count.`;
     }
 
+    // Use breakthrough prompt if it's time
+    const systemPrompt = shouldBreakthrough 
+      ? BREAKTHROUGH_PROMPT + contextInfo 
+      : ENTITY_EXTRACTION_PROMPT + contextInfo;
+
     const messages = [
-      { role: "system", content: ENTITY_EXTRACTION_PROMPT + contextInfo },
+      { role: "system", content: systemPrompt },
       { role: "user", content: transcript },
     ];
 
@@ -208,7 +285,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages,
-        max_tokens: 500,
+        max_tokens: shouldBreakthrough ? 800 : 500,
         temperature: 0.7,
         response_format: { type: "json_object" },
       }),
@@ -235,7 +312,7 @@ serve(async (req) => {
       throw new Error("No content in response");
     }
 
-    console.log("[SPIRAL-AI] Raw response:", content);
+    console.log("[SPIRAL-AI] Raw response:", content.slice(0, 200));
 
     // Parse the JSON response
     let parsed: AIResponse;
@@ -247,8 +324,8 @@ serve(async (req) => {
       parsed = {
         entities: [],
         connections: [],
-        question: "Tell me more about what you're experiencing?",
-        response: "I hear you. Let's explore this together.",
+        question: shouldBreakthrough ? "" : "Tell me more about what you're experiencing?",
+        response: shouldBreakthrough ? "Let me put this together for you." : "I hear you.",
       };
     }
 
@@ -266,9 +343,6 @@ serve(async (req) => {
       ...e,
       label: e.label.split(' ').slice(0, 4).join(' '), // Cap at 4 words
     }));
-
-    // Check if we should stop asking questions (reuse questionCount from above)
-    const shouldStopQuestions = questionCount >= MAX_QUESTIONS || body.forceBreakthrough;
     
     // Filter connections to only valid ones
     const validConnections = Array.isArray(parsed.connections) 
@@ -281,17 +355,23 @@ serve(async (req) => {
         )
       : [];
     
-    // Validate and clean response
+    // Build result
     const result: AIResponse = {
       entities,
       connections: validConnections,
-      question: shouldStopQuestions ? "" : (parsed.question || ""),
+      question: shouldBreakthrough ? "" : (parsed.question || ""),
       response: parsed.response || "Got it.",
+      // Include breakthrough data if present
+      friction: parsed.friction,
+      grease: parsed.grease,
+      insight: parsed.insight,
     };
 
-    console.log("[SPIRAL-AI] Processed result:", {
+    console.log("[SPIRAL-AI] Result:", {
       entityCount: result.entities.length,
       hasQuestion: !!result.question,
+      isBreakthrough: shouldBreakthrough,
+      hasInsight: !!result.insight,
     });
 
     return new Response(JSON.stringify(result), {
