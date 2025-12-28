@@ -69,11 +69,12 @@ const ApiKeys = () => {
 
   const loadApiKeys = async () => {
     try {
-      const { data, error } = await (supabase
-        .from('api_keys' as any)
+      const db = supabase as any;
+      const { data, error } = await db
+        .from('api_keys')
         .select('id, name, last_used_at, created_at, expires_at')
         .eq('user_id', user!.id)
-        .order('created_at', { ascending: false }) as any);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setApiKeys(data || []);
@@ -113,13 +114,14 @@ const ApiKeys = () => {
       const key = generateApiKey();
       const keyHash = await hashApiKey(key);
 
-      const { error } = await (supabase
-        .from('api_keys' as any)
+      const db = supabase as any;
+      const { error } = await db
+        .from('api_keys')
         .insert({
           user_id: user!.id,
           name: newKeyName.trim(),
           key_hash: keyHash,
-        }) as any);
+        });
 
       if (error) throw error;
 
@@ -143,10 +145,11 @@ const ApiKeys = () => {
     if (!deleteTarget) return;
     
     try {
-      const { error } = await (supabase
-        .from('api_keys' as any)
+      const db = supabase as any;
+      const { error } = await db
+        .from('api_keys')
         .delete()
-        .eq('id', deleteTarget) as any);
+        .eq('id', deleteTarget);
 
       if (error) throw error;
 

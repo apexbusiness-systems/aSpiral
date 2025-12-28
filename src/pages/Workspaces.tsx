@@ -68,21 +68,23 @@ const Workspaces = () => {
 
   const loadWorkspaces = async () => {
     try {
+      const db = supabase as any;
+      
       // Get workspaces where user is a member
-      const { data: memberData, error: memberError } = await (supabase
-        .from('workspace_members' as any)
+      const { data: memberData, error: memberError } = await db
+        .from('workspace_members')
         .select('workspace_id')
-        .eq('user_id', user!.id) as any);
+        .eq('user_id', user!.id);
 
       if (memberError) throw memberError;
 
       const workspaceIds = memberData?.map((m: any) => m.workspace_id) || [];
       
       if (workspaceIds.length > 0) {
-        const { data: workspacesData, error: workspacesError } = await (supabase
-          .from('workspaces' as any)
+        const { data: workspacesData, error: workspacesError } = await db
+          .from('workspaces')
           .select('*')
-          .in('id', workspaceIds) as any);
+          .in('id', workspaceIds);
 
         if (workspacesError) throw workspacesError;
         setWorkspaces(workspacesData || []);
@@ -110,26 +112,27 @@ const Workspaces = () => {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      const { data: workspace, error: workspaceError } = await (supabase
-        .from('workspaces' as any)
+      const db = supabase as any;
+      const { data: workspace, error: workspaceError } = await db
+        .from('workspaces')
         .insert({
           name: newWorkspaceName.trim(),
           slug: `${slug}-${Date.now().toString(36)}`,
           owner_id: user!.id,
         })
         .select()
-        .single() as any);
+        .single();
 
       if (workspaceError) throw workspaceError;
 
       // Add creator as admin
-      const { error: memberError } = await (supabase
-        .from('workspace_members' as any)
+      const { error: memberError } = await db
+        .from('workspace_members')
         .insert({
           workspace_id: workspace.id,
           user_id: user!.id,
           role: 'admin',
-        }) as any);
+        });
 
       if (memberError) throw memberError;
 

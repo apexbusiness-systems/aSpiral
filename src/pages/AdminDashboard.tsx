@@ -75,11 +75,14 @@ const AdminDashboard = () => {
 
   const loadStats = async () => {
     try {
-      // Get sessions - tables may not exist until migration is run
-      const { data: sessions, error: sessionsError } = await (supabase
-        .from('sessions' as any)
+      // Cast supabase to any to bypass strict typing for tables not yet in schema
+      const db = supabase as any;
+      
+      // Get sessions
+      const { data: sessions, error: sessionsError } = await db
+        .from('sessions')
         .select('id, created_at, user_id')
-        .eq('user_id', user!.id) as any);
+        .eq('user_id', user!.id);
 
       if (sessionsError) throw sessionsError;
 
@@ -87,9 +90,9 @@ const AdminDashboard = () => {
 
       // Get other stats
       const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.all([
-        supabase.from('breakthroughs' as any).select('id, created_at, session_id') as any,
-        supabase.from('entities' as any).select('id, type, created_at, session_id') as any,
-        supabase.from('messages' as any).select('id, session_id') as any,
+        db.from('breakthroughs').select('id, created_at, session_id'),
+        db.from('entities').select('id, type, created_at, session_id'),
+        db.from('messages').select('id, session_id'),
       ]);
 
       const userBreakthroughs = breakthroughsRes.data?.filter((b: any) => sessionIds.includes(b.session_id)) || [];
