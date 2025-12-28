@@ -210,14 +210,9 @@ const Landing = () => {
             <span className="font-display text-xl font-bold">
               <span className="text-primary">a</span>Spiral
             </span>
-            <span className="text-muted-foreground text-sm">• aspiral.icu</span>
           </div>
           <div className="text-muted-foreground/60 text-sm text-center md:text-right">
             Built in 6 hours during a breakdown • Edmonton, AB
-            <br />
-            <a href="mailto:founders@aspiral.icu" className="hover:text-foreground transition-colors">
-              founders@aspiral.icu
-            </a>
           </div>
         </div>
       </footer>
