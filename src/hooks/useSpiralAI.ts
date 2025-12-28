@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { createLogger } from "@/lib/logger";
 import { isUserFrustrated, wantsToSkip } from "@/lib/frustrationDetector";
-import type { EntityType } from "@/lib/types";
+import type { EntityType, EntityMetadata } from "@/lib/types";
 
 const logger = createLogger("useSpiralAI");
 
@@ -15,12 +15,16 @@ const ABSOLUTE_MAX_ENTITIES = 5;
 interface EntityResult {
   type: EntityType;
   label: string;
+  role?: string;
+  emotionalValence?: number;
+  importance?: number;
+  positionHint?: string;
 }
 
 interface ConnectionResult {
   from: number;
   to: number;
-  type: "causes" | "blocks" | "enables" | "resolves";
+  type: "causes" | "blocks" | "enables" | "resolves" | "opposes";
   strength: number;
 }
 
@@ -135,12 +139,19 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         }
 
         // Add entities to session
+        // Add entities to session with full metadata
         const createdEntityIds: string[] = [];
         if (cappedEntities.length > 0) {
           cappedEntities.forEach((entity) => {
             const created = addEntity({
               type: entity.type,
               label: entity.label,
+              metadata: {
+                role: entity.role as EntityMetadata["role"],
+                valence: entity.emotionalValence,
+                importance: entity.importance,
+                positionHint: entity.positionHint,
+              },
             });
             createdEntityIds.push(created.id);
           });

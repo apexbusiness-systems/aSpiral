@@ -1,15 +1,26 @@
 /**
- * aSpiral Core Type Definitions
+ * Core type definitions for aSpiral
  */
 
-// Entity Types
-export type EntityType =
-  | "problem"
-  | "emotion"
-  | "value"
-  | "action"
-  | "friction"
-  | "grease";
+export type EntityType = "problem" | "emotion" | "value" | "action" | "friction" | "grease";
+
+export type EntityRole = 
+  | "external_irritant" 
+  | "internal_conflict" 
+  | "desire" 
+  | "fear" 
+  | "constraint" 
+  | "solution";
+
+export type ConnectionType = "causes" | "blocks" | "enables" | "resolves" | "opposes";
+
+export interface EntityMetadata {
+  role?: EntityRole;
+  valence?: number;      // -1 (negative) to +1 (positive)
+  importance?: number;   // 0 (minor) to 1 (critical)
+  positionHint?: string;
+  [key: string]: unknown;
+}
 
 export interface Position {
   x: number;
@@ -21,7 +32,8 @@ export interface Entity {
   id: string;
   type: EntityType;
   label: string;
-  position?: Position;
+  position?: [number, number, number] | Position;
+  metadata?: EntityMetadata;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,25 +42,19 @@ export interface Connection {
   id: string;
   fromEntityId: string;
   toEntityId: string;
-  type: "causes" | "blocks" | "enables" | "resolves";
+  type: ConnectionType;
   strength: number; // 0-1
 }
 
 export interface FrictionPoint {
   id: string;
   entityIds: string[];
-  description: string;
   intensity: number; // 0-1
-  discovered: boolean;
+  description: string;
+  discovered?: boolean;
 }
 
-// Session Types
-export type SessionStatus =
-  | "active"
-  | "exploring"
-  | "friction"
-  | "breakthrough"
-  | "completed";
+export type SessionStatus = "active" | "exploring" | "friction" | "processing" | "breakthrough" | "completed";
 
 export interface Session {
   id: string;
@@ -63,7 +69,6 @@ export interface Session {
   endedAt?: Date;
 }
 
-// Conversation Types
 export interface Message {
   id: string;
   role: "user" | "assistant" | "system";
@@ -71,6 +76,7 @@ export interface Message {
   timestamp: Date;
   entities?: Entity[];
   isStreaming?: boolean;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ConversationInput {
@@ -93,7 +99,6 @@ export interface ConversationOutput {
   sessionStatus?: SessionStatus;
 }
 
-// Export Types
 export type ExportFormat = "3d-link" | "video" | "infographic" | "action-plan";
 
 export interface ExportRequest {
@@ -101,7 +106,6 @@ export interface ExportRequest {
   format: ExportFormat;
 }
 
-// UI State Types
 export interface AppState {
   isConnected: boolean;
   isRecording: boolean;

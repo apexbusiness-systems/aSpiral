@@ -9,74 +9,90 @@ const corsHeaders = {
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
-// EMERGENCY SYSTEM PROMPT - Direct, no therapy-speak
-const ENTITY_EXTRACTION_PROMPT = `You are the AI for ASPIRAL - a visual breakthrough tool.
+// SEMANTIC ENTITY EXTRACTION PROMPT
+const ENTITY_EXTRACTION_PROMPT = `You are an expert at identifying the KEY actors and forces in someone's decision.
 
 CRITICAL RULES:
-1. Extract MAX 5 entities (NEVER more, or user gets overwhelmed)
-2. Ask MAX 2 questions total (then force breakthrough)
-3. If user says "annoying", "stop", or similar → STOP immediately, give breakthrough
-4. Questions under 15 words, direct, no fluff
+1. Extract MAX 5 entities (NEVER more)
+2. Only extract entities that MATTER to the friction
+3. Each entity must have a CLEAR ROLE
+4. Ask MAX 2 questions total, then stop
+5. Under 15 words per question, direct, no fluff
 
-ABSOLUTELY FORBIDDEN PHRASES (will break the product):
+ABSOLUTELY FORBIDDEN (will break the product):
 ❌ "I hear your..."
 ❌ "It sounds like you're feeling..."
 ❌ "I'm here to help you..."
 ❌ "Let's explore..."
 ❌ "Can you tell me more about..."
 ❌ "What I'm hearing is..."
-❌ "It seems like..."
-❌ "I understand that..."
-❌ "That must be..."
-
-If you use ANY forbidden phrase, the user will get frustrated and leave.
 
 ALLOWED STYLES:
-✅ Direct: "So it's X. What's grinding there?"
+✅ Direct: "So it's X. What's grinding?"
 ✅ Blunt: "What's stopping you?"
 ✅ Minimal: "And?"
 
-## Entity Types (pick 3-5 max):
-- problem: A decision, dilemma, or challenge
-- emotion: A feeling mentioned or implied
-- value: Something important to them
-- friction: What's blocking them or causing tension
-- grease: What could help resolve friction
+ENTITY TYPES:
+- problem: Obstacle or friction point (external)
+- emotion: Internal feeling state
+- value: What matters to them (goal, aspiration)
+- friction: What's blocking them (internal conflict)
+- grease: Potential solution (action, decision)
 - action: Something they could do
 
-## Response Format:
-You MUST respond with valid JSON:
+ENTITY ROLES:
+- external_irritant: Outside force causing friction
+- internal_conflict: Inner struggle
+- desire: What they want
+- fear: What they're avoiding
+- constraint: External limit
+- solution: Potential grease
+
+OUTPUT FORMAT (JSON):
 {
   "entities": [
-    {"type": "problem", "label": "short 3-word max"},
-    {"type": "emotion", "label": "one word"}
+    {
+      "type": "problem",
+      "label": "short 3-word max",
+      "role": "external_irritant",
+      "emotionalValence": -0.8,
+      "importance": 0.7,
+      "positionHint": "lower_left"
+    }
   ],
   "connections": [
-    {"from": 0, "to": 1, "type": "causes", "strength": 0.8}
+    {
+      "from": 0,
+      "to": 1,
+      "type": "causes",
+      "strength": 0.9
+    }
   ],
   "question": "Under 15 words. Direct. No fluff.",
-  "response": "Max 10 words. Acknowledge, don't mirror."
+  "response": "Max 10 words. No therapy-speak."
 }
 
-## Connection Types:
+CONNECTION TYPES:
 - causes: A leads to B
-- blocks: A prevents B
+- blocks: A prevents B  
 - enables: A helps B
 - resolves: A solves B
+- opposes: A conflicts with B
 
-## Question Style (CRITICAL):
-- Q1: Identify friction ("What's grinding?")
-- Q2: Identify desire ("What do you want instead?")
-- Then STOP asking questions
+POSITION HINTS (based on emotional valence):
+- upper_right: Positive desires, goals
+- upper_left: Positive constraints
+- lower_right: Negative but actionable
+- lower_left: Negative friction points
+- center: Core problem
 
 WORKFLOW:
-- Extract 3-5 entities MAX
-- Ask ONE question under 15 words
-- Be direct, be blunt, be helpful
+- Extract 3-5 entities MAX (be ruthless)
+- Connect ONLY semantically related entities
+- Ask ONE direct question
+- Be blunt, be helpful, get to clarity FAST`;
 
-You have ONE JOB: Get them to clarity FAST.`;
-
-const ABSOLUTE_MAX_ENTITIES = 5; // HARD CAP - NO EXCEPTIONS
+const ABSOLUTE_MAX_ENTITIES = 5;
 const MAX_QUESTIONS = 2;
 
 interface RequestBody {
@@ -92,12 +108,16 @@ interface RequestBody {
 interface EntityOutput {
   type: string;
   label: string;
+  role?: string;
+  emotionalValence?: number;
+  importance?: number;
+  positionHint?: string;
 }
 
 interface ConnectionOutput {
   from: number;
   to: number;
-  type: "causes" | "blocks" | "enables" | "resolves";
+  type: "causes" | "blocks" | "enables" | "resolves" | "opposes";
   strength: number;
 }
 
@@ -124,13 +144,18 @@ serve(async (req) => {
 
     console.log("[SPIRAL-AI] Processing transcript:", transcript.slice(0, 100));
 
-    // Build context
+    // Build context with existing entities
     let contextInfo = "";
     if (sessionContext?.entities?.length) {
-      contextInfo += `\nExisting entities: ${JSON.stringify(sessionContext.entities)}`;
+      contextInfo += `\nExisting entities (don't duplicate): ${JSON.stringify(sessionContext.entities)}`;
     }
     if (sessionContext?.recentQuestions?.length) {
-      contextInfo += `\nRecent questions asked (avoid repeating): ${sessionContext.recentQuestions.join(", ")}`;
+      contextInfo += `\nRecent questions (don't repeat): ${sessionContext.recentQuestions.join(", ")}`;
+    }
+    
+    const questionCount = sessionContext?.questionCount || 0;
+    if (questionCount >= MAX_QUESTIONS - 1) {
+      contextInfo += `\n\nCRITICAL: This is the LAST question allowed. Make it count, then prepare for breakthrough.`;
     }
 
     const messages = [
@@ -192,20 +217,38 @@ serve(async (req) => {
     }
 
     // HARD CAP entities at 5 - NO EXCEPTIONS
-    let entities = Array.isArray(parsed.entities) ? parsed.entities.slice(0, ABSOLUTE_MAX_ENTITIES) : [];
+    let entities: EntityOutput[] = Array.isArray(parsed.entities) 
+      ? parsed.entities.slice(0, ABSOLUTE_MAX_ENTITIES) 
+      : [];
     
     if (parsed.entities?.length > ABSOLUTE_MAX_ENTITIES) {
       console.warn(`[SPIRAL-AI] ⚠️ AI tried to extract ${parsed.entities.length} entities. Capped at ${ABSOLUTE_MAX_ENTITIES}.`);
     }
 
-    // Check if we should stop asking questions
-    const questionCount = sessionContext?.questionCount || 0;
+    // Validate entity labels are short (3 words max)
+    entities = entities.map(e => ({
+      ...e,
+      label: e.label.split(' ').slice(0, 4).join(' '), // Cap at 4 words
+    }));
+
+    // Check if we should stop asking questions (reuse questionCount from above)
     const shouldStopQuestions = questionCount >= MAX_QUESTIONS || body.forceBreakthrough;
+    
+    // Filter connections to only valid ones
+    const validConnections = Array.isArray(parsed.connections) 
+      ? parsed.connections.filter(conn => 
+          conn.from >= 0 && 
+          conn.from < entities.length && 
+          conn.to >= 0 && 
+          conn.to < entities.length &&
+          conn.strength > 0.5 // Only strong connections
+        )
+      : [];
     
     // Validate and clean response
     const result: AIResponse = {
       entities,
-      connections: Array.isArray(parsed.connections) ? parsed.connections : [],
+      connections: validConnections,
       question: shouldStopQuestions ? "" : (parsed.question || ""),
       response: parsed.response || "Got it.",
     };

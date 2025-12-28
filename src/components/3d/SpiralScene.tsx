@@ -1,13 +1,14 @@
 import { useMemo, Suspense, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
-import { EntityShape } from "./EntityShape";
+import { SemanticEntity } from "./SemanticEntity";
 import { ConnectionLine } from "./ConnectionLine";
 import { GrindingGears } from "./GrindingGears";
 import { GreaseEffect } from "./GreaseEffect";
 import { BreakthroughEffect } from "./BreakthroughEffect";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { calculateEntityPosition, getConnectionColor } from "@/lib/visualVariety";
 import type { Entity } from "@/lib/types";
 
 function SpiralEntities() {
@@ -16,20 +17,18 @@ function SpiralEntities() {
   const entities = currentSession?.entities || [];
   const connections = currentSession?.connections || [];
   
-  // Calculate spiral positions for entities
+  // Calculate intelligent positions based on emotional valence and importance
   const entityPositions = useMemo(() => {
     const positions = new Map<string, [number, number, number]>();
+    const total = entities.length;
     
     entities.forEach((entity, index) => {
-      // Spiral formula: r = a + b*theta
-      const theta = index * 0.8; // Angle increment
-      const radius = 1 + theta * 0.3; // Spiral expansion
+      const valence = entity.metadata?.valence || 0;
+      const hint = entity.metadata?.positionHint || "center";
       
-      const x = Math.cos(theta) * radius;
-      const z = Math.sin(theta) * radius;
-      const y = index * 0.2; // Height increment
-      
-      positions.set(entity.id, [x, y, z]);
+      // Use intelligent positioning based on emotional context
+      const position = calculateEntityPosition(hint, valence, index, total);
+      positions.set(entity.id, position);
     });
     
     return positions;
@@ -41,13 +40,13 @@ function SpiralEntities() {
 
   return (
     <>
-      {/* Render entities as shapes */}
+      {/* Render entities with semantic visualization */}
       {entities.map((entity) => {
         const position = entityPositions.get(entity.id);
         if (!position) return null;
         
         return (
-          <EntityShape
+          <SemanticEntity
             key={entity.id}
             entity={entity}
             position={position}
