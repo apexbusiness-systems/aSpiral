@@ -124,7 +124,7 @@ const Story = () => {
 
             {/* The Mission */}
             <section className="p-8 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-transparent text-center">
-              <h2 className="font-display text-2xl font-bold mb-4">From Spiralling to Aspiring</h2>
+              <h2 className="font-display text-2xl font-bold mb-4">From Spiraling to Aspiring</h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 That's not just a tagline. It's the journey I went through. 
                 It's the proof that this works. And now it's available to anyone 

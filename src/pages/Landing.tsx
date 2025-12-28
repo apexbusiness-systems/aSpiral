@@ -112,7 +112,7 @@ const Landing = () => {
                 icon: Sparkles,
                 emoji: "✨",
                 title: "Get your breakthrough",
-                description: "Friction → Grease → Insight. From spiralling to aspiring.",
+                description: "Friction → Grease → Insight. From Spiraling to Aspiring.",
               },
             ].map((item) => (
               <div
@@ -157,7 +157,7 @@ const Landing = () => {
               </p>
               
               <p className="text-xl font-display text-foreground text-center pt-4 border-t border-border/20 mt-8">
-                From spiralling to aspiring.
+                From Spiraling to Aspiring.
                 <br />
                 <span className="text-muted-foreground text-base font-normal">That's the journey. That's the proof.</span>
               </p>
