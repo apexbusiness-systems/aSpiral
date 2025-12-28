@@ -6,10 +6,23 @@ import { generateIdempotencyKey } from "@/lib/idempotent";
 
 const logger = createLogger("SessionStore");
 
+interface FrictionVisualization {
+  topLabel: string;
+  bottomLabel: string;
+  intensity: number;
+  entityIds: [string, string];
+}
+
 interface SessionState {
   // Current session
   currentSession: Session | null;
   messages: Message[];
+  
+  // Visualization state
+  activeFriction: FrictionVisualization | null;
+  isApplyingGrease: boolean;
+  greaseIsCorrect: boolean;
+  isBreakthroughActive: boolean;
   
   // UI State
   isRecording: boolean;
@@ -29,6 +42,13 @@ interface SessionState {
   addEntity: (entity: Omit<Entity, "id" | "createdAt" | "updatedAt">) => Entity;
   addConnection: (connection: Omit<Connection, "id">) => Connection;
   addFrictionPoint: (friction: Omit<FrictionPoint, "id">) => FrictionPoint;
+  
+  // Visualization actions
+  showFriction: (topLabel: string, bottomLabel: string, intensity: number, entityIds: [string, string]) => void;
+  hideFriction: () => void;
+  applyGrease: (isCorrect: boolean) => void;
+  triggerBreakthrough: () => void;
+  clearBreakthrough: () => void;
   
   setRecording: (recording: boolean) => void;
   setProcessing: (processing: boolean) => void;
@@ -57,6 +77,10 @@ export const useSessionStore = create<SessionState>()(
     (set, get) => ({
       currentSession: null,
       messages: [],
+      activeFriction: null,
+      isApplyingGrease: false,
+      greaseIsCorrect: false,
+      isBreakthroughActive: false,
       isRecording: false,
       isProcessing: false,
       isConnected: false,
@@ -236,6 +260,56 @@ export const useSessionStore = create<SessionState>()(
         });
 
         return friction;
+      },
+
+      // Visualization actions
+      showFriction: (topLabel, bottomLabel, intensity, entityIds) => {
+        logger.info("Showing friction", { topLabel, bottomLabel, intensity });
+        set({
+          activeFriction: { topLabel, bottomLabel, intensity, entityIds },
+        });
+      },
+
+      hideFriction: () => {
+        set({ activeFriction: null });
+      },
+
+      applyGrease: (isCorrect) => {
+        logger.info("Applying grease", { isCorrect });
+        set({ isApplyingGrease: true, greaseIsCorrect: isCorrect });
+        
+        // Auto-hide after animation
+        setTimeout(() => {
+          set({ isApplyingGrease: false });
+          if (isCorrect) {
+            // Trigger breakthrough after successful grease
+            set({ activeFriction: null });
+          }
+        }, 2000);
+      },
+
+      triggerBreakthrough: () => {
+        logger.info("Breakthrough triggered!");
+        set({ 
+          isBreakthroughActive: true,
+          activeFriction: null,
+        });
+        
+        // Update session status
+        set((state) => {
+          if (!state.currentSession) return state;
+          return {
+            currentSession: {
+              ...state.currentSession,
+              status: "breakthrough" as SessionStatus,
+              updatedAt: new Date(),
+            },
+          };
+        });
+      },
+
+      clearBreakthrough: () => {
+        set({ isBreakthroughActive: false });
       },
 
       setRecording: (recording) => set({ isRecording: recording }),

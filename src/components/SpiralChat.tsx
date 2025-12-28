@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Send, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,7 +27,11 @@ export function SpiralChat() {
     messages, 
     addMessage, 
     addEntity, 
-    addConnection 
+    addConnection,
+    showFriction,
+    applyGrease,
+    triggerBreakthrough,
+    activeFriction,
   } = useSessionStore();
 
   const {
@@ -148,6 +152,38 @@ export function SpiralChat() {
     }, 100);
   };
 
+  // Demo: Trigger friction visualization
+  const demoFriction = () => {
+    showFriction(
+      "Fear of losing control",
+      "Need to talk to her",
+      0.8,
+      ["entity1", "entity2"]
+    );
+    toast({
+      title: "Friction Detected",
+      description: "Two values are grinding against each other...",
+    });
+  };
+
+  // Demo: Apply grease (correct)
+  const demoGreaseCorrect = () => {
+    applyGrease(true);
+    toast({
+      title: "Grease Applied",
+      description: "The right solution is smoothing things out...",
+    });
+  };
+
+  // Demo: Trigger breakthrough
+  const demoBreakthrough = () => {
+    triggerBreakthrough();
+    toast({
+      title: "🎉 BREAKTHROUGH!",
+      description: "You've found your answer!",
+    });
+  };
+
   return (
     <div className="flex h-[calc(100vh-73px)] flex-col lg:flex-row">
       {/* 3D Visualization Panel */}
@@ -181,11 +217,11 @@ export function SpiralChat() {
           )}
         </Button>
         
-        {/* Entity Counter & Test Button */}
-        <div className="absolute bottom-2 left-2 flex gap-2">
+        {/* Entity Counter & Demo Controls */}
+        <div className="absolute bottom-2 left-2 flex flex-wrap gap-2">
           {entityCount > 0 ? (
             <div className="rounded-md bg-background/80 backdrop-blur-sm px-3 py-1 text-xs text-muted-foreground">
-              {entityCount} {entityCount === 1 ? "entity" : "entities"} discovered
+              {entityCount} {entityCount === 1 ? "entity" : "entities"}
             </div>
           ) : (
             <Button
@@ -195,8 +231,42 @@ export function SpiralChat() {
               className="bg-background/80 backdrop-blur-sm text-xs"
             >
               <Sparkles className="h-3 w-3 mr-1" />
-              Add Test Entities
+              Entities
             </Button>
+          )}
+          
+          {/* Demo buttons for friction/grease/breakthrough */}
+          {!activeFriction ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={demoFriction}
+              className="bg-background/80 backdrop-blur-sm text-xs text-orange-400 border-orange-400/50"
+            >
+              <Cog className="h-3 w-3 mr-1" />
+              Friction
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={demoGreaseCorrect}
+                className="bg-background/80 backdrop-blur-sm text-xs text-green-400 border-green-400/50"
+              >
+                <Droplets className="h-3 w-3 mr-1" />
+                Grease
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={demoBreakthrough}
+                className="bg-background/80 backdrop-blur-sm text-xs text-yellow-400 border-yellow-400/50"
+              >
+                <Zap className="h-3 w-3 mr-1" />
+                Breakthrough
+              </Button>
+            </>
           )}
         </div>
         

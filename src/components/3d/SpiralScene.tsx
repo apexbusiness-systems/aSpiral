@@ -3,6 +3,9 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { EntityShape } from "./EntityShape";
 import { ConnectionLine } from "./ConnectionLine";
+import { GrindingGears } from "./GrindingGears";
+import { GreaseEffect } from "./GreaseEffect";
+import { BreakthroughEffect } from "./BreakthroughEffect";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { Entity } from "@/lib/types";
 
@@ -72,6 +75,48 @@ function SpiralEntities() {
   );
 }
 
+function FrictionEffects() {
+  const { 
+    activeFriction, 
+    isApplyingGrease, 
+    greaseIsCorrect, 
+    isBreakthroughActive,
+    clearBreakthrough,
+    hideFriction,
+  } = useSessionStore();
+
+  return (
+    <>
+      {/* Grinding Gears */}
+      <GrindingGears
+        topLabel={activeFriction?.topLabel || ""}
+        bottomLabel={activeFriction?.bottomLabel || ""}
+        intensity={activeFriction?.intensity || 0.7}
+        isActive={!!activeFriction && !isApplyingGrease}
+        position={[0, 1, 0]}
+      />
+
+      {/* Grease Effect */}
+      <GreaseEffect
+        isActive={isApplyingGrease}
+        isCorrect={greaseIsCorrect}
+        position={[0, 1, 0]}
+        onComplete={() => {
+          if (greaseIsCorrect) {
+            hideFriction();
+          }
+        }}
+      />
+
+      {/* Breakthrough Explosion */}
+      <BreakthroughEffect
+        isActive={isBreakthroughActive}
+        onComplete={clearBreakthrough}
+      />
+    </>
+  );
+}
+
 function SceneContent() {
   return (
     <>
@@ -116,6 +161,9 @@ function SceneContent() {
       
       {/* Entities */}
       <SpiralEntities />
+      
+      {/* Friction & Breakthrough Effects */}
+      <FrictionEffects />
       
       {/* Camera controls */}
       <OrbitControls
