@@ -12,7 +12,7 @@ import { SpiralScene } from "@/components/3d/SpiralScene";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
-import { FloatingMenuButton, MainMenu, QuickActionsBar } from "@/components/menu";
+import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel } from "@/components/menu";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -25,6 +25,7 @@ export function SpiralChat() {
   const [input, setInput] = useState("");
   const [is3DExpanded, setIs3DExpanded] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -272,8 +273,8 @@ export function SpiralChat() {
   }, [toast]);
 
   const handleSettings = useCallback(() => {
-    toast({ title: "Coming Soon", description: "Settings will be available soon." });
-  }, [toast]);
+    setIsSettingsOpen(true);
+  }, []);
 
   const handleHelp = useCallback(() => {
     toast({
@@ -355,6 +356,12 @@ export function SpiralChat() {
         isVisible={showBreakthroughCard}
         onDismiss={dismissBreakthroughCard}
         onNewSession={handleNewSession}
+      />
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
 
       {/* 3D Visualization Panel */}
