@@ -1,9 +1,10 @@
 /**
  * Cinematic Player - Main Orchestrator
  * Handles variant selection, audio, analytics, and skip functionality
+ * Includes fallback timeout for WebGL failures
  */
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, Component, ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
@@ -22,6 +23,34 @@ import { AudioManager } from '@/lib/cinematics/AudioManager';
 import { AdaptiveQuality, prefersReducedMotion, calculateParticleCount } from '@/lib/performance/optimizer';
 import { analytics } from '@/lib/analytics';
 import type { CinematicPlayerProps, CinematicVariant } from '@/lib/cinematics/types';
+
+// Error Boundary for WebGL crashes
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class WebGLErrorBoundary extends Component<{ children: ReactNode; onError: () => void }, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('[CinematicPlayer] WebGL error caught:', error.message);
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null; // Render nothing, let fallback handle it
+    }
+    return this.props.children;
+  }
+}
+
+// Maximum cinematic duration before forcing completion (fallback)
+const MAX_CINEMATIC_DURATION_MS = 15000; // 15 seconds
 
 export function CinematicPlayer({
   variant,
@@ -54,10 +83,54 @@ export function CinematicPlayer({
   // State
   const [isPlaying, setIsPlaying] = useState(false);
   const [particleCount, setParticleCount] = useState(config.particles?.count || 1000);
+  const [hasCompleted, setHasCompleted] = useState(false);
   const startTimeRef = useRef<number>(0);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check for reduced motion preference
   const shouldReduceMotion = reducedMotion || prefersReducedMotion();
+
+  // Handle completion (deduplicated)
+  const handleComplete = useRef(() => {
+    if (hasCompleted) return;
+    setHasCompleted(true);
+    setIsPlaying(false);
+    audioManager.current?.stop();
+
+    // Clear fallback timeout
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
+
+    if (enableAnalytics) {
+      const duration = performance.now() - startTimeRef.current;
+      const metrics = adaptiveQuality.current?.getMetrics();
+
+      analytics.trackCinematic('completed', {
+        variant: selectedVariant,
+        duration,
+      });
+
+      if (metrics) {
+        analytics.trackPerformance({
+          variant: selectedVariant,
+          ...metrics,
+          duration,
+          particleCount,
+          deviceType: analytics.getDeviceType(),
+        });
+      }
+    }
+
+    onComplete?.();
+  }).current;
+
+  // Handle WebGL/canvas errors - immediately complete
+  const handleWebGLError = useRef(() => {
+    console.warn('[CinematicPlayer] WebGL error - skipping to completion');
+    handleComplete();
+  }).current;
 
   // Initialize
   useEffect(() => {
@@ -84,12 +157,21 @@ export function CinematicPlayer({
       audioManager.current.play();
     }
 
+    // FALLBACK: Force completion after max duration to prevent getting stuck
+    fallbackTimeoutRef.current = setTimeout(() => {
+      console.warn('[CinematicPlayer] Fallback timeout triggered - forcing completion');
+      handleComplete();
+    }, MAX_CINEMATIC_DURATION_MS);
+
     return () => {
       // Cleanup
       adaptiveQuality.current?.dispose();
       audioManager.current?.dispose();
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+      }
     };
-  }, [selectedVariant, config, autoPlay, enableAnalytics, onStart]);
+  }, [selectedVariant, config, autoPlay, enableAnalytics, onStart, handleComplete]);
 
   // Update particle count based on quality
   useEffect(() => {
@@ -99,37 +181,9 @@ export function CinematicPlayer({
     }
   }, [qualitySettings, config.particles]);
 
-  // Handle completion
-  const handleComplete = () => {
-    setIsPlaying(false);
-    audioManager.current?.stop();
-
-    if (enableAnalytics) {
-      const duration = performance.now() - startTimeRef.current;
-      const metrics = adaptiveQuality.current?.getMetrics();
-
-      analytics.trackCinematic('completed', {
-        variant: selectedVariant,
-        duration,
-      });
-
-      if (metrics) {
-        analytics.trackPerformance({
-          variant: selectedVariant,
-          ...metrics,
-          duration,
-          particleCount,
-          deviceType: analytics.getDeviceType(),
-        });
-      }
-    }
-
-    onComplete?.();
-  };
-
   // Handle skip
   const handleSkip = () => {
-    if (!allowSkip || !isPlaying) return;
+    if (!allowSkip || !isPlaying || hasCompleted) return;
 
     setIsPlaying(false);
     audioManager.current?.stop(true);
@@ -145,7 +199,7 @@ export function CinematicPlayer({
     }
 
     onSkip?.();
-    onComplete?.(); // Treat skip as completion
+    handleComplete(); // Treat skip as completion
   };
 
   // Keyboard shortcut for skip (Escape)
@@ -158,7 +212,7 @@ export function CinematicPlayer({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [allowSkip, isPlaying]);
+  }, [allowSkip, isPlaying, hasCompleted]);
 
   // Update adaptive quality
   useEffect(() => {
@@ -168,6 +222,13 @@ export function CinematicPlayer({
 
     return () => clearInterval(interval);
   }, []);
+
+  // Handle canvas context loss
+  const handleContextLost = (event: Event) => {
+    event.preventDefault();
+    console.warn('[CinematicPlayer] WebGL context lost');
+    handleWebGLError();
+  };
 
   // Render variant component
   const renderVariant = () => {
@@ -225,28 +286,38 @@ export function CinematicPlayer({
     );
   };
 
+  // If already completed, render nothing
+  if (hasCompleted) {
+    return null;
+  }
+
   return (
     <div className={`fixed inset-0 z-50 ${className}`}>
-      {/* 3D Canvas */}
-      <Canvas
-        camera={{ position: [0, 0, 10], fov: 60 }}
-        gl={{
-          antialias: qualitySettings.antialias,
-          alpha: true,
-          powerPreference: 'high-performance',
-        }}
-        dpr={qualitySettings.renderScale}
-      >
-        <Suspense fallback={null}>
-          <color attach="background" args={['#000000']} />
+      {/* 3D Canvas with Error Boundary */}
+      <WebGLErrorBoundary onError={handleWebGLError}>
+        <Canvas
+          camera={{ position: [0, 0, 10], fov: 60 }}
+          gl={{
+            antialias: qualitySettings.antialias,
+            alpha: true,
+            powerPreference: 'high-performance',
+          }}
+          dpr={qualitySettings.renderScale}
+          onCreated={({ gl }) => {
+            gl.domElement.addEventListener('webglcontextlost', handleContextLost);
+          }}
+        >
+          <Suspense fallback={null}>
+            <color attach="background" args={['#000000']} />
 
-          {/* Cinematic Variant */}
-          {isPlaying && renderVariant()}
+            {/* Cinematic Variant */}
+            {isPlaying && renderVariant()}
 
-          {/* Post-Processing */}
-          {renderPostProcessing()}
-        </Suspense>
-      </Canvas>
+            {/* Post-Processing */}
+            {renderPostProcessing()}
+          </Suspense>
+        </Canvas>
+      </WebGLErrorBoundary>
 
       {/* Skip Button */}
       {allowSkip && isPlaying && (
