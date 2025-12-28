@@ -26,8 +26,12 @@ import {
   Calendar,
   Target,
   MessageSquare,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
+import { useToast } from '@/hooks/use-toast';
 
 interface SessionListItem {
   id: string;
@@ -45,10 +49,12 @@ const Sessions = () => {
   const { user } = useAuth();
   const { loadSessions, loadSession, deleteSession, isLoading } = useSessionPersistence();
   const { reset: resetStore } = useSessionStore();
+  const { toast } = useToast();
   
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState<string | null>(null);
 
   // Load sessions on mount
   useEffect(() => {
@@ -87,6 +93,60 @@ const Sessions = () => {
   const handleNewSession = () => {
     resetStore();
     navigate('/app');
+  };
+
+  const handleExportPDF = async (sessionId: string) => {
+    setIsExporting(sessionId);
+    try {
+      const session = await loadSession(sessionId);
+      if (session) {
+        await exportSessionToPDF({
+          session,
+          messages: [],
+          breakthroughs: [],
+        });
+        toast({
+          title: 'PDF exported',
+          description: 'Your session has been exported successfully.',
+        });
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast({
+        title: 'Export failed',
+        description: 'Could not export the session.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  const handleExportCSV = async (sessionId: string) => {
+    setIsExporting(sessionId);
+    try {
+      const session = await loadSession(sessionId);
+      if (session) {
+        exportSessionToCSV({
+          session,
+          messages: [],
+          breakthroughs: [],
+        });
+        toast({
+          title: 'CSV exported',
+          description: 'Your session has been exported successfully.',
+        });
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast({
+        title: 'Export failed',
+        description: 'Could not export the session.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -215,6 +275,30 @@ const Sessions = () => {
                       >
                         <Play className="w-4 h-4 mr-1.5" />
                         {t('sessions.resume')}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleExportPDF(session.id)}
+                        disabled={isExporting === session.id}
+                        className="rounded-lg text-muted-foreground hover:text-primary"
+                        title="Export as PDF"
+                      >
+                        {isExporting === session.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleExportCSV(session.id)}
+                        disabled={isExporting === session.id}
+                        className="rounded-lg text-muted-foreground hover:text-secondary"
+                        title="Export as CSV"
+                      >
+                        <Download className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
