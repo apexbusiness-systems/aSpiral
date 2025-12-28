@@ -4,6 +4,8 @@ import { createLogger } from "@/lib/logger";
 import { isUserFrustrated, wantsToSkip } from "@/lib/frustrationDetector";
 import { validateCoherence, deduplicateEntities, prioritizeEntities } from "@/lib/coherenceValidator";
 import { getEntityLimit, type UserTier } from "@/lib/entityLimits";
+import { matchEnergy, adjustQuestionEnergy } from "@/lib/energyMatcher";
+import { antiRepetition } from "@/lib/antiRepetition";
 import type { EntityType, EntityMetadata, Entity } from "@/lib/types";
 
 const logger = createLogger("useSpiralAI");
@@ -226,15 +228,37 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }, 50);
         }
 
-        // Track question and count
+        // Track question and count with anti-repetition + energy matching
         if (data.question) {
+          let processedQuestion = data.question;
+          
+          // Check for repetition
+          if (antiRepetition.isTooSimilar(processedQuestion)) {
+            logger.warn("Question too similar, keeping original for now", { question: processedQuestion });
+            // In future: could request regeneration from AI
+          }
+          
+          // Match user's energy
+          const energy = matchEnergy(transcript);
+          processedQuestion = adjustQuestionEnergy(processedQuestion, energy);
+          
+          // Record for tracking
+          antiRepetition.record(processedQuestion, "generated");
+          
+          logger.info("Question processed", { 
+            original: data.question, 
+            processed: processedQuestion,
+            energy,
+            diversityScore: antiRepetition.getDiversityScore(),
+          });
+          
           questionCountRef.current++;
-          recentQuestionsRef.current.push(data.question);
+          recentQuestionsRef.current.push(processedQuestion);
           if (recentQuestionsRef.current.length > 5) {
             recentQuestionsRef.current.shift();
           }
-          setCurrentQuestion(data.question);
-          options.onQuestion?.(data.question);
+          setCurrentQuestion(processedQuestion);
+          options.onQuestion?.(processedQuestion);
           
           // Check if this was the last allowed question
           if (questionCountRef.current >= MAX_QUESTIONS) {
@@ -277,6 +301,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const resetSession = useCallback(() => {
     questionCountRef.current = 0;
     recentQuestionsRef.current = [];
+    antiRepetition.reset();
     setCurrentQuestion(null);
     setLastResponse(null);
   }, []);
