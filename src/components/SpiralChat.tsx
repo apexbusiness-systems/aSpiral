@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,11 @@ import { SpiralScene } from "@/components/3d/SpiralScene";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
+import { FloatingMenuButton, MainMenu, QuickActionsBar } from "@/components/menu";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useKeyboardShortcuts, ASPIRAL_SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
 import type { EntityType } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { OmniLinkAdapter } from "@/integrations/omnilink";
@@ -22,10 +24,13 @@ import { OmniLinkAdapter } from "@/integrations/omnilink";
 export function SpiralChat() {
   const [input, setInput] = useState("");
   const [is3DExpanded, setIs3DExpanded] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [sessionElapsed, setSessionElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const { 
+  const {
     createSession, 
     currentSession, 
     messages, 
@@ -151,7 +156,6 @@ export function SpiralChat() {
     }
   };
 
-  const entityCount = currentSession?.entities?.length || 0;
 
   const addTestEntities = () => {
     const testEntities: Array<{ type: EntityType; label: string }> = [
@@ -216,14 +220,130 @@ export function SpiralChat() {
     });
   };
 
-  const handleNewSession = () => {
+  const handleNewSession = useCallback(() => {
     resetSession();
     useSessionStore.getState().reset();
     dismissBreakthroughCard();
-  };
+    setSessionElapsed(0);
+    setIsPaused(false);
+  }, [resetSession, dismissBreakthroughCard]);
+
+  // Session timer
+  useEffect(() => {
+    if (currentSession && !isPaused && currentStage !== "breakthrough") {
+      const interval = setInterval(() => {
+        setSessionElapsed((prev) => prev + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentSession, isPaused, currentStage]);
+
+  // Derive session state for menu
+  const sessionState = !currentSession
+    ? "idle"
+    : currentStage === "breakthrough" || showBreakthroughCard
+    ? "breakthrough"
+    : isPaused
+    ? "paused"
+    : "active";
+
+  // Menu handlers
+  const handlePause = useCallback(() => setIsPaused(true), []);
+  const handleResume = useCallback(() => setIsPaused(false), []);
+  const handleStop = useCallback(() => {
+    handleNewSession();
+    toast({ title: "Session Stopped", description: "Your session has been ended." });
+  }, [handleNewSession, toast]);
+
+  const handleSave = useCallback(() => {
+    toast({ title: "Progress Saved", description: "Your session has been saved." });
+  }, [toast]);
+
+  const handleExport = useCallback(() => {
+    if (breakthroughData) {
+      const content = `# ASPIRAL Breakthrough\n\n## Friction\n${breakthroughData.friction}\n\n## Grease\n${breakthroughData.grease}\n\n## Insight\n${breakthroughData.insight}`;
+      navigator.clipboard.writeText(content);
+      toast({ title: "Exported", description: "Breakthrough copied to clipboard!" });
+    }
+  }, [breakthroughData, toast]);
+
+  const handleViewHistory = useCallback(() => {
+    toast({ title: "Coming Soon", description: "Session history will be available soon." });
+  }, [toast]);
+
+  const handleSettings = useCallback(() => {
+    toast({ title: "Coming Soon", description: "Settings will be available soon." });
+  }, [toast]);
+
+  const handleHelp = useCallback(() => {
+    toast({
+      title: "How ASPIRAL Works",
+      description: "Speak your thoughts, answer 2 questions, get your breakthrough insight.",
+    });
+  }, [toast]);
+
+  // Keyboard shortcuts
+  const shortcuts = [
+    { ...ASPIRAL_SHORTCUTS.toggleMenu, action: () => setIsMenuOpen((prev) => !prev), enabled: true },
+    { ...ASPIRAL_SHORTCUTS.pauseResume, action: () => (isPaused ? handleResume() : handlePause()), enabled: sessionState === "active" || sessionState === "paused" },
+    { ...ASPIRAL_SHORTCUTS.skipBreakthrough, action: skipToBreakthrough, enabled: sessionState === "active" },
+    { ...ASPIRAL_SHORTCUTS.save, action: handleSave, enabled: sessionState !== "idle" },
+    { ...ASPIRAL_SHORTCUTS.stop, action: handleStop, enabled: sessionState !== "idle" },
+    { ...ASPIRAL_SHORTCUTS.restart, action: handleNewSession, enabled: sessionState !== "idle" },
+    { ...ASPIRAL_SHORTCUTS.export, action: handleExport, enabled: sessionState === "breakthrough" },
+    { ...ASPIRAL_SHORTCUTS.history, action: handleViewHistory, enabled: true },
+    { ...ASPIRAL_SHORTCUTS.settings, action: handleSettings, enabled: true },
+    { ...ASPIRAL_SHORTCUTS.help, action: handleHelp, enabled: true },
+  ];
+
+  useKeyboardShortcuts(shortcuts);
+
+  const entityCount = currentSession?.entities?.length || 0;
 
   return (
     <div className="flex h-[calc(100vh-73px)] flex-col lg:flex-row">
+      {/* Floating Menu Button */}
+      <FloatingMenuButton
+        sessionState={sessionState}
+        onMenuOpen={() => setIsMenuOpen(true)}
+      />
+
+      {/* Main Menu Panel */}
+      <MainMenu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        sessionState={sessionState}
+        onPause={handlePause}
+        onResume={handleResume}
+        onStop={handleStop}
+        onRestart={handleNewSession}
+        onSkipToBreakthrough={skipToBreakthrough}
+        onSave={handleSave}
+        onExport={handleExport}
+        onViewHistory={handleViewHistory}
+        onSettings={handleSettings}
+        onHelp={handleHelp}
+        sessionProgress={
+          sessionState !== "idle"
+            ? {
+                questionCount,
+                entityCount,
+                timeElapsed: sessionElapsed,
+              }
+            : undefined
+        }
+      />
+
+      {/* Quick Actions Bar */}
+      <QuickActionsBar
+        sessionState={sessionState}
+        onPause={handlePause}
+        onResume={handleResume}
+        onStop={handleStop}
+        onSkip={skipToBreakthrough}
+        onSave={handleSave}
+      />
+
       {/* Loading State Overlay */}
       <AnimatePresence>
         {processingStage && <LoadingState stage={processingStage} />}
@@ -236,8 +356,9 @@ export function SpiralChat() {
         onDismiss={dismissBreakthroughCard}
         onNewSession={handleNewSession}
       />
+
       {/* 3D Visualization Panel */}
-      <div 
+      <div
         className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${
           is3DExpanded 
             ? "h-[60vh] lg:h-full lg:w-2/3" 
