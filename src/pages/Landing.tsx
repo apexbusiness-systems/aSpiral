@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Play, Mic, Eye, MessageCircle, Sparkles, ArrowRight, X } from "lucide-react";
+import demoVideo from "@/assets/demo-video.mp4";
 
 const Landing = () => {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
@@ -227,26 +228,16 @@ const Landing = () => {
           <DialogHeader className="p-4 pb-0">
             <DialogTitle className="font-display text-xl">aSpiral Demo</DialogTitle>
           </DialogHeader>
-          <div className="aspect-video w-full bg-muted/50 flex items-center justify-center">
-            {/* Replace with your actual video embed */}
-            <div className="text-center p-8">
-              <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-muted-foreground">
-                Video coming soon
-              </p>
-              <p className="text-sm text-muted-foreground/60 mt-2">
-                Add your YouTube/Vimeo embed or video file here
-              </p>
-            </div>
-            {/* Example YouTube embed (uncomment and replace VIDEO_ID):
-            <iframe
+          <div className="aspect-video w-full bg-black">
+            <video
               className="w-full h-full"
-              src="https://www.youtube.com/embed/VIDEO_ID?autoplay=1"
-              title="aSpiral Demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-            */}
+              src={demoVideo}
+              controls
+              autoPlay
+              playsInline
+            >
+              Your browser does not support the video tag.
+            </video>
           </div>
         </DialogContent>
       </Dialog>
