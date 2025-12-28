@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { analytics } from '@/lib/analytics';
 import { Loader2, Mail, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
 import { z } from 'zod';
 
@@ -93,6 +94,7 @@ const Auth = () => {
             });
           }
         } else {
+          analytics.trackFeatureUsed({ feature: 'email_signup', metadata: { action: 'login' } });
           toast({
             title: 'Welcome back!',
             description: 'Successfully signed in.',
@@ -116,6 +118,7 @@ const Auth = () => {
             });
           }
         } else {
+          analytics.trackFeatureUsed({ feature: 'email_signup', metadata: { action: 'signup' } });
           toast({
             title: 'Account created!',
             description: 'Please check your email to confirm your account.',
@@ -129,6 +132,7 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    analytics.trackFeatureUsed({ feature: 'google_oauth' });
     try {
       const { error } = await signInWithGoogle();
       if (error) {

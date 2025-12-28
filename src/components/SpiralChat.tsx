@@ -26,6 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useKeyboardShortcuts, ASPIRAL_SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
 import type { EntityType, Entity } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { OmniLinkAdapter } from "@/integrations/omnilink";
 
 export function SpiralChat() {
@@ -47,6 +48,13 @@ export function SpiralChat() {
     isSaving, 
     lastSaved 
   } = useSessionPersistence();
+
+  // Analytics tracking
+  const { 
+    trackFeature, 
+    trackEntity, 
+    trackBreakthrough: trackBreakthroughEvent 
+  } = useAnalytics();
 
   const {
     createSession, 
@@ -86,6 +94,16 @@ export function SpiralChat() {
     setCinematicComplete,
   } = useSpiralAI({
     onEntitiesExtracted: (entities) => {
+      // Track each entity creation
+      entities.forEach((entity, index) => {
+        trackEntity(
+          `entity_${Date.now()}_${index}`,
+          entity.type,
+          currentSession?.entities.length || 0 + index + 1,
+          'ai_extracted'
+        );
+      });
+      
       toast({
         title: "Entities Discovered",
         description: `Found ${entities.length} new ${entities.length === 1 ? 'element' : 'elements'} in your story`,
@@ -103,6 +121,17 @@ export function SpiralChat() {
       }
     },
     onBreakthrough: (data) => {
+      // Track breakthrough event
+      if (data) {
+        trackBreakthroughEvent(
+          data.friction,
+          data.grease,
+          data.insight,
+          questionCount,
+          ultraFastMode
+        );
+      }
+      
       toast({
         title: "✨ BREAKTHROUGH",
         description: data?.insight || "You've reached clarity!",
@@ -179,6 +208,7 @@ export function SpiralChat() {
     if (isRecording) {
       stopRecording();
     } else {
+      trackFeature('voice_input');
       dismissQuestion();
       toggleRecording();
     }
@@ -262,6 +292,17 @@ export function SpiralChat() {
     setCinematicComplete(false);
   }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording]);
 
+  // Wrapped handlers with analytics
+  const handleSkipToBreakthrough = useCallback(() => {
+    trackFeature('skip_to_breakthrough');
+    skipToBreakthrough();
+  }, [skipToBreakthrough, trackFeature]);
+
+  const handleToggleUltraFast = useCallback((enabled: boolean) => {
+    trackFeature('ultra_fast_mode', { enabled });
+    toggleUltraFastMode(enabled);
+  }, [toggleUltraFastMode, trackFeature]);
+
   // Session timer - pauses when recording is paused or during breakthrough
   useEffect(() => {
     if (currentSession && !isRecordingPaused && currentStage !== "breakthrough") {
@@ -300,28 +341,31 @@ export function SpiralChat() {
   }, [handleNewSession, toast]);
 
   const handleSave = useCallback(async () => {
+    trackFeature('session_saved');
     await saveSession();
     toast({ 
       title: "Progress Saved", 
       description: isSaving ? "Saving..." : "Your session has been saved." 
     });
-  }, [saveSession, isSaving, toast]);
+  }, [saveSession, isSaving, toast, trackFeature]);
 
   const handleExport = useCallback(() => {
     if (breakthroughData) {
+      trackFeature('session_exported');
       const content = `# ASPIRAL Breakthrough\n\n## Friction\n${breakthroughData.friction}\n\n## Grease\n${breakthroughData.grease}\n\n## Insight\n${breakthroughData.insight}`;
       navigator.clipboard.writeText(content);
       toast({ title: "Exported", description: "Breakthrough copied to clipboard!" });
     }
-  }, [breakthroughData, toast]);
+  }, [breakthroughData, toast, trackFeature]);
 
   const handleViewHistory = useCallback(() => {
     navigate('/sessions');
   }, [navigate]);
 
   const handleSettings = useCallback(() => {
+    trackFeature('settings_opened');
     setIsSettingsOpen(true);
-  }, []);
+  }, [trackFeature]);
 
   const handleHelp = useCallback(() => {
     toast({
@@ -338,7 +382,7 @@ export function SpiralChat() {
   const shortcuts = [
     { ...ASPIRAL_SHORTCUTS.toggleMenu, action: () => setIsMenuOpen((prev) => !prev), enabled: true },
     { ...ASPIRAL_SHORTCUTS.pauseResume, action: () => (isRecordingPaused ? handleResume() : handlePause()), enabled: sessionState === "active" || sessionState === "paused" },
-    { ...ASPIRAL_SHORTCUTS.skipBreakthrough, action: skipToBreakthrough, enabled: sessionState === "active" },
+    { ...ASPIRAL_SHORTCUTS.skipBreakthrough, action: handleSkipToBreakthrough, enabled: sessionState === "active" },
     { ...ASPIRAL_SHORTCUTS.save, action: handleSave, enabled: sessionState !== "idle" },
     { ...ASPIRAL_SHORTCUTS.stop, action: handleStop, enabled: sessionState !== "idle" },
     { ...ASPIRAL_SHORTCUTS.restart, action: handleNewSession, enabled: sessionState !== "idle" },
@@ -379,7 +423,7 @@ export function SpiralChat() {
         onResume={handleResume}
         onStop={handleStop}
         onRestart={handleNewSession}
-        onSkipToBreakthrough={skipToBreakthrough}
+        onSkipToBreakthrough={handleSkipToBreakthrough}
         onSave={handleSave}
         onExport={handleExport}
         onViewHistory={handleViewHistory}
@@ -405,7 +449,7 @@ export function SpiralChat() {
         onPause={handlePause}
         onResume={handleResume}
         onStop={handleStop}
-        onSkip={skipToBreakthrough}
+        onSkip={handleSkipToBreakthrough}
         onSave={handleSave}
       />
 
@@ -470,7 +514,7 @@ export function SpiralChat() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={skipToBreakthrough}
+              onClick={handleSkipToBreakthrough}
               className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2"
             >
               <SkipForward className="h-3 w-3 mr-1.5" />
@@ -498,7 +542,7 @@ export function SpiralChat() {
           {/* Ultra-fast mode toggle */}
           <UltraFastToggle
             isEnabled={ultraFastMode}
-            onToggle={toggleUltraFastMode}
+            onToggle={handleToggleUltraFast}
           />
           
           {entityCount > 0 ? (
