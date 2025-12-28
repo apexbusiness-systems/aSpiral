@@ -70,6 +70,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const entityLimit = getEntityLimit(userTier);
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<"extracting" | "generating" | "breakthrough" | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [currentStage, setCurrentStage] = useState<ConversationStage>("friction");
   const [lastResponse, setLastResponse] = useState<string | null>(null);
@@ -185,6 +186,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         readyForBreakthrough: fastTrackRef.current.readyForBreakthrough,
       });
       setIsProcessing(true);
+      setProcessingStage(fastTrackRef.current.readyForBreakthrough ? "breakthrough" : "extracting");
 
       try {
         // Get stage-specific prompt hints
@@ -385,6 +387,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         return null;
       } finally {
         setIsProcessing(false);
+        setProcessingStage(null);
       }
     },
     [currentSession, addEntity, addConnection, addMessage, isProcessing, options, forceBreakthrough]
@@ -465,6 +468,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
 
   return {
     isProcessing,
+    processingStage,
     currentQuestion,
     currentStage,
     lastResponse,

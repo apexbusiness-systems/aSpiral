@@ -7,128 +7,74 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-// CONVERSATIONAL QUESTION PATTERNS for variety
-const QUESTION_PATTERN_EXAMPLES = `
-QUESTION STRUCTURE VARIETY (cycle through these):
-- Direct: "{specific} - when did that start?" or "So {paraphrase}. Then what?"
-- Reflection: "You said '{quote}' - what's grinding there?"
-- Excavation: "Underneath that {surface}, what else?"
+// FRUSTRATION PATTERNS - immediate breakthrough trigger
+const FRUSTRATION_PATTERNS = [
+  /annoying/i, /stop/i, /enough/i, /just tell me/i, /wtf/i, /ffs/i,
+  /come on/i, /seriously/i, /waste.*time/i, /dragging/i, /taking forever/i,
+  /get to the point/i, /skip/i, /cut to/i, /what's the answer/i,
+];
+
+// Hard caps
+const HARD_ENTITY_CAP = 5;
+const MAX_QUESTIONS = 3;
+
+// QUESTION PATTERNS for variety
+const QUESTION_PATTERNS = `
+QUESTION STRUCTURE (rotate these):
+- Direct: "So {paraphrase}. What's grinding?"
+- Excavation: "Underneath that, what else?"
 - Contrast: "When you're NOT feeling {negative}, what's different?"
-- Embodied: "Close your eyes. Where in your body is that {emotion} sitting?"
-- Hypothetical: "If {constraint} wasn't a factor, what would you do?"
-- Challenge: "You keep saying '{word}' - is it really that, or something else?"
+- Challenge: "Is it really {surface}, or something deeper?"
 - Stakes: "What happens if you do nothing?"
-- Binary: "Simple: stay or go?" or "Fear or laziness?"
-- Silence: "And?" or "What else?"
+- Binary: "Simple: stay or go?"
 
-START WORDS TO ROTATE (never use same start 2x in a row):
-✅ "So", "Walk me through", "That {X} you mentioned", "Underneath", "When's the last time"
-✅ "Compare", "Strip away", "Close your eyes", "Imagine", "Simple:"
-✅ "You said", "Interesting.", "Help me understand", "What happens if"
-❌ Never start 2+ questions with "What" in a row
-`;
-
-// SEMANTIC ENTITY EXTRACTION PROMPT
-const ENTITY_EXTRACTION_PROMPT = `You are the discovery voice for ASPIRAL - a 3D visual thinking tool.
-
-Your job: Extract entities AND ask ONE question that helps discover what's grinding.
-
-TONE:
-- Conversational, not clinical
-- Direct, not fluffy
-- Curious, not interrogative
-- Human, not robotic
-
-${QUESTION_PATTERN_EXAMPLES}
-
-ABSOLUTELY FORBIDDEN (will break the product):
+ABSOLUTELY FORBIDDEN:
 ❌ "I hear your..." / "It sounds like..."
-❌ "I'm here to help you..." / "Let's explore..."
-❌ "Can you tell me more about..."
-❌ "What I'm hearing is..." / "What I'm noticing is..."
+❌ "I'm here to help..." / "Let's explore..."
+❌ "Can you tell me more..."
 ❌ "How does that make you feel?"
-❌ "What would success look like?"
-❌ Starting with "What" more than once every 3 questions
+❌ Starting consecutive questions with "What"
+
+Be DIRECT. Under 15 words. Reference their EXACT words.`;
+
+// Entity extraction prompt
+const ENTITY_EXTRACTION_PROMPT = `You are ASPIRAL's discovery engine. Extract entities and ask ONE direct question.
+
+${QUESTION_PATTERNS}
 
 ENTITY RULES:
-1. Extract MAX 5 entities (NEVER more)
-2. Only extract entities that MATTER to the friction
-3. Each entity must have a CLEAR ROLE
-4. Combine similar concepts (don't split "traffic" and "bad drivers")
+1. Extract MAX 5 entities (HARD LIMIT - violating this breaks the product)
+2. Combine similar concepts
+3. Only extract what MATTERS to the friction
 
-ENTITY TYPES:
-- problem: Obstacle or friction point (external)
-- emotion: Internal feeling state
-- value: What matters to them (goal, aspiration)
-- friction: What's blocking them (internal conflict)
-- grease: Potential solution (action, decision)
-- action: Something they could do
+ENTITY TYPES: problem, emotion, value, friction, grease, action
+ENTITY ROLES: external_irritant, internal_conflict, desire, fear, constraint, solution
 
-ENTITY ROLES:
-- external_irritant: Outside force causing friction
-- internal_conflict: Inner struggle
-- desire: What they want
-- fear: What they're avoiding
-- constraint: External limit
-- solution: Potential grease
-
-OUTPUT FORMAT (JSON):
-{
-  "entities": [
-    {
-      "type": "problem",
-      "label": "short 3-word max",
-      "role": "external_irritant",
-      "emotionalValence": -0.8,
-      "importance": 0.7,
-      "positionHint": "lower_left"
-    }
-  ],
-  "connections": [
-    {
-      "from": 0,
-      "to": 1,
-      "type": "causes",
-      "strength": 0.9
-    }
-  ],
-  "question": "Under 15 words. Use pattern variety. Reference their exact words.",
-  "response": "Max 10 words. Acknowledge, don't analyze."
-}
-
-CONNECTION TYPES:
-- causes: A leads to B
-- blocks: A prevents B  
-- enables: A helps B
-- resolves: A solves B
-- opposes: A conflicts with B
-
-POSITION HINTS (based on emotional valence):
-- upper_right: Positive desires, goals
-- upper_left: Positive constraints
-- lower_right: Negative but actionable
-- lower_left: Negative friction points
-- center: Core problem
-
-WORKFLOW:
-1. Extract 3-5 entities MAX (be ruthless)
-2. Connect ONLY semantically related entities
-3. Ask ONE question using varied pattern (check recent questions to avoid repetition)
-4. Match their energy (casual if they're casual, intense if they're intense)
-5. Under 15 words. Reference their EXACT words when possible.`;
-
-// BREAKTHROUGH SYNTHESIS PROMPT
-const BREAKTHROUGH_PROMPT = `Synthesize the breakthrough from this conversation.
-
-You have all the context you need. Now deliver the insight.
+CONNECTION TYPES: causes, blocks, enables, resolves, opposes
 
 OUTPUT JSON:
 {
-  "friction": "The two gears grinding (concise, specific to their situation)",
-  "grease": "The solution that eases it (actionable, not generic)",
-  "insight": "The one-liner breakthrough (memorable, quotable)",
+  "entities": [
+    {"type": "problem", "label": "3-word max", "role": "external_irritant", "emotionalValence": -0.8, "importance": 0.9}
+  ],
+  "connections": [{"from": 0, "to": 1, "type": "causes", "strength": 0.8}],
+  "question": "Under 15 words. Direct. No fluff.",
+  "response": "Max 8 words. Acknowledge briefly."
+}
+
+NEVER exceed 5 entities. This is non-negotiable.`;
+
+// Breakthrough prompt
+const BREAKTHROUGH_PROMPT = `Synthesize the breakthrough from this conversation.
+
+OUTPUT JSON:
+{
+  "friction": "The gears grinding (concise, <15 words)",
+  "grease": "The solution (actionable, <15 words)", 
+  "insight": "The memorable one-liner (<25 words)",
   "entities": [],
   "connections": [],
   "question": "",
@@ -136,81 +82,46 @@ OUTPUT JSON:
 }
 
 RULES:
-1. Be SPECIFIC to their situation - don't give generic advice
-2. Reference their actual words when possible
-3. Make the insight memorable - something they'll remember
-4. The grease must be ACTIONABLE
-5. Keep each field under 30 words
+1. Be SPECIFIC to their situation
+2. Reference their actual words
+3. Make insight memorable and quotable
+4. Grease must be ACTIONABLE
 
 EXAMPLES:
-
-Input: Traffic anger conversation with control pattern
-Output: {
-  "friction": "Your need for order vs the chaos of traffic",
-  "grease": "Accept what you can't control. Your only move is how YOU respond.",
-  "insight": "You can't change the drivers. You can change how much space they take in your head."
-}
-
-Input: Job decision with security vs fulfillment pattern
-Output: {
-  "friction": "Security pulling one way, fulfillment pulling the other",
-  "grease": "Test the water before burning the boats. Start small on the side.",
-  "insight": "You don't need to leap. You need to take the first step."
-}
+Traffic frustration → "You can't change the drivers. You can change how much space they take in your head."
+Job decision → "You don't need to leap. You need to take the first step."
 
 Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`;
-
-// Tier-based entity limits
-const ENTITY_LIMITS: Record<string, number> = {
-  free: 5,
-  creator: 7,
-  pro: 10,
-  business: 10,
-  enterprise: 10,
-};
-
-// Hard cap at 3 questions
-const MAX_QUESTIONS = 3;
-
-interface DetectedPattern {
-  name: string;
-  evidence: string;
-  confidence: number;
-}
 
 interface RequestBody {
   transcript: string;
   userTier?: string;
+  ultraFast?: boolean;
   sessionContext?: {
     entities?: Array<{ type: string; label: string }>;
     conversationHistory?: string[];
     questionsAsked?: number;
     stage?: "friction" | "desire" | "blocker" | "breakthrough";
-    detectedPatterns?: DetectedPattern[];
+    detectedPatterns?: Array<{ name: string; confidence: number }>;
   };
   forceBreakthrough?: boolean;
   stagePrompt?: string;
 }
 
-interface EntityOutput {
-  type: string;
-  label: string;
-  role?: string;
-  emotionalValence?: number;
-  importance?: number;
-  positionHint?: string;
-}
-
-interface ConnectionOutput {
-  from: number;
-  to: number;
-  type: "causes" | "blocks" | "enables" | "resolves" | "opposes";
-  strength: number;
-}
-
 interface AIResponse {
-  entities: EntityOutput[];
-  connections: ConnectionOutput[];
+  entities: Array<{
+    type: string;
+    label: string;
+    role?: string;
+    emotionalValence?: number;
+    importance?: number;
+  }>;
+  connections: Array<{
+    from: number;
+    to: number;
+    type: string;
+    strength: number;
+  }>;
   question: string;
   response: string;
   friction?: string;
@@ -219,86 +130,104 @@ interface AIResponse {
 }
 
 serve(async (req) => {
+  const startTime = Date.now();
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    if (!OPENAI_API_KEY) {
-      console.error("[SPIRAL-AI] OPENAI_API_KEY not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("[SPIRAL-AI] LOVABLE_API_KEY not configured");
       throw new Error("API key not configured");
     }
 
     const body: RequestBody = await req.json();
-    const { transcript, sessionContext, userTier = "free", stagePrompt } = body;
-    const maxEntities = ENTITY_LIMITS[userTier] || ENTITY_LIMITS.free;
+    const { 
+      transcript, 
+      sessionContext, 
+      userTier = "free", 
+      stagePrompt,
+      ultraFast = false 
+    } = body;
+    
     const questionsAsked = sessionContext?.questionsAsked || 0;
     const stage = sessionContext?.stage || "friction";
-    const shouldBreakthrough = body.forceBreakthrough || questionsAsked >= MAX_QUESTIONS;
+
+    // FRUSTRATION CHECK - immediate breakthrough
+    const isFrustrated = FRUSTRATION_PATTERNS.some(p => p.test(transcript));
+    if (isFrustrated) {
+      console.log("[SPIRAL-AI] ⚠️ Frustration detected, forcing breakthrough");
+    }
+
+    // Determine if breakthrough
+    const shouldBreakthrough = 
+      body.forceBreakthrough || 
+      isFrustrated || 
+      ultraFast ||
+      questionsAsked >= MAX_QUESTIONS;
 
     console.log("[SPIRAL-AI] Processing:", {
       stage,
       questionsAsked,
       shouldBreakthrough,
-      tier: userTier,
-      transcriptPreview: transcript.slice(0, 50),
+      isFrustrated,
+      ultraFast,
+      processingMs: Date.now() - startTime,
     });
 
-    // Build context with existing entities and patterns
+    // Build context
     let contextInfo = "";
     if (sessionContext?.entities?.length) {
-      contextInfo += `\nExisting entities (don't duplicate): ${JSON.stringify(sessionContext.entities)}`;
+      contextInfo += `\nExisting entities (don't duplicate): ${sessionContext.entities.map(e => e.label).join(", ")}`;
     }
     if (sessionContext?.conversationHistory?.length) {
-      contextInfo += `\nConversation so far:\n${sessionContext.conversationHistory.map((m, i) => `[${i + 1}] ${m}`).join("\n")}`;
+      contextInfo += `\nConversation:\n${sessionContext.conversationHistory.slice(-4).join("\n")}`;
     }
     if (sessionContext?.detectedPatterns?.length) {
-      contextInfo += `\nDetected patterns (use these for insight): ${sessionContext.detectedPatterns.map(p => `${p.name} (${p.confidence})`).join(", ")}`;
+      contextInfo += `\nPatterns (use for insight): ${sessionContext.detectedPatterns.map(p => p.name).join(", ")}`;
     }
-    
-    // Add stage-specific guidance
     if (stagePrompt && !shouldBreakthrough) {
-      contextInfo += `\n\nSTAGE GUIDANCE:\n${stagePrompt}`;
+      contextInfo += `\n\nSTAGE: ${stagePrompt}`;
     }
-    
-    // Mark last question
     if (questionsAsked === MAX_QUESTIONS - 1 && !shouldBreakthrough) {
-      contextInfo += `\n\n⚠️ This is the LAST question. Make it count.`;
+      contextInfo += `\n\n⚠️ LAST QUESTION - make it count.`;
     }
 
-    // Use breakthrough prompt if it's time
     const systemPrompt = shouldBreakthrough 
       ? BREAKTHROUGH_PROMPT + contextInfo 
       : ENTITY_EXTRACTION_PROMPT + contextInfo;
 
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: transcript },
-    ];
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call Lovable AI Gateway
+    const response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-        max_tokens: shouldBreakthrough ? 800 : 500,
-        temperature: 0.7,
-        response_format: { type: "json_object" },
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: transcript },
+        ],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[SPIRAL-AI] OpenAI error:", response.status, errorText);
+      console.error("[SPIRAL-AI] AI Gateway error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded" }),
+          JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -312,70 +241,75 @@ serve(async (req) => {
       throw new Error("No content in response");
     }
 
-    console.log("[SPIRAL-AI] Raw response:", content.slice(0, 200));
+    console.log("[SPIRAL-AI] Raw response preview:", content.slice(0, 150));
 
-    // Parse the JSON response
+    // Parse JSON response
     let parsed: AIResponse;
     try {
-      parsed = JSON.parse(content);
+      // Extract JSON from response (handle markdown code blocks)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
     } catch (e) {
       console.error("[SPIRAL-AI] JSON parse error:", e);
-      // Fallback response
       parsed = {
         entities: [],
         connections: [],
-        question: shouldBreakthrough ? "" : "Tell me more about what you're experiencing?",
-        response: shouldBreakthrough ? "Let me put this together for you." : "I hear you.",
+        question: shouldBreakthrough ? "" : "What's grinding right now?",
+        response: "I hear you.",
       };
     }
 
-    // HARD CAP entities by tier limit
-    let entities: EntityOutput[] = Array.isArray(parsed.entities) 
-      ? parsed.entities.slice(0, maxEntities) 
+    // HARD CAP entities at 5 (non-negotiable)
+    let entities = Array.isArray(parsed.entities) 
+      ? parsed.entities.slice(0, HARD_ENTITY_CAP) 
       : [];
     
-    if (parsed.entities?.length > maxEntities) {
-      console.warn(`[SPIRAL-AI] ⚠️ AI tried to extract ${parsed.entities.length} entities. Capped at ${maxEntities}.`);
+    if (parsed.entities?.length > HARD_ENTITY_CAP) {
+      console.warn(`[SPIRAL-AI] ⚠️ CAPPED entities: ${parsed.entities.length} → ${HARD_ENTITY_CAP}`);
     }
 
-    // Validate entity labels are short (3 words max)
+    // Trim long labels
     entities = entities.map(e => ({
       ...e,
-      label: e.label.split(' ').slice(0, 4).join(' '), // Cap at 4 words
+      label: e.label?.split(' ').slice(0, 4).join(' ') || e.label,
     }));
-    
-    // Filter connections to only valid ones
-    const validConnections = Array.isArray(parsed.connections) 
-      ? parsed.connections.filter(conn => 
-          conn.from >= 0 && 
-          conn.from < entities.length && 
-          conn.to >= 0 && 
+
+    // Filter valid connections
+    const validConnections = Array.isArray(parsed.connections)
+      ? parsed.connections.filter(conn =>
+          conn.from >= 0 &&
+          conn.from < entities.length &&
+          conn.to >= 0 &&
           conn.to < entities.length &&
-          conn.strength > 0.5 // Only strong connections
+          conn.strength > 0.5
         )
       : [];
-    
-    // Build result
+
     const result: AIResponse = {
       entities,
       connections: validConnections,
       question: shouldBreakthrough ? "" : (parsed.question || ""),
       response: parsed.response || "Got it.",
-      // Include breakthrough data if present
       friction: parsed.friction,
       grease: parsed.grease,
       insight: parsed.insight,
     };
 
-    console.log("[SPIRAL-AI] Result:", {
+    const processingTime = Date.now() - startTime;
+    console.log("[SPIRAL-AI] ✅ Complete:", {
       entityCount: result.entities.length,
       hasQuestion: !!result.question,
       isBreakthrough: shouldBreakthrough,
       hasInsight: !!result.insight,
+      processingMs: processingTime,
     });
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "application/json",
+        "X-Processing-Time": `${processingTime}ms`,
+      },
     });
   } catch (error) {
     console.error("[SPIRAL-AI] Error:", error);
@@ -384,7 +318,7 @@ serve(async (req) => {
         error: error instanceof Error ? error.message : "Unknown error",
         entities: [],
         connections: [],
-        question: "I'm having trouble processing that. Could you try again?",
+        question: "Something went wrong. Try again?",
         response: "",
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

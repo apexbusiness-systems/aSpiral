@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +11,7 @@ import { QuestionBubble } from "@/components/QuestionBubble";
 import { SpiralScene } from "@/components/3d/SpiralScene";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
+import { LoadingState } from "@/components/LoadingState";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -38,6 +40,7 @@ export function SpiralChat() {
 
   const {
     isProcessing: isAIProcessing,
+    processingStage,
     currentQuestion,
     currentStage,
     questionCount,
@@ -221,6 +224,11 @@ export function SpiralChat() {
 
   return (
     <div className="flex h-[calc(100vh-73px)] flex-col lg:flex-row">
+      {/* Loading State Overlay */}
+      <AnimatePresence>
+        {processingStage && <LoadingState stage={processingStage} />}
+      </AnimatePresence>
+
       {/* Breakthrough Overlay Card */}
       <BreakthroughCard
         data={breakthroughData}
