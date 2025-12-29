@@ -15,6 +15,7 @@ import Sessions from "./pages/Sessions";
 import Workspaces from "./pages/Workspaces";
 import ApiKeys from "./pages/ApiKeys";
 import AdminDashboard from "./pages/AdminDashboard";
+import NotificationTest from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
               <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/notification-test" element={<NotificationTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
