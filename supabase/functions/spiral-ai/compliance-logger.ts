@@ -167,7 +167,11 @@ export type AuditEventType =
   | "ERROR_OCCURRED"
   | "BLOCKED_CONTENT"
   | "SUSPICIOUS_ACTIVITY"
-  | "ESCALATION_TRIGGERED";
+  | "ESCALATION_TRIGGERED"
+  | "HEADER_WARNING"
+  | "VALIDATION_FAILED"
+  | "INJECTION_CHECK"
+  | "ANOMALY_DETECTED";
 
 export interface ComplianceAuditLog {
   // Identification (no PII)

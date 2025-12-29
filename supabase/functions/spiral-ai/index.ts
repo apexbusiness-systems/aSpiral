@@ -4,6 +4,8 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { moderateContent, SAFE_RESPONSES, type ModerationResult } from "./content-guard.ts";
 import { checkRateLimit, checkSessionLimit, type RateLimitResult } from "./rate-limiter.ts";
 import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
+import { detectPromptInjection, validateOutput, detectAnomaly, INJECTION_RESPONSES } from "./prompt-shield.ts";
+import { validateInput, parseRequestBody, validateHeaders, type ValidatedInput } from "./input-validator.ts";
 
 // =============================================================================
 // PHASE 4: FULL GUARDRAILS - Content Moderation, Rate Limiting, Compliance
@@ -337,21 +339,117 @@ serve(async (req) => {
       throw new Error("API key not configured");
     }
 
-    const body: RequestBody = await req.json();
+    // =======================================================================
+    // LAYER 0: REQUEST PARSING & HEADER VALIDATION
+    // =======================================================================
+    const headerValidation = validateHeaders(req);
+    if (!headerValidation.valid) {
+      console.warn("[SPIRAL-AI] ⚠️ Header validation warnings:", headerValidation.warnings);
+      complianceLogger.log("HEADER_WARNING", { warnings: headerValidation.warnings });
+    }
+
+    const parseResult = await parseRequestBody(req, 50000);
+    if (!parseResult.success) {
+      console.error("[SPIRAL-AI] ❌ Request parsing failed:", parseResult.error);
+      return new Response(
+        JSON.stringify({ error: parseResult.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // =======================================================================
+    // LAYER 0.5: INPUT SCHEMA VALIDATION
+    // =======================================================================
+    const inputValidation = validateInput(parseResult.data);
+    if (!inputValidation.success) {
+      console.error("[SPIRAL-AI] ❌ Input validation failed:", inputValidation.errors);
+      complianceLogger.log("VALIDATION_FAILED", { errors: inputValidation.errors });
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid request format",
+          details: inputValidation.errors?.map(e => e.message),
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { 
       transcript, 
       sessionContext, 
       stagePrompt,
-      ultraFast = false,
-      userTier = "free",
-      userId = "anonymous",
-      sessionId = "default",
-    } = body;
+      ultraFast,
+      userTier,
+      userId,
+      sessionId,
+    } = inputValidation.data as ValidatedInput;
     
     complianceLogger.log("REQUEST_RECEIVED", {
       sessionHash: `h:${sessionId.substring(0, 8)}`,
       contentLength: transcript.length,
     });
+
+    // =======================================================================
+    // LAYER 0.75: PROMPT INJECTION DETECTION
+    // =======================================================================
+    const injectionResult = detectPromptInjection(transcript, requestId);
+    
+    complianceLogger.log("INJECTION_CHECK", {
+      riskScore: injectionResult.riskScore,
+      threatCount: injectionResult.threats.length,
+      blocked: !injectionResult.isSafe,
+    });
+
+    if (!injectionResult.isSafe) {
+      console.warn(`[SPIRAL-AI] 🛡️ Prompt injection BLOCKED`, {
+        requestId,
+        riskScore: injectionResult.riskScore,
+        threats: injectionResult.threats.slice(0, 3).map(t => t.category),
+      });
+      
+      return new Response(
+        JSON.stringify({
+          entities: [],
+          connections: [],
+          question: INJECTION_RESPONSES.BLOCKED.suggestion,
+          response: INJECTION_RESPONSES.BLOCKED.message,
+          blocked: true,
+          category: "INJECTION_ATTEMPT",
+        }),
+        { 
+          status: 200, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "X-Security-Block": "INJECTION",
+          } 
+        }
+      );
+    }
+
+    // =======================================================================
+    // LAYER 0.9: ANOMALY DETECTION
+    // =======================================================================
+    const anomalyResult = detectAnomaly(userId, injectionResult.fingerprint, transcript.length);
+    
+    if (anomalyResult.isAnomaly) {
+      console.warn(`[SPIRAL-AI] 🔍 Anomaly detected: ${anomalyResult.reason}`, { userId });
+      complianceLogger.log("ANOMALY_DETECTED", { reason: anomalyResult.reason });
+      
+      return new Response(
+        JSON.stringify({
+          error: INJECTION_RESPONSES.RATE_ANOMALY.message,
+          retryAfter: INJECTION_RESPONSES.RATE_ANOMALY.retryAfter,
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": "60",
+          } 
+        }
+      );
+    }
 
     // =======================================================================
     // LAYER 1: RATE LIMITING - Multi-tier with abuse detection
@@ -506,7 +604,7 @@ serve(async (req) => {
 
     // Determine if breakthrough
     const shouldBreakthrough = 
-      body.forceBreakthrough || 
+      forceBreakthrough || 
       isFrustrated || 
       ultraFast ||
       questionsAsked >= MAX_QUESTIONS;
@@ -563,10 +661,19 @@ serve(async (req) => {
       conn.strength > 0.5
     );
 
+    // =======================================================================
+    // LAYER 5: OUTPUT VALIDATION - Prevent System Prompt Leakage
+    // =======================================================================
+    const outputValidation = validateOutput(validatedResult.question || "");
+    const responseValidation = validateOutput(validatedResult.response || "");
+    const insightValidation = validatedResult.insight ? validateOutput(validatedResult.insight) : { safe: true, filtered: validatedResult.insight };
+
     const result = {
       ...validatedResult,
       connections: validConnections,
-      question: shouldBreakthrough ? "" : validatedResult.question,
+      question: shouldBreakthrough ? "" : (outputValidation.filtered || validatedResult.question),
+      response: responseValidation.filtered || validatedResult.response,
+      insight: insightValidation.filtered,
     };
 
     const processingTime = Date.now() - startTime;
@@ -577,6 +684,7 @@ serve(async (req) => {
       hasInsight: !!result.insight,
       validationRetries: retryCount,
       piiRedacted: piiFound.length > 0,
+      outputFiltered: !outputValidation.safe || !responseValidation.safe,
       processingMs: processingTime,
     });
 
@@ -587,6 +695,7 @@ serve(async (req) => {
         "X-Processing-Time": `${processingTime}ms`,
         "X-Validation-Retries": `${retryCount}`,
         "X-PII-Redacted": piiFound.length > 0 ? "true" : "false",
+        "X-Output-Filtered": (!outputValidation.safe || !responseValidation.safe) ? "true" : "false",
       },
     });
   } catch (error) {
