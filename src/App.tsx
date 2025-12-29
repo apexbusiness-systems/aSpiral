@@ -16,6 +16,8 @@ import Workspaces from "./pages/Workspaces";
 import ApiKeys from "./pages/ApiKeys";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotificationTest from "./pages/NotificationTest";
+import Breakthroughs from "./pages/Breakthroughs";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,8 +34,10 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/story" element={<Story />} />
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
+              <Route path="/breakthroughs" element={<ProtectedRoute><Breakthroughs /></ProtectedRoute>} />
               <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
               <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

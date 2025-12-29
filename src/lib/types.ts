@@ -16,8 +16,8 @@ export type ConnectionType = "causes" | "blocks" | "enables" | "resolves" | "opp
 
 export interface EntityMetadata {
   role?: EntityRole;
-  valence?: number;      // -1 (negative) to +1 (positive)
-  importance?: number;   // 0 (minor) to 1 (critical)
+  valence?: number;
+  importance?: number;
   positionHint?: string;
   [key: string]: unknown;
 }
@@ -43,13 +43,13 @@ export interface Connection {
   fromEntityId: string;
   toEntityId: string;
   type: ConnectionType;
-  strength: number; // 0-1
+  strength: number;
 }
 
 export interface FrictionPoint {
   id: string;
   entityIds: string[];
-  intensity: number; // 0-1
+  intensity: number;
   description: string;
   discovered?: boolean;
 }
@@ -113,4 +113,54 @@ export interface AppState {
   currentSession: Session | null;
   messages: Message[];
   error: string | null;
+}
+
+// Engagement types
+export type BreakthroughCategory = "career" | "relationship" | "financial" | "creative" | "anxiety" | "life_direction" | "health" | "other";
+
+export interface Breakthrough {
+  id: string;
+  sessionId: string;
+  userId: string;
+  friction: string;
+  grease: string;
+  insight: string;
+  category?: BreakthroughCategory;
+  createdAt: Date;
+  sharedAt?: Date;
+  sharedPlatforms?: string[];
+}
+
+export interface UserStreak {
+  userId: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastBreakthroughAt: Date;
+  streakStartedAt: Date;
+  totalBreakthroughs: number;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: Date;
+  progress?: number;
+  maxProgress?: number;
+}
+
+export type AchievementId = "first_breakthrough" | "first_voice" | "speed_run" | "shared_insight" | "invited_friend" | "streak_7" | "streak_30" | "streak_100" | "night_owl" | "early_bird" | "polyglot" | "career_master" | "relationship_guru" | "anxiety_slayer";
+
+export type OnboardingReason = "decision" | "anxiety" | "relationship" | "career" | "creative" | "curious" | "other";
+
+export interface UserPreferences {
+  userId: string;
+  onboardingReason?: OnboardingReason;
+  notificationConsent: boolean;
+  theme: "dark" | "light" | "system";
+  soundEnabled: boolean;
+  hapticEnabled: boolean;
+  onboardingCompleted: boolean;
+  name?: string;
 }
