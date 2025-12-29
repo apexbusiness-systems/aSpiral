@@ -6,6 +6,7 @@ import { Play, Sparkles, ArrowRight } from "lucide-react";
 import demoVideo from "@/assets/demo-video.mp4";
 import aspiralLogo from "@/assets/aspiral-logo.png";
 import visualizeIcon from "@/assets/visualize-icon.png";
+import voiceIcon from "@/assets/voice-icon.png";
 
 const Landing = () => {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
@@ -100,7 +101,7 @@ const Landing = () => {
             {[
               {
                 step: 1,
-                emoji: "🎤",
+                customIcon: voiceIcon,
                 title: "Voice your chaos",
                 description: "Just talk. No typing. Let it all out.",
               },
