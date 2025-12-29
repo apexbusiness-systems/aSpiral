@@ -2,6 +2,7 @@ import { Mic, MicOff, Square, Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MicButtonProps {
   isRecording: boolean;
@@ -22,13 +23,21 @@ export function MicButton({
   onPause,
   onStop,
 }: MicButtonProps) {
+  const isMobile = useIsMobile();
+  
+  // Larger touch targets on mobile
+  const mainSize = isMobile ? "h-24 w-24" : "h-20 w-20";
+  const secondarySize = isMobile ? "h-14 w-14" : "h-12 w-12";
+  const iconSize = isMobile ? "h-10 w-10" : "h-8 w-8";
+  const smallIconSize = isMobile ? "h-5 w-5" : "h-4 w-4";
+
   if (!isSupported) {
     return (
       <Button
         variant="outline"
         size="lg"
         disabled
-        className="h-16 w-16 rounded-full glass-card"
+        className={cn("rounded-full glass-card", isMobile ? "h-20 w-20" : "h-16 w-16")}
       >
         <MicOff className="h-6 w-6 text-muted-foreground" />
       </Button>
@@ -36,7 +45,7 @@ export function MicButton({
   }
 
   return (
-    <div className="relative flex items-center gap-3">
+    <div className={cn("relative flex items-center", isMobile ? "gap-4" : "gap-3")}>
       {/* Stop Button - visible when recording */}
       <AnimatePresence>
         {isRecording && onStop && (
@@ -51,12 +60,13 @@ export function MicButton({
               size="lg"
               variant="ghost"
               className={cn(
-                "h-12 w-12 rounded-full",
+                "rounded-full touch-manipulation",
+                secondarySize,
                 "bg-destructive/20 border border-destructive/40",
-                "hover:bg-destructive/30 transition-all"
+                "hover:bg-destructive/30 active:scale-95 transition-all"
               )}
             >
-              <Square className="h-4 w-4 text-destructive fill-destructive" />
+              <Square className={cn(smallIconSize, "text-destructive fill-destructive")} />
             </Button>
           </motion.div>
         )}
@@ -74,17 +84,18 @@ export function MicButton({
           disabled={isProcessing}
           size="lg"
           className={cn(
-            "relative h-20 w-20 rounded-full transition-all duration-500",
+            "relative rounded-full transition-all duration-500 touch-manipulation",
+            mainSize,
             "border-2 backdrop-blur-sm",
             isRecording
-              ? "bg-destructive border-destructive/50 hover:bg-destructive/90 mic-pulse"
-              : "bg-gradient-to-br from-primary to-secondary border-primary/30 hover:scale-105 shadow-glow"
+              ? "bg-destructive border-destructive/50 hover:bg-destructive/90 active:scale-95 mic-pulse"
+              : "bg-gradient-to-br from-primary to-secondary border-primary/30 hover:scale-105 active:scale-95 shadow-glow"
           )}
         >
           {isRecording ? (
-            <Square className="h-6 w-6 fill-current text-destructive-foreground" />
+            <Square className={cn("fill-current text-destructive-foreground", isMobile ? "h-7 w-7" : "h-6 w-6")} />
           ) : (
-            <Mic className="h-8 w-8 text-primary-foreground drop-shadow-lg" />
+            <Mic className={cn("text-primary-foreground drop-shadow-lg", iconSize)} />
           )}
         </Button>
         
@@ -108,17 +119,18 @@ export function MicButton({
               size="lg"
               variant="ghost"
               className={cn(
-                "h-12 w-12 rounded-full",
+                "rounded-full touch-manipulation",
+                secondarySize,
                 isPaused 
                   ? "bg-accent/20 border border-accent/40 hover:bg-accent/30"
                   : "bg-warning/20 border border-warning/40 hover:bg-warning/30",
-                "transition-all"
+                "active:scale-95 transition-all"
               )}
             >
               {isPaused ? (
-                <Play className="h-4 w-4 text-accent" />
+                <Play className={cn(smallIconSize, "text-accent")} />
               ) : (
-                <Pause className="h-4 w-4 text-warning" />
+                <Pause className={cn(smallIconSize, "text-warning")} />
               )}
             </Button>
           </motion.div>

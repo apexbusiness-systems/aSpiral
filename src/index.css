@@ -568,3 +568,82 @@
     box-shadow: 0 0 60px hsl(var(--primary) / 0.6);
   }
 }
+
+/* ===== MOBILE EXPERIENCE ENHANCEMENTS ===== */
+
+/* Touch-friendly tap targets (minimum 44px) */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS safe area padding */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Prevent text selection during swipe */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Mobile-optimized scrolling */
+.scroll-smooth-mobile {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Haptic feedback simulation via scale */
+.haptic-tap:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Mobile bottom sheet handle */
+.bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 2px;
+  margin: 8px auto 16px;
+}
+
+/* Improved skeleton animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Loading pulse with gradient */
+@keyframes loading-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.loading-pulse {
+  animation: loading-pulse 1.5s ease-in-out infinite;
+}
