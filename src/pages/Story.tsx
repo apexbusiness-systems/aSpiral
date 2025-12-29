@@ -71,7 +71,7 @@ const Story = () => {
               </div>
               <p className="text-muted-foreground leading-relaxed m-0">
                 My coping mechanism? Building things. When my mind spirals, my hands build. 
-                It's how I've always processed chaos—by creating order somewhere else.
+                It's how I've always processed chaos, by creating order somewhere else.
               </p>
               <p className="text-muted-foreground leading-relaxed mt-4 m-0">
                 So I asked myself: what if I could build something that does what I need right now? 
