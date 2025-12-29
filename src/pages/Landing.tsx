@@ -21,7 +21,7 @@ const Landing = () => {
       <header className="relative z-10 border-b border-border/30 backdrop-blur-sm">
         <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={aspiralLogo} alt="aSpiral" className="h-8" />
+            <img src={aspiralLogo} alt="aSpiral" className="h-[2.3rem]" />
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a>
