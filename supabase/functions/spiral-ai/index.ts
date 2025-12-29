@@ -1,9 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { moderateContent, SAFE_RESPONSES, type ModerationResult } from "./content-guard.ts";
+import { checkRateLimit, checkSessionLimit, type RateLimitResult } from "./rate-limiter.ts";
+import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
 
 // =============================================================================
-// PHASE 3: AI GUARDRAILS - Enterprise-Grade Validation & Security
+// PHASE 4: FULL GUARDRAILS - Content Moderation, Rate Limiting, Compliance
 // =============================================================================
 
 const corsHeaders = {
@@ -289,6 +292,8 @@ Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`;
 interface RequestBody {
   transcript: string;
   userTier?: string;
+  userId?: string;
+  sessionId?: string;
   ultraFast?: boolean;
   sessionContext?: {
     entities?: Array<{ type: string; label: string }>;
@@ -302,11 +307,24 @@ interface RequestBody {
 }
 
 // =============================================================================
+// GENERATE REQUEST ID
+// =============================================================================
+
+function generateRequestId(): string {
+  return `req_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
 serve(async (req) => {
   const startTime = Date.now();
+  const requestId = generateRequestId();
+  
+  // Detect jurisdiction for compliance
+  const jurisdiction = detectJurisdiction(req);
+  const complianceLogger = new ComplianceLogger(requestId, jurisdiction);
   
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -315,6 +333,7 @@ serve(async (req) => {
   try {
     if (!LOVABLE_API_KEY) {
       console.error("[SPIRAL-AI] LOVABLE_API_KEY not configured");
+      complianceLogger.log("ERROR_OCCURRED", { errorCode: "CONFIG_ERROR", errorMessage: "API key not configured" });
       throw new Error("API key not configured");
     }
 
@@ -323,16 +342,157 @@ serve(async (req) => {
       transcript, 
       sessionContext, 
       stagePrompt,
-      ultraFast = false 
+      ultraFast = false,
+      userTier = "free",
+      userId = "anonymous",
+      sessionId = "default",
     } = body;
     
+    complianceLogger.log("REQUEST_RECEIVED", {
+      sessionHash: `h:${sessionId.substring(0, 8)}`,
+      contentLength: transcript.length,
+    });
+
     // =======================================================================
-    // PHASE 3: PII REDACTION - Sanitize before sending to LLM
+    // LAYER 1: RATE LIMITING - Multi-tier with abuse detection
+    // =======================================================================
+    const rateLimitResult = checkRateLimit(userId, userTier, transcript.length);
+    
+    complianceLogger.log("RATE_LIMIT_CHECK", {
+      rateLimitStatus: rateLimitResult.allowed ? "ALLOWED" : "LIMITED",
+      currentUsage: rateLimitResult.currentUsage,
+    });
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`[SPIRAL-AI] 🚫 Rate limited: ${rateLimitResult.reason}`, {
+        userId,
+        tier: userTier,
+        usage: rateLimitResult.currentUsage,
+      });
+      
+      return new Response(
+        JSON.stringify({
+          error: SAFE_RESPONSES.RATE_LIMITED.message,
+          retryAfter: rateLimitResult.retryAfterSeconds,
+          upgradePrompt: rateLimitResult.upgradePrompt,
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimitResult.retryAfterSeconds || 60),
+            "X-RateLimit-Limit": String(rateLimitResult.limits.requestsPerMinute),
+            "X-RateLimit-Remaining": String(Math.max(0, rateLimitResult.limits.requestsPerMinute - rateLimitResult.currentUsage.minute)),
+          } 
+        }
+      );
+    }
+
+    // =======================================================================
+    // LAYER 2: SESSION PROMPT CAP - Per-session limits with upgrade hooks
+    // =======================================================================
+    const sessionLimitResult = checkSessionLimit(sessionId, userTier);
+    
+    if (!sessionLimitResult.allowed) {
+      console.warn(`[SPIRAL-AI] 📊 Session limit reached`, {
+        sessionId,
+        count: sessionLimitResult.count,
+        limit: sessionLimitResult.limit,
+      });
+      
+      return new Response(
+        JSON.stringify({
+          error: SAFE_RESPONSES.QUOTA_EXCEEDED.message,
+          upgradePrompt: sessionLimitResult.upgradePrompt,
+          promptCount: sessionLimitResult.count,
+          promptLimit: sessionLimitResult.limit,
+        }),
+        { 
+          status: 402, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    // =======================================================================
+    // LAYER 3: CONTENT MODERATION - Multi-jurisdiction compliance
+    // =======================================================================
+    const moderationResult = moderateContent(transcript, requestId, jurisdiction);
+    
+    complianceLogger.log("CONTENT_MODERATED", {
+      moderationDecision: moderationResult.auditLog.decision,
+      moderationCategory: moderationResult.category,
+      moderationSeverity: moderationResult.severity,
+      contentHash: moderationResult.auditLog.contentHash,
+    });
+    
+    if (!moderationResult.allowed) {
+      console.warn(`[SPIRAL-AI] 🛡️ Content blocked: ${moderationResult.category}`, {
+        requestId,
+        severity: moderationResult.severity,
+        action: moderationResult.action,
+      });
+      
+      complianceLogger.log("BLOCKED_CONTENT", {
+        moderationCategory: moderationResult.category,
+        moderationSeverity: moderationResult.severity,
+      });
+      
+      // Return appropriate safe response
+      let safeResponse = SAFE_RESPONSES.BLOCKED_GENERAL;
+      if (moderationResult.action === "REDIRECT_RESOURCES") {
+        return new Response(
+          JSON.stringify({
+            error: SAFE_RESPONSES.REDIRECT_CRISIS.message,
+            resources: moderationResult.resources,
+            blocked: true,
+            category: "CRISIS_SUPPORT",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (moderationResult.category?.includes("VIOLENCE")) {
+        safeResponse = SAFE_RESPONSES.BLOCKED_VIOLENCE;
+      } else if (moderationResult.category?.includes("ILLEGAL") || 
+                 moderationResult.category?.includes("DRUG") ||
+                 moderationResult.category?.includes("CRIME")) {
+        safeResponse = SAFE_RESPONSES.BLOCKED_ILLEGAL;
+      }
+      
+      return new Response(
+        JSON.stringify({
+          entities: [],
+          connections: [],
+          question: safeResponse.suggestion || "",
+          response: safeResponse.message,
+          blocked: true,
+          category: moderationResult.category,
+        }),
+        { 
+          status: 200, // Return 200 with safe response, not error
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "X-Content-Blocked": "true",
+            "X-Block-Category": moderationResult.category || "POLICY_VIOLATION",
+          } 
+        }
+      );
+    }
+    
+    // =======================================================================
+    // LAYER 4: PII REDACTION - Sanitize before sending to LLM
     // =======================================================================
     const { redacted: sanitizedTranscript, piiFound } = redactPII(transcript);
     
     if (piiFound.length > 0) {
       console.log("[SPIRAL-AI] 🔒 PII redacted:", piiFound.join(", "));
+      complianceLogger.log("PII_REDACTED", {
+        piiTypesFound: piiFound,
+        containsPII: true,
+      });
     }
     
     const questionsAsked = sessionContext?.questionsAsked || 0;
