@@ -50,7 +50,7 @@ const Story = () => {
                 <h2 className="font-display text-xl font-semibold m-0">The Spiral</h2>
               </div>
               <p className="text-muted-foreground leading-relaxed m-0">
-                I'm JR. I was spiraling. Not the casual kind—the kind where your thoughts 
+                I'm JR. I was spiraling. Not the casual kind, but the kind where your thoughts 
                 loop endlessly, where every solution creates three new problems, where clarity 
                 feels impossible.
               </p>
@@ -131,7 +131,7 @@ const Story = () => {
                 who needs it.
               </p>
               <p className="text-foreground font-medium">
-                If you're spiraling right now—I see you. I was you. 
+                If you're spiraling right now, I see you. I was you. 
                 Let's find your breakthrough together.
               </p>
             </section>
@@ -153,7 +153,7 @@ const Story = () => {
           {/* Signature */}
           <footer className="mt-16 pt-8 border-t border-border/20 text-center">
             <p className="text-muted-foreground">
-              — JR
+              JR
               <br />
               <span className="text-sm">Founder & CEO, ASPIRAL</span>
               <br />
