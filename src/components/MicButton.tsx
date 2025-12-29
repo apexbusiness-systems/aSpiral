@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCallback, useRef, useState } from "react";
 
 interface MicButtonProps {
   isRecording: boolean;
@@ -25,11 +26,42 @@ export function MicButton({
 }: MicButtonProps) {
   const isMobile = useIsMobile();
   
+  // Local pressed state for instant visual feedback
+  const [isMainPressed, setIsMainPressed] = useState(false);
+  const [isStopPressed, setIsStopPressed] = useState(false);
+  const [isPausePressed, setIsPausePressed] = useState(false);
+  
+  // Debounce protection
+  const lastClickRef = useRef<number>(0);
+  const DEBOUNCE_MS = 200;
+  
   // Larger touch targets on mobile
   const mainSize = isMobile ? "h-24 w-24" : "h-20 w-20";
   const secondarySize = isMobile ? "h-14 w-14" : "h-12 w-12";
   const iconSize = isMobile ? "h-10 w-10" : "h-8 w-8";
   const smallIconSize = isMobile ? "h-5 w-5" : "h-4 w-4";
+
+  // Debounced click handlers for reliability
+  const handleMainClick = useCallback(() => {
+    const now = Date.now();
+    if (now - lastClickRef.current < DEBOUNCE_MS) return;
+    lastClickRef.current = now;
+    onClick();
+  }, [onClick]);
+
+  const handleStopClick = useCallback(() => {
+    const now = Date.now();
+    if (now - lastClickRef.current < DEBOUNCE_MS) return;
+    lastClickRef.current = now;
+    onStop?.();
+  }, [onStop]);
+
+  const handlePauseClick = useCallback(() => {
+    const now = Date.now();
+    if (now - lastClickRef.current < DEBOUNCE_MS) return;
+    lastClickRef.current = now;
+    onPause?.();
+  }, [onPause]);
 
   if (!isSupported) {
     return (
@@ -53,17 +85,21 @@ export function MicButton({
             initial={{ opacity: 0, scale: 0.8, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.8, x: 20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
           >
             <Button
-              onClick={onStop}
+              onClick={handleStopClick}
+              onPointerDown={() => setIsStopPressed(true)}
+              onPointerUp={() => setIsStopPressed(false)}
+              onPointerLeave={() => setIsStopPressed(false)}
               size="lg"
               variant="ghost"
               className={cn(
-                "rounded-full touch-manipulation",
+                "rounded-full touch-manipulation select-none",
                 secondarySize,
                 "bg-destructive/20 border border-destructive/40",
-                "hover:bg-destructive/30 active:scale-95 transition-all"
+                "hover:bg-destructive/30 transition-transform duration-75",
+                isStopPressed ? "scale-90" : "scale-100"
               )}
             >
               <Square className={cn(smallIconSize, "text-destructive fill-destructive")} />
@@ -80,16 +116,20 @@ export function MicButton({
         )}
         
         <Button
-          onClick={onClick}
+          onClick={handleMainClick}
+          onPointerDown={() => setIsMainPressed(true)}
+          onPointerUp={() => setIsMainPressed(false)}
+          onPointerLeave={() => setIsMainPressed(false)}
           disabled={isProcessing}
           size="lg"
           className={cn(
-            "relative rounded-full transition-all duration-500 touch-manipulation",
+            "relative rounded-full transition-transform duration-75 touch-manipulation select-none",
             mainSize,
             "border-2 backdrop-blur-sm",
             isRecording
-              ? "bg-destructive border-destructive/50 hover:bg-destructive/90 active:scale-95 mic-pulse"
-              : "bg-gradient-to-br from-primary to-secondary border-primary/30 hover:scale-105 active:scale-95 shadow-glow"
+              ? "bg-destructive border-destructive/50 hover:bg-destructive/90 mic-pulse"
+              : "bg-gradient-to-br from-primary to-secondary border-primary/30 shadow-glow",
+            isMainPressed ? "scale-90" : "scale-100"
           )}
         >
           {isRecording ? (
@@ -112,19 +152,23 @@ export function MicButton({
             initial={{ opacity: 0, scale: 0.8, x: -20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.8, x: -20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
           >
             <Button
-              onClick={onPause}
+              onClick={handlePauseClick}
+              onPointerDown={() => setIsPausePressed(true)}
+              onPointerUp={() => setIsPausePressed(false)}
+              onPointerLeave={() => setIsPausePressed(false)}
               size="lg"
               variant="ghost"
               className={cn(
-                "rounded-full touch-manipulation",
+                "rounded-full touch-manipulation select-none",
                 secondarySize,
                 isPaused 
                   ? "bg-accent/20 border border-accent/40 hover:bg-accent/30"
                   : "bg-warning/20 border border-warning/40 hover:bg-warning/30",
-                "active:scale-95 transition-all"
+                "transition-transform duration-75",
+                isPausePressed ? "scale-90" : "scale-100"
               )}
             >
               {isPaused ? (

@@ -1,7 +1,8 @@
-import { Home, Mic, History, Settings } from "lucide-react";
+import { Home, Mic, History, Settings, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCallback, useRef, useState } from "react";
 
 interface MobileNavProps {
   activeTab: "home" | "record" | "history" | "settings";
@@ -19,6 +20,18 @@ const tabs = [
 
 export function MobileNav({ activeTab, onTabChange, isRecording, className }: MobileNavProps) {
   const isMobile = useIsMobile();
+  const [pressedTab, setPressedTab] = useState<string | null>(null);
+  
+  // Debounce protection for reliable taps
+  const lastTapRef = useRef<number>(0);
+  const DEBOUNCE_MS = 150;
+
+  const handleTabPress = useCallback((tabId: typeof tabs[number]["id"]) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < DEBOUNCE_MS) return;
+    lastTapRef.current = now;
+    onTabChange(tabId);
+  }, [onTabChange]);
 
   if (!isMobile) return null;
 
@@ -35,15 +48,20 @@ export function MobileNav({ activeTab, onTabChange, isRecording, className }: Mo
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const isRecordTab = tab.id === "record";
+          const isPressed = pressedTab === tab.id;
 
           return (
             <button
               key={tab.id}
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => handleTabPress(tab.id)}
+              onPointerDown={() => setPressedTab(tab.id)}
+              onPointerUp={() => setPressedTab(null)}
+              onPointerLeave={() => setPressedTab(null)}
               className={cn(
                 "relative flex flex-col items-center justify-center gap-1 flex-1 h-full",
-                "transition-colors touch-manipulation",
-                isActive ? "text-primary" : "text-muted-foreground"
+                "transition-transform duration-75 touch-manipulation select-none",
+                isActive ? "text-primary" : "text-muted-foreground",
+                isPressed ? "scale-90" : "scale-100"
               )}
             >
               {/* Recording pulse indicator */}
@@ -65,10 +83,16 @@ export function MobileNav({ activeTab, onTabChange, isRecording, className }: Mo
                   isActive && !isRecording && "bg-primary/10"
                 )}
               >
-                <tab.icon className="w-5 h-5" />
+                {isRecordTab && isRecording ? (
+                  <Square className="w-5 h-5 fill-current" />
+                ) : (
+                  <tab.icon className="w-5 h-5" />
+                )}
               </div>
 
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-[10px] font-medium">
+                {isRecordTab && isRecording ? "Stop" : tab.label}
+              </span>
 
               {/* Active indicator */}
               {isActive && (
@@ -85,3 +109,4 @@ export function MobileNav({ activeTab, onTabChange, isRecording, className }: Mo
     </nav>
   );
 }
+

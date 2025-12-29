@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { SpiralChat } from "@/components/SpiralChat";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +7,7 @@ import { BreakthroughOverlay } from "@/components/effects/BreakthroughOverlay";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { MobileNav } from "@/components/MobileNav";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSessionStore } from "@/stores/sessionStore";
 import aspiralLogo from "@/assets/aspiral-logo.png";
 
 type MobileTab = "home" | "record" | "history" | "settings";
@@ -15,9 +16,12 @@ const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<MobileTab>("home");
-  const [isRecording, setIsRecording] = useState(false);
+  const [externalRecordingTrigger, setExternalRecordingTrigger] = useState<number>(0);
+  
+  // Get recording state from session store (shared with SpiralChat)
+  const isRecording = useSessionStore((state) => state.isRecording);
 
-  const handleTabChange = (tab: MobileTab) => {
+  const handleTabChange = useCallback((tab: MobileTab) => {
     setActiveTab(tab);
     
     // Navigate based on tab
@@ -29,13 +33,13 @@ const Index = () => {
         // Could open settings modal or navigate
         break;
       case "record":
-        // Toggle recording state - will be connected to SpiralChat
-        setIsRecording((prev) => !prev);
+        // Trigger recording toggle in SpiralChat via increment
+        setExternalRecordingTrigger(prev => prev + 1);
         break;
       default:
         break;
     }
-  };
+  }, [navigate]);
 
   return (
     <div className="app-container flex min-h-screen flex-col">
@@ -69,7 +73,7 @@ const Index = () => {
 
       {/* Main Chat Area - add bottom padding on mobile for nav */}
       <main className={`relative z-10 flex-1 ${isMobile ? 'pb-16' : ''}`}>
-        <SpiralChat />
+        <SpiralChat externalRecordingTrigger={externalRecordingTrigger} />
       </main>
 
       {/* Mobile Navigation */}
@@ -85,3 +89,4 @@ const Index = () => {
 };
 
 export default Index;
+

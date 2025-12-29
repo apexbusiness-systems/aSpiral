@@ -29,7 +29,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { OmniLinkAdapter } from "@/integrations/omnilink";
 
-export function SpiralChat() {
+interface SpiralChatProps {
+  externalRecordingTrigger?: number;
+}
+
+export function SpiralChat({ externalRecordingTrigger = 0 }: SpiralChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [input, setInput] = useState("");
@@ -40,6 +44,7 @@ export function SpiralChat() {
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
   
   // Session persistence
   const { 
@@ -204,7 +209,7 @@ export function SpiralChat() {
     }
   };
 
-  const handleMicToggle = () => {
+  const handleMicToggle = useCallback(() => {
     if (isRecording) {
       stopRecording();
     } else {
@@ -212,7 +217,17 @@ export function SpiralChat() {
       dismissQuestion();
       toggleRecording();
     }
-  };
+  }, [isRecording, stopRecording, trackFeature, dismissQuestion, toggleRecording]);
+
+  // Handle external recording trigger (from MobileNav)
+  const prevTriggerRef = useRef(externalRecordingTrigger);
+  useEffect(() => {
+    if (externalRecordingTrigger !== prevTriggerRef.current) {
+      prevTriggerRef.current = externalRecordingTrigger;
+      // Toggle recording when MobileNav record button is tapped
+      handleMicToggle();
+    }
+  }, [externalRecordingTrigger, handleMicToggle]);
 
 
   const addTestEntities = () => {
