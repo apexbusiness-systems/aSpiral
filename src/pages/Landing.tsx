@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Play, Sparkles, ArrowRight } from "lucide-react";
 import demoVideo from "@/assets/demo-video.mp4";
 import aspiralLogo from "@/assets/aspiral-logo.png";
+import visualizeIcon from "@/assets/visualize-icon.png";
 
 const Landing = () => {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
@@ -105,7 +106,7 @@ const Landing = () => {
               },
               {
                 step: 2,
-                emoji: "🌀",
+                customIcon: visualizeIcon,
                 title: "Watch it visualize",
                 description: "Your thoughts become 3D objects you can see and understand.",
               },
@@ -129,7 +130,13 @@ const Landing = () => {
                 <div className="absolute -top-4 left-6 w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary">
                   {item.step}
                 </div>
-                <div className="text-4xl mb-4 pt-2">{item.emoji}</div>
+                <div className="mb-4 pt-2">
+                  {item.customIcon ? (
+                    <img src={item.customIcon} alt={item.title} className="w-10 h-10" />
+                  ) : (
+                    <span className="text-4xl">{item.emoji}</span>
+                  )}
+                </div>
                 <h3 className="font-display text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
                   {item.title}
                 </h3>
