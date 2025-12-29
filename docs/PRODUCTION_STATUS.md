@@ -1,7 +1,7 @@
 # aSpiral Production Status Report
 
-**Document Version:** 1.0  
-**Last Updated:** December 28, 2025  
+**Document Version:** 1.1  
+**Last Updated:** December 29, 2025  
 **Confidential - For Investor Review**
 
 ---
@@ -37,7 +37,7 @@ aSpiral is a voice-first decision intelligence platform that transforms mental s
 ## Product Overview
 
 ### Vision Statement
-*"From Spiralling to Aspiring"* — aSpiral transforms the anxiety of decision paralysis into the clarity of purposeful action.
+*"From Spiraling to Aspiring"* — aSpiral transforms the anxiety of decision paralysis into the clarity of purposeful action.
 
 ### Problem Statement
 - **78% of adults** report feeling overwhelmed by major life decisions
