@@ -19,22 +19,22 @@
     --spiral-bg-start: 271 63% 11%;
     --spiral-bg-mid: 271 45% 23%;
     --spiral-bg-end: 271 40% 30%;
-    --spiral-accent: 340 100% 71%;
+    --spiral-accent: 280 85% 65%;
     --spiral-glow: 292 91% 58%;
 
     /* ===== PROCESSING STATE (working through it) ===== */
-    --process-bg-start: 244 44% 20%;
-    --process-bg-mid: 244 50% 34%;
-    --process-bg-end: 245 58% 51%;
-    --process-accent: 45 93% 56%;
-    --process-glow: 234 89% 74%;
+    --process-bg-start: 271 44% 15%;
+    --process-bg-mid: 280 50% 30%;
+    --process-bg-end: 50 90% 55%;
+    --process-accent: 50 95% 55%;
+    --process-glow: 280 80% 65%;
 
     /* ===== ASPIRATION STATE (clarity, breakthrough) ===== */
-    --aspire-bg-start: 200 43% 9%;
-    --aspire-bg-mid: 209 52% 24%;
-    --aspire-bg-end: 197 45% 34%;
-    --aspire-accent: 160 64% 52%;
-    --aspire-glow: 156 72% 67%;
+    --aspire-bg-start: 280 50% 15%;
+    --aspire-bg-mid: 50 70% 45%;
+    --aspire-bg-end: 50 85% 55%;
+    --aspire-accent: 50 95% 60%;
+    --aspire-glow: 50 100% 70%;
 
     /* Core tokens - defaults to SPIRAL state */
     --background: var(--spiral-bg-start);
@@ -46,16 +46,16 @@
     --popover: 271 45% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: var(--spiral-accent);
+    --primary: 280 85% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: var(--process-accent);
+    --secondary: 50 95% 55%;
     --secondary-foreground: 271 63% 11%;
 
     --muted: 271 30% 20%;
     --muted-foreground: 0 0% 65%;
 
-    --accent: var(--aspire-accent);
+    --accent: 50 95% 60%;
     --accent-foreground: 0 0% 5%;
 
     --success: 160 64% 52%;
@@ -352,17 +352,17 @@
   /* Gradient Text */
   .text-gradient-spiral {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--spiral-accent)), hsl(var(--spiral-glow)));
+    background-image: linear-gradient(135deg, hsl(280 85% 65%), hsl(50 95% 55%));
   }
 
   .text-gradient-breakthrough {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--aspire-accent)), hsl(var(--aspire-glow)));
+    background-image: linear-gradient(135deg, hsl(280 80% 60%), hsl(50 100% 60%));
   }
 
   .text-gradient-gold {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--process-accent)), hsl(45 100% 70%));
+    background-image: linear-gradient(135deg, hsl(50 95% 55%), hsl(50 100% 70%));
   }
 
   /* Ambient Orb Background Effect - simplified */
