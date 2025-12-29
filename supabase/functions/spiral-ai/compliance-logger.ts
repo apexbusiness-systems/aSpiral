@@ -212,6 +212,14 @@ export interface ComplianceAuditLog {
   // Escalation
   escalated?: boolean;
   escalationReason?: string;
+  
+  // Security validation fields
+  warnings?: string[];
+  errors?: Array<{ message: string }>;
+  riskScore?: number;
+  threatCount?: number;
+  blocked?: boolean;
+  reason?: string;
 }
 
 // =============================================================================

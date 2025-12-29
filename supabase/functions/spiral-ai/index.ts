@@ -381,6 +381,7 @@ serve(async (req) => {
       userTier,
       userId,
       sessionId,
+      forceBreakthrough,
     } = inputValidation.data as ValidatedInput;
     
     complianceLogger.log("REQUEST_RECEIVED", {
