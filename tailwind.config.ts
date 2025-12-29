@@ -22,9 +22,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "system-ui", "sans-serif"],
-        display: ["Inter", "system-ui", "sans-serif"],
-        question: ["Fraunces", "Georgia", "serif"],
+        sans: ["Nunito Sans", "system-ui", "sans-serif"],
+        display: ["Cinzel", "Georgia", "serif"],
+        question: ["Cormorant Garamond", "Georgia", "serif"],
       },
       fontSize: {
         "fluid-xs": "var(--text-xs)",
