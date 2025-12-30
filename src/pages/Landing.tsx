@@ -56,28 +56,24 @@ const Landing = () => {
       customIcon: voiceIcon,
       title: "Voice your chaos",
       description: "Just talk. No typing. Let it all out.",
-      size: "large",
     },
     {
       step: 2,
       customIcon: visualizeIcon,
       title: "Watch it visualize",
       description: "Your thoughts become 3D objects you can see and understand.",
-      size: "normal",
     },
     {
       step: 3,
       customIcon: questionIcon,
       title: "Answer 2-3 questions",
       description: "Not 20. Just what matters. AI finds the core.",
-      size: "normal",
     },
     {
       step: 4,
       customIcon: breakthroughIcon,
       title: "Get your breakthrough",
       description: "Friction → Grease → Insight. From Spiraling to Aspiring.",
-      size: "large",
     },
   ];
 
@@ -360,15 +356,14 @@ const Landing = () => {
             How it works
           </motion.h2>
 
-          {/* Bento Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* 2x2 Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto">
             {steps.map((item, index) => (
               <motion.div
                 key={item.step}
-                className={`relative p-8 rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm 
+                className="relative p-8 lg:p-10 rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm 
                   hover:border-primary/40 hover:bg-card/50 transition-all duration-500 group
-                  hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1
-                  ${item.size === "large" ? "lg:col-span-2 lg:row-span-1" : ""}`}
+                  hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
                 variants={scaleInVariant}
                 initial="hidden"
                 animate={howItWorksInView ? "visible" : "hidden"}
@@ -396,7 +391,7 @@ const Landing = () => {
                 <h3 className="font-display text-xl lg:text-2xl font-semibold mb-3 group-hover:text-primary transition-colors duration-300">
                   {item.title}
                 </h3>
-                <p className="text-muted-foreground text-base leading-relaxed">
+                <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
                   {item.description}
                 </p>
               </motion.div>
