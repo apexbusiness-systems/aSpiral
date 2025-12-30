@@ -15,29 +15,48 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/aspiral-icon.svg"],
+      includeAssets: [
+        "icons/icon.svg",
+        "icons/favicon-32x32.png",
+        "icons/favicon-16x16.png",
+        "icons/apple-touch-icon.png"
+      ],
       manifest: {
         name: "aSpiral - Transform Confusion into Clarity",
         short_name: "aSpiral",
         description: "Voice-first AI coaching that visualizes your thoughts and guides you to breakthrough clarity",
-        theme_color: "#0a0a0f",
-        background_color: "#0a0a0f",
+        theme_color: "#4a1a6b",
+        background_color: "#4a1a6b",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
+        id: "/",
+        scope: "/",
         icons: [
           {
-            src: "/icons/aspiral-icon.svg",
+            src: "/icons/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png"
+          },
+          {
+            src: "/icons/icon-512x512.png",
             sizes: "512x512",
-            type: "image/svg+xml",
-            purpose: "any maskable"
+            type: "image/png"
+          },
+          {
+            src: "/icons/maskable-icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
           }
         ]
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,woff2}"],
-        globIgnores: ["**/demo-video*", "**/icon-512.svg"],
+        globIgnores: ["**/demo-video*", "**/aspiral-heromark*"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api/, /^\/supabase/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -46,6 +65,20 @@ export default defineConfig(({ mode }) => ({
               cacheName: "google-fonts-cache",
               expiration: {
                 maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-webfonts",
+              expiration: {
+                maxEntries: 30,
                 maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
