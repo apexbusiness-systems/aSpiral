@@ -567,10 +567,10 @@ const Landing = () => {
           <div className="text-muted-foreground/60 text-sm text-center md:text-right space-y-1">
             <p>Built during a breakdown • Edmonton, AB</p>
             <a 
-              href="mailto:founders@aspiral.icu" 
+              href="mailto:info-outreach@aspiral.icu" 
               className="hover:text-foreground transition-colors inline-block"
             >
-              founders@aspiral.icu
+              info-outreach@aspiral.icu
             </a>
           </div>
         </div>
