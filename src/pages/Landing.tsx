@@ -270,10 +270,21 @@ const Landing = () => {
                     className="absolute -bottom-1 md:-bottom-2 lg:-bottom-3 left-0 w-full h-3 md:h-4 lg:h-5" 
                     viewBox="0 0 200 16" 
                     preserveAspectRatio="none"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: 1.5, delay: 0.8, ease: "easeInOut" }}
-                    style={{ filter: "drop-shadow(0 0 8px hsl(var(--primary)/0.8))" }}
+                    initial={{ pathLength: 0, opacity: 0, filter: "drop-shadow(0 0 6px hsl(var(--primary)/0.6))" }}
+                    animate={{ 
+                      pathLength: 1, 
+                      opacity: 1,
+                      filter: [
+                        "drop-shadow(0 0 6px hsl(var(--primary)/0.6))",
+                        "drop-shadow(0 0 14px hsl(var(--primary)/0.9))",
+                        "drop-shadow(0 0 6px hsl(var(--primary)/0.6))"
+                      ]
+                    }}
+                    transition={{ 
+                      pathLength: { duration: 1.5, delay: 0.8, ease: "easeInOut" },
+                      opacity: { duration: 1.5, delay: 0.8, ease: "easeInOut" },
+                      filter: { duration: 2.5, delay: 2.3, repeat: Infinity, ease: "easeInOut" }
+                    }}
                   >
                     <motion.path 
                       d="M0,8 Q50,16 100,8 T200,8" 
