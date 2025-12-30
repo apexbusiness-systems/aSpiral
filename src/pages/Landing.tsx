@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Play, Sparkles, ArrowRight } from "lucide-react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import demoVideo from "@/assets/demo-video.mp4";
 import aspiralLogo from "@/assets/aspiral-logo.png";
 import heromark from "@/assets/aspiral-heromark.svg";
@@ -46,6 +46,10 @@ const Landing = () => {
   const howItWorksRef = useRef(null);
   const storyRef = useRef(null);
   const ctaRef = useRef(null);
+  
+  // Parallax scroll effect for heromark
+  const { scrollY } = useScroll();
+  const heroParallax = useTransform(scrollY, [0, 500], [0, -80]);
   
   const howItWorksInView = useInView(howItWorksRef, { once: true, margin: "-100px" });
   const storyInView = useInView(storyRef, { once: true, margin: "-100px" });
@@ -341,12 +345,13 @@ const Landing = () => {
               </motion.p>
             </motion.div>
 
-            {/* Right: Heromark */}
+            {/* Right: Heromark with Parallax */}
             <motion.div 
               className="flex items-center justify-center lg:justify-end"
               initial={{ opacity: 0, scale: 0.9, x: 50 }}
               animate={{ opacity: 1, scale: 1, x: 0 }}
               transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
+              style={{ y: heroParallax }}
             >
               <motion.img 
                 src={heromark} 
