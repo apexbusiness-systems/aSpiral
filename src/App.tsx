@@ -17,6 +17,10 @@ import ApiKeys from "./pages/ApiKeys";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotificationTest from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
+import VoiceYourChaos from "./pages/steps/VoiceYourChaos";
+import WatchItVisualize from "./pages/steps/WatchItVisualize";
+import AnswerQuestions from "./pages/steps/AnswerQuestions";
+import GetBreakthrough from "./pages/steps/GetBreakthrough";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +36,10 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/story" element={<Story />} />
+              <Route path="/steps/voice" element={<VoiceYourChaos />} />
+              <Route path="/steps/visualize" element={<WatchItVisualize />} />
+              <Route path="/steps/questions" element={<AnswerQuestions />} />
+              <Route path="/steps/breakthrough" element={<GetBreakthrough />} />
               <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
               <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />

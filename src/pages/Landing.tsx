@@ -61,24 +61,28 @@ const Landing = () => {
       customIcon: voiceIcon,
       title: "Voice your chaos",
       description: "Just talk. No typing. Let it all out.",
+      link: "/steps/voice",
     },
     {
       step: 2,
       customIcon: visualizeIcon,
       title: "Watch it visualize",
       description: "Your thoughts become 3D objects you can see and understand.",
+      link: "/steps/visualize",
     },
     {
       step: 3,
       customIcon: questionIcon,
       title: "Answer 2-3 questions",
       description: "Not 20. Just what matters. AI finds the core.",
+      link: "/steps/questions",
     },
     {
       step: 4,
       customIcon: breakthroughIcon,
       title: "Get your breakthrough",
       description: "Friction → Grease → Insight. From Spiraling to Aspiring.",
+      link: "/steps/breakthrough",
     },
   ];
 
@@ -450,42 +454,49 @@ const Landing = () => {
           {/* 2x2 Grid Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto">
             {steps.map((item, index) => (
-              <motion.div
-                key={item.step}
-                className="relative p-8 lg:p-10 rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm 
-                  hover:border-primary/40 hover:bg-card/50 transition-all duration-500 group
-                  hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
-                variants={scaleInVariant}
-                initial="hidden"
-                animate={howItWorksInView ? "visible" : "hidden"}
-                custom={index * 0.1}
-              >
-                {/* Step Number */}
-                <div className="absolute -top-4 left-8 w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-base font-bold text-primary group-hover:bg-primary/30 group-hover:border-primary/60 transition-all duration-300">
-                  {item.step}
-                </div>
-                
-                {/* Icon */}
-                <motion.div 
-                  className="mb-6 pt-4"
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ type: "spring", stiffness: 400 }}
+              <Link to={item.link} key={item.step}>
+                <motion.div
+                  className="relative p-8 lg:p-10 rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm 
+                    hover:border-primary/40 hover:bg-card/50 transition-all duration-500 group cursor-pointer
+                    hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
+                  variants={scaleInVariant}
+                  initial="hidden"
+                  animate={howItWorksInView ? "visible" : "hidden"}
+                  custom={index * 0.1}
                 >
-                  <img 
-                    src={item.customIcon} 
-                    alt={item.title} 
-                    className="w-14 h-14 lg:w-16 lg:h-16 opacity-90 group-hover:opacity-100 transition-opacity" 
-                  />
+                  {/* Step Number */}
+                  <div className="absolute -top-4 left-8 w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-base font-bold text-primary group-hover:bg-primary/30 group-hover:border-primary/60 transition-all duration-300">
+                    {item.step}
+                  </div>
+                  
+                  {/* Icon */}
+                  <motion.div 
+                    className="mb-6 pt-4"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                  >
+                    <img 
+                      src={item.customIcon} 
+                      alt={item.title} 
+                      className="w-14 h-14 lg:w-16 lg:h-16 opacity-90 group-hover:opacity-100 transition-opacity" 
+                    />
+                  </motion.div>
+                  
+                  {/* Content */}
+                  <h3 className="font-display text-xl lg:text-2xl font-semibold mb-3 group-hover:text-primary transition-colors duration-300">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
+                    {item.description}
+                  </p>
+                  
+                  {/* Learn more hint */}
+                  <div className="mt-4 flex items-center text-sm text-primary/70 group-hover:text-primary transition-colors">
+                    <span>Learn more</span>
+                    <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </motion.div>
-                
-                {/* Content */}
-                <h3 className="font-display text-xl lg:text-2xl font-semibold mb-3 group-hover:text-primary transition-colors duration-300">
-                  {item.title}
-                </h3>
-                <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
-                  {item.description}
-                </p>
-              </motion.div>
+              </Link>
             ))}
           </div>
         </div>
