@@ -83,34 +83,133 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Enhanced Ambient Background */}
+      {/* Aurora Borealis Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Base aurora layers - flowing curtains */}
         <motion.div 
-          className="absolute w-[800px] h-[800px] bg-primary/20 rounded-full blur-[150px] -top-60 -left-60"
+          className="absolute inset-0 aurora-ambient"
+          style={{
+            background: `
+              linear-gradient(135deg, 
+                transparent 0%, 
+                hsl(var(--primary) / 0.08) 20%, 
+                hsl(160 80% 50% / 0.06) 40%, 
+                hsl(var(--secondary) / 0.08) 60%, 
+                transparent 80%
+              )
+            `,
+          }}
+        />
+        
+        {/* Primary aurora curtain - top */}
+        <motion.div 
+          className="absolute -top-20 left-0 right-0 h-[600px] aurora-flow"
+          style={{
+            background: `
+              radial-gradient(ellipse 120% 60% at 30% 0%, 
+                hsl(var(--primary) / 0.25) 0%, 
+                hsl(160 70% 45% / 0.15) 30%, 
+                transparent 70%
+              )
+            `,
+            filter: 'blur(60px)',
+          }}
           animate={{ 
-            scale: [1, 1.1, 1],
-            opacity: [0.2, 0.25, 0.2],
+            opacity: [0.6, 0.8, 0.6],
+            scaleX: [1, 1.05, 1],
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
+        
+        {/* Secondary aurora wave - flowing across */}
         <motion.div 
-          className="absolute w-[700px] h-[700px] bg-secondary/15 rounded-full blur-[120px] top-1/4 -right-40"
+          className="absolute top-0 -left-20 w-[120%] h-[500px] aurora-ambient"
+          style={{
+            background: `
+              radial-gradient(ellipse 80% 50% at 70% 20%, 
+                hsl(180 60% 50% / 0.12) 0%,
+                hsl(var(--primary) / 0.18) 40%, 
+                transparent 70%
+              )
+            `,
+            filter: 'blur(80px)',
+            transformOrigin: 'top right',
+          }}
           animate={{ 
-            scale: [1, 1.15, 1],
-            opacity: [0.15, 0.2, 0.15],
+            opacity: [0.5, 0.7, 0.5],
+            rotate: [-2, 2, -2],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+        />
+        
+        {/* Tertiary aurora shimmer - gold/secondary accent */}
+        <motion.div 
+          className="absolute top-[10%] right-0 w-[60%] h-[400px]"
+          style={{
+            background: `
+              radial-gradient(ellipse 100% 80% at 80% 30%, 
+                hsl(var(--secondary) / 0.15) 0%, 
+                hsl(45 80% 55% / 0.08) 50%,
+                transparent 80%
+              )
+            `,
+            filter: 'blur(70px)',
+          }}
+          animate={{ 
+            opacity: [0.4, 0.6, 0.4],
+            x: [0, 30, 0],
+            y: [0, -20, 0],
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 5 }}
+        />
+
+        {/* Deep aurora glow - bottom accent */}
+        <motion.div 
+          className="absolute bottom-0 left-0 right-0 h-[400px]"
+          style={{
+            background: `
+              linear-gradient(0deg, 
+                hsl(var(--primary) / 0.1) 0%, 
+                hsl(200 70% 50% / 0.05) 50%,
+                transparent 100%
+              )
+            `,
+            filter: 'blur(50px)',
+          }}
+          animate={{ 
+            opacity: [0.3, 0.5, 0.3],
           }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
+
+        {/* Floating orb particles */}
         <motion.div 
-          className="absolute w-[600px] h-[600px] bg-accent/10 rounded-full blur-[100px] -bottom-40 left-1/4"
+          className="absolute w-[600px] h-[600px] bg-primary/15 rounded-full blur-[120px] -top-40 -left-40"
+          animate={{ 
+            scale: [1, 1.15, 1],
+            x: [0, 40, 0],
+            y: [0, -30, 0],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div 
+          className="absolute w-[500px] h-[500px] bg-secondary/12 rounded-full blur-[100px] top-1/3 -right-40"
           animate={{ 
             scale: [1, 1.2, 1],
-            opacity: [0.1, 0.15, 0.1],
+            x: [0, -30, 0],
           }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 4 }}
         />
-        {/* Vignette overlay */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background))_70%)] opacity-60" />
+        
+        {/* Vignette overlay for focus */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background)/0.4)_50%,hsl(var(--background))_100%)]" />
+        
+        {/* Subtle noise texture */}
+        <div className="absolute inset-0 opacity-[0.015] mix-blend-overlay" 
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` 
+          }} 
+        />
       </div>
 
       {/* Header */}
