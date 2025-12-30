@@ -304,7 +304,7 @@ const Landing = () => {
             >
               Turn mental spirals into visual breakthroughs in 5 minutes.
               <br />
-              <span className="text-foreground/70">AI-powered. Voice-first. Built 18 hours ago during a breakdown.</span>
+              <span className="text-foreground/70">AI-powered. Voice-first. Built during a breakdown.</span>
             </motion.p>
 
             {/* CTAs */}
@@ -427,10 +427,10 @@ const Landing = () => {
               animate={storyInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Built in 6 hours.{" "}
-              <span className="text-primary">18 hours ago.</span>
+              Built{" "}
+              <span className="text-primary">during a breakdown.</span>
               <br />
-              <span className="text-muted-foreground">During a breakdown.</span>
+              <span className="text-muted-foreground">Now it's helping others.</span>
             </motion.h2>
 
             {/* Decorative Line */}
@@ -448,7 +448,7 @@ const Landing = () => {
                 animate={storyInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                I'm <span className="text-foreground font-medium">JR</span>. 18 hours ago, I was spiraling from trauma.
+                I'm <span className="text-foreground font-medium">JR</span>. I was spiraling from trauma.
                 <br />
                 My coping mechanism? <span className="italic">Building things.</span>
               </motion.p>
@@ -458,9 +458,9 @@ const Landing = () => {
                 animate={storyInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.6, delay: 0.5 }}
               >
-                6 hours later, <span className="text-primary font-semibold">ASPIRAL</span> existed. I used it on myself.
+                So I built <span className="text-primary font-semibold">ASPIRAL</span>. I used it on myself.
                 <br />
-                <span className="text-secondary font-medium">It worked.</span> Now I'm launching it for others.
+                <span className="text-secondary font-medium">It worked.</span> Now it's helping others do the same.
               </motion.p>
               
               <motion.div
@@ -473,7 +473,7 @@ const Landing = () => {
                   From Spiraling to Aspiring.
                 </p>
                 <p className="text-muted-foreground/80 mt-2">
-                  Less than 24 hours from breakdown to launch.
+                  That's the journey. That's the proof.
                 </p>
               </motion.div>
             </div>
@@ -539,7 +539,7 @@ const Landing = () => {
             <span className="text-muted-foreground text-sm">• aspiral.icu</span>
           </div>
           <div className="text-muted-foreground/60 text-sm text-center md:text-right space-y-1">
-            <p>Built 18 hours ago during a breakdown • Edmonton, AB</p>
+            <p>Built during a breakdown • Edmonton, AB</p>
             <a 
               href="mailto:founders@aspiral.icu" 
               className="hover:text-foreground transition-colors inline-block"
