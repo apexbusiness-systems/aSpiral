@@ -10,6 +10,19 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  // Production optimizations
+  esbuild: {
+    // Strip console.log and debugger in production builds
+    drop: mode === "production" ? ["console", "debugger"] : [],
+  },
+  build: {
+    // Source maps for error tracking in production
+    sourcemap: mode === "production" ? "hidden" : true,
+    // Optimize for production
+    minify: mode === "production" ? "esbuild" : false,
+    // Target modern browsers for smaller bundles
+    target: "es2020",
+  },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
