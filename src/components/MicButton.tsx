@@ -110,9 +110,44 @@ export function MicButton({
 
       {/* Main Mic Button */}
       <div className="relative">
-        {/* Outer glow ring when not recording */}
+        {/* Outer glow ring when not recording - enhanced with dramatic effect */}
         {!isRecording && !isProcessing && (
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-secondary to-accent opacity-20 blur-xl animate-pulse" />
+          <>
+            <motion.div 
+              className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-secondary to-accent blur-xl"
+              animate={{
+                opacity: [0.2, 0.35, 0.2],
+                scale: [1, 1.1, 1],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+            {/* Floating micro-particles around button */}
+            {[...Array(4)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1.5 h-1.5 rounded-full bg-primary/60"
+                style={{
+                  left: `${50 + 45 * Math.cos((i * Math.PI * 2) / 4)}%`,
+                  top: `${50 + 45 * Math.sin((i * Math.PI * 2) / 4)}%`,
+                }}
+                animate={{
+                  y: [0, -8, 0],
+                  opacity: [0.3, 0.7, 0.3],
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{
+                  duration: 2 + i * 0.3,
+                  repeat: Infinity,
+                  delay: i * 0.4,
+                  ease: "easeInOut",
+                }}
+              />
+            ))}
+          </>
         )}
         
         <Button
@@ -128,7 +163,7 @@ export function MicButton({
             "border-2 backdrop-blur-sm",
             isRecording
               ? "bg-destructive border-destructive/50 hover:bg-destructive/90 mic-pulse"
-              : "bg-gradient-to-br from-primary to-secondary border-primary/30 shadow-glow",
+              : "bg-gradient-to-br from-primary to-secondary border-primary/30 shadow-[0_0_40px_hsl(var(--primary)/0.4)]",
             isMainPressed ? "scale-90" : "scale-100"
           )}
         >
@@ -139,9 +174,12 @@ export function MicButton({
           )}
         </Button>
         
-        {/* Recording indicator ring */}
+        {/* Recording indicator ring - enhanced glow */}
         {isRecording && (
-          <div className="absolute -inset-2 rounded-full border-2 border-destructive/50 animate-ping" />
+          <>
+            <div className="absolute -inset-2 rounded-full border-2 border-destructive/50 animate-ping" />
+            <div className="absolute -inset-3 rounded-full bg-destructive/20 blur-md animate-pulse" />
+          </>
         )}
       </div>
 
