@@ -267,7 +267,7 @@ const Landing = () => {
                 <span className="block text-primary relative inline-block">
                   Spiraling
                   <motion.svg 
-                    className="absolute -bottom-4 md:-bottom-6 lg:-bottom-8 left-0 w-full h-4 md:h-6 lg:h-8" 
+                    className="absolute -bottom-1 md:-bottom-2 lg:-bottom-3 left-0 w-full h-3 md:h-4 lg:h-5" 
                     viewBox="0 0 200 16" 
                     preserveAspectRatio="none"
                     initial={{ pathLength: 0, opacity: 0 }}
