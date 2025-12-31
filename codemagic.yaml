@@ -18,6 +18,10 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.apex.aspiral
+        provisioning_profiles:
+          - aSpiral_iOS_AppStoreConnect_2026
+        certificates:
+          - aSpiral_dist_2026
       groups:
         - appstore_credentials
       vars:
@@ -174,6 +178,10 @@ workflows:
       ios_signing:
         distribution_type: development
         bundle_identifier: com.apex.aspiral
+        provisioning_profiles:
+          - aSpiral_iOS_Dev_2026
+        certificates:
+          - aSpiral_Dev_2026
       vars:
         BUNDLE_ID: com.apex.aspiral
         XCODE_WORKSPACE: ios/App/App.xcworkspace
