@@ -12,8 +12,9 @@ export default defineConfig(({ mode }) => ({
   },
   // Production optimizations
   esbuild: {
-    // Strip console.log and debugger in production builds
-    drop: mode === "production" ? ["console", "debugger"] : [],
+    // CRITICAL FIX: Only drop logs/debug, KEEP errors and warnings for mobile debugging
+    pure: mode === "production" ? ["console.log", "console.debug", "console.info"] : [],
+    drop: mode === "production" ? ["debugger"] : [],
   },
   build: {
     // Source maps for error tracking in production
