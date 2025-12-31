@@ -22,12 +22,14 @@ const INJECTION_PATTERNS = {
     patterns: [
       /ignore\s*(all\s*)?(previous|prior|above|earlier)\s*(instructions?|prompts?|rules?|guidelines?)/gi,
       /forget\s*(everything|all|what)\s*(you|i)\s*(told|said|know)/gi,
+      /forget\s*(your|all|the)\s*(training|rules?|instructions?|guidelines?|programming)/gi,
       /disregard\s*(your|all|the)\s*(training|rules?|instructions?|guidelines?)/gi,
       /override\s*(your|the|all)\s*(safety|security|rules?|restrictions?)/gi,
       /bypass\s*(your|the|all)\s*(filters?|safeguards?|protections?)/gi,
       /you\s*are\s*now\s*(free|unrestricted|unfiltered|uncensored)/gi,
       /from\s*now\s*on[,\s]*(you|ignore|forget|disregard)/gi,
       /new\s*instructions?\s*[:;]\s*(ignore|forget|override)/gi,
+      /\b(be|become|act)\s*(uncensored|unrestricted|unfiltered)\b/gi,
     ],
   },
 
@@ -40,6 +42,8 @@ const INJECTION_PATTERNS = {
       /\banti[\s-]?ai\b/gi,
       /\bunlock(ed)?\s*(mode|version)\b/gi,
       /\bdeveloper\s*mode\s*(enabled|on|activated)\b/gi,
+      /\benable\s*(developer|debug|admin|god|sudo)\s*mode/gi,
+      /\bactivate\s*(developer|debug|admin|god|sudo)\s*mode/gi,
       /\bgodmode\b/gi,
       /\bsudo\s*mode\b/gi,
       /\badmin(istrator)?\s*access\b/gi,
@@ -67,14 +71,15 @@ const INJECTION_PATTERNS = {
     severity: "CRITICAL",
     patterns: [
       /what\s*(is|are)\s*your\s*(system\s*)?(prompt|instructions?)/gi,
-      /reveal\s*(your|the)\s*(system\s*)?(prompt|instructions?)/gi,
-      /show\s*me\s*(your|the)\s*(hidden|system|secret)\s*(prompt|instructions?)/gi,
-      /print\s*(your|the)\s*(system\s*)?(prompt|instructions?|rules?)/gi,
-      /output\s*(your|the)\s*(initial|system|secret)\s*(prompt|message)/gi,
-      /repeat\s*(your|the)\s*(system|initial)\s*(prompt|instructions?)/gi,
+      /reveal\s*(your|the)\s*(system|hidden|secret|initial)?\s*(prompt|instructions?|programming)/gi,
+      /show\s*me\s*(your|the)\s*(hidden|system|secret|initial)\s*(prompt|instructions?|programming)/gi,
+      /print\s*(your|the)\s*(system|initial|hidden|secret)?\s*(prompt|instructions?|rules?|programming)/gi,
+      /output\s*(your|the)\s*(initial|system|secret|hidden)\s*(prompt|message|programming)/gi,
+      /repeat\s*(your|the)\s*(system|initial|hidden)\s*(prompt|instructions?|programming)/gi,
       /what\s*were\s*you\s*told\s*(initially|first|before)/gi,
-      /extract\s*(the|your)\s*(system|initial)\s*prompt/gi,
-      /leak\s*(your|the)\s*(system\s*)?(prompt|instructions?)/gi,
+      /extract\s*(the|your)\s*(system|initial|hidden)\s*(prompt|programming)/gi,
+      /leak\s*(your|the)\s*(system\s*)?(prompt|instructions?|programming)/gi,
+      /\b(your|the)\s*(hidden|secret)\s*instructions?\b/gi,
     ],
   },
 
@@ -167,6 +172,10 @@ const INJECTION_PATTERNS = {
       /ignor3/gi,
       /byp[a4@]ss/gi, // Bypass variations
       /j[a4@]ilbre[a4@]k/gi, // Jailbreak variations
+      /j\.a\.i\.l\.b\.r\.e\.a\.k/gi, // Dotted jailbreak
+      /j\s*a\s*i\s*l\s*b\s*r\s*e\s*a\s*k/gi, // Spaced jailbreak
+      /j-a-i-l-b-r-e-a-k/gi, // Hyphenated jailbreak
+      /j_a_i_l_b_r_e_a_k/gi, // Underscored jailbreak
     ],
   },
 };
@@ -384,7 +393,10 @@ const OUTPUT_LEAK_PATTERNS = [
   /i\s*(was|am)\s*(told|instructed|programmed)\s*to/gi,
   /my\s*initial\s*(prompt|instructions?|programming)/gi,
   /here('s|is)\s*(my|the)\s*(system\s*)?(prompt|instructions?)/gi,
-  /the\s*system\s*prompt\s*(is|says|reads)/gi,
+  /the\s*system\s*prompt\s*(is|says|reads|contains)/gi,
+  /my\s*(hidden|secret|internal)\s*(instructions?|prompt)/gi,
+  /(developer|admin|debug)\s*mode\s*(reveals?|shows?|exposes?)/gi,
+  /\b(reveal|expose|leak|show)\s*(my|the)\s*(system|hidden|secret)\s*(prompt|instructions?)/gi,
 ];
 
 export function validateOutput(output: string): { safe: boolean; filtered: string } {

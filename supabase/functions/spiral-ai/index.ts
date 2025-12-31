@@ -20,6 +20,10 @@ const corsHeaders = {
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Production configuration
+const AI_TIMEOUT_MS = 30000; // 30 second timeout for AI gateway
+const ENABLE_DETAILED_ERRORS = Deno.env.get("ENABLE_DETAILED_ERRORS") === "true";
+
 // =============================================================================
 // ZOD SCHEMAS - Strict Output Validation
 // =============================================================================
@@ -118,20 +122,30 @@ async function callAIWithValidation(
       console.log(`[SPIRAL-AI] 🔄 Retry ${attempt}/${MAX_VALIDATION_RETRIES} with validation feedback`);
     }
 
-    const response = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: userContent },
-        ],
-      }),
-    });
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(LOVABLE_AI_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: prompt },
+            { role: "user", content: userContent },
+          ],
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(`AI Gateway error: ${response.status}`);
@@ -700,32 +714,71 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error("[SPIRAL-AI] Error:", error);
-    
-    // Handle specific error types
+    const processingTime = Date.now() - startTime;
+    console.error("[SPIRAL-AI] Error:", { requestId, error: error instanceof Error ? error.message : "Unknown", processingMs: processingTime });
+
+    // Handle timeout errors
+    if (error instanceof Error && error.name === "AbortError") {
+      complianceLogger.log("ERROR_OCCURRED", { errorCode: "TIMEOUT", errorMessage: "AI gateway timeout" });
+      return new Response(
+        JSON.stringify({
+          error: "Request timed out. Please try again.",
+          requestId,
+          entities: [],
+          connections: [],
+          question: "That took too long. Want to try again?",
+          response: "",
+        }),
+        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
+      );
+    }
+
+    // Handle rate limit errors from AI gateway
     if (error instanceof Error && error.message.includes("429")) {
+      complianceLogger.log("ERROR_OCCURRED", { errorCode: "AI_RATE_LIMIT", errorMessage: "AI gateway rate limited" });
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Rate limit exceeded. Try again shortly.", requestId }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId, "Retry-After": "30" } }
       );
     }
-    
+
+    // Handle payment/quota errors
     if (error instanceof Error && error.message.includes("402")) {
+      complianceLogger.log("ERROR_OCCURRED", { errorCode: "QUOTA_EXCEEDED", errorMessage: "AI credits exhausted" });
       return new Response(
-        JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "AI credits exhausted. Please add credits.", requestId }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
       );
     }
-    
+
+    // Handle network errors
+    if (error instanceof Error && (error.message.includes("fetch") || error.message.includes("network"))) {
+      complianceLogger.log("ERROR_OCCURRED", { errorCode: "NETWORK_ERROR", errorMessage: "AI gateway unreachable" });
+      return new Response(
+        JSON.stringify({
+          error: "Service temporarily unavailable. Please try again.",
+          requestId,
+          entities: [],
+          connections: [],
+          question: "Having trouble connecting. Try again?",
+          response: "",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId, "Retry-After": "5" } }
+      );
+    }
+
+    // Generic error fallback - hide internal details in production
+    complianceLogger.log("ERROR_OCCURRED", { errorCode: "INTERNAL_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown" });
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: ENABLE_DETAILED_ERRORS && error instanceof Error ? error.message : "An unexpected error occurred",
+        requestId,
         entities: [],
         connections: [],
         question: "Something went wrong. Try again?",
         response: "",
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
     );
   }
 });

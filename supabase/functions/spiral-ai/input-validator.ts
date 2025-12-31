@@ -82,21 +82,34 @@ function containsNullBytes(value: string): boolean {
 
 function isEncodedPayload(value: string): boolean {
   // Check for Base64 encoded content longer than expected
+  // Must have character diversity to be actual Base64 (not "AAAA...A")
   const base64Pattern = /^[A-Za-z0-9+/]{50,}={0,2}$/;
   const words = value.split(/\s+/);
-  
+
   for (const word of words) {
     if (base64Pattern.test(word) && word.length > 100) {
+      // Calculate character diversity - actual Base64 has varied characters
+      const uniqueChars = new Set(word).size;
+      const diversityRatio = uniqueChars / word.length;
+      // Real Base64 typically has >10% unique characters
+      // Repeated single chars (like "AAA...") have very low diversity
+      if (diversityRatio > 0.05) {
+        return true;
+      }
+    }
+  }
+
+  // Check for hex encoded content
+  const hexPattern = /^(0x)?[0-9a-fA-F]{40,}$/;
+  const stripped = value.replace(/\s/g, '');
+  if (hexPattern.test(stripped)) {
+    // Same diversity check for hex
+    const uniqueChars = new Set(stripped).size;
+    if (uniqueChars > 2) {
       return true;
     }
   }
-  
-  // Check for hex encoded content
-  const hexPattern = /^(0x)?[0-9a-fA-F]{40,}$/;
-  if (hexPattern.test(value.replace(/\s/g, ''))) {
-    return true;
-  }
-  
+
   return false;
 }
 

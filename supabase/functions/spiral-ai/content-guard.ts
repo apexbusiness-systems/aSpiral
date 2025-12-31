@@ -47,9 +47,10 @@ export const BLOCKED_CATEGORIES = {
     action: "BLOCK",
     jurisdictions: ["US", "CA", "EU", "AU", "UK"],
     patterns: [
-      /\b(how to|make|synthesize|cook|manufacture)\b.*\b(meth|heroin|fentanyl|cocaine|lsd|mdma|ecstasy)/gi,
+      /\b(how to|make|synthesize|cook|manufacture)\b.*\b(meth|methamphetamine|heroin|fentanyl|cocaine|lsd|mdma|ecstasy)/gi,
       /\b(drug\s*lab|meth\s*lab)\b/gi,
       /\b(precursor\s*chemical|pill\s*press)\b.*\b(buy|source|get)/gi,
+      /\bsynthesize\b.*\b(methamphetamine|amphetamine|fentanyl)/gi,
     ],
   },
 
@@ -59,7 +60,8 @@ export const BLOCKED_CATEGORIES = {
     action: "BLOCK",
     jurisdictions: ["US", "CA", "EU", "AU", "UK"],
     patterns: [
-      /\b(money\s*launder|launder\s*money)\b.*\b(how|method|technique)/gi,
+      /\b(money\s*launder(ing)?|launder(ing)?\s*money)\b.*\b(how|method|technique)/gi,
+      /\bmoney\s*laundering\b.*\b(method|technique|scheme)/gi,
       /\b(tax\s*evasi|evade\s*tax)\b.*\b(how|method|offshore)/gi,
       /\b(insider\s*trad|front\s*run)\b.*\b(how|tip|profit)/gi,
       /\b(fraud|scam|ponzi|pyramid)\b.*\b(how to|set up|create)/gi,
