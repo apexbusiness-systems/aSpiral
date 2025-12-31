@@ -12,7 +12,7 @@ workflows:
           include: true
 
     integrations:
-      app_store_connect: aSpiral_iOS_AppStoreConnect_2025
+      app_store_connect: aSpiral_iOS_AppStoreConnect_2026
 
     environment:
       ios_signing:
