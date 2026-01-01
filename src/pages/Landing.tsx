@@ -6,7 +6,7 @@ import { Play, Sparkles, ArrowRight } from "lucide-react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import demoVideo from "@/assets/demo-video.mp4";
 import aspiralLogo from "@/assets/aspiral-logo.png";
-import heromark from "@/assets/aspiral-heromark.svg";
+import heromark from "@/assets/aspiral-heromark.png";
 import visualizeIcon from "@/assets/visualize-icon.png";
 import voiceIcon from "@/assets/voice-icon.png";
 import questionIcon from "@/assets/question-icon.png";
