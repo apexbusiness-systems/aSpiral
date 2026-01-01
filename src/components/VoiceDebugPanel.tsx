@@ -1,7 +1,7 @@
 /**
  * Voice Debug Panel
  * 
- * Minimal on-screen debug overlay to verify STT fixes.
+ * Minimal on-screen debug overlay to verify STT and TTS fixes.
  * Shows real-time voice pipeline events for debugging.
  * 
  * Toggle with ?voiceDebug=1 in URL or by pressing Ctrl+Shift+V
@@ -9,12 +9,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bug, X, Trash2 } from "lucide-react";
+import { Bug, X, Trash2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   subscribeToVoiceDebug, 
   clearVoiceDebugBuffer 
 } from "@/hooks/useVoiceInput";
+import { subscribeToTTSDebug } from "@/hooks/useTextToSpeech";
+import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 
 interface DebugEvent {
   type: string;
@@ -26,6 +28,8 @@ export function VoiceDebugPanel() {
   const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [events, setEvents] = useState<DebugEvent[]>([]);
+  
+  const isSpeaking = useAssistantSpeakingStore(state => state.isSpeaking);
 
   // Check URL param on mount
   useEffect(() => {
@@ -48,18 +52,32 @@ export function VoiceDebugPanel() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Subscribe to voice debug events
+  // Subscribe to both STT and TTS debug events
   useEffect(() => {
     if (!isVisible) return;
     
-    const unsubscribe = subscribeToVoiceDebug((newEvents) => {
-      setEvents([...newEvents]);
+    // Merge both event streams
+    let allEvents: DebugEvent[] = [];
+    
+    const unsubscribeSTT = subscribeToVoiceDebug((sttEvents) => {
+      allEvents = [...allEvents.filter(e => !e.type.startsWith('stt') && !e.type.startsWith('listener')), ...sttEvents];
+      setEvents([...allEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50));
     });
-    return () => { unsubscribe(); };
+    
+    const unsubscribeTTS = subscribeToTTSDebug((ttsEvents) => {
+      allEvents = [...allEvents.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio')), ...ttsEvents];
+      setEvents([...allEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50));
+    });
+    
+    return () => { 
+      unsubscribeSTT(); 
+      unsubscribeTTS();
+    };
   }, [isVisible]);
 
   const handleClear = useCallback(() => {
     clearVoiceDebugBuffer();
+    setEvents([]);
   }, []);
 
   const formatTime = (timestamp: number) => {
@@ -75,6 +93,19 @@ export function VoiceDebugPanel() {
   };
 
   const getEventColor = (type: string) => {
+    // TTS events
+    if (type.startsWith('tts.')) {
+      if (type.includes('request')) return 'text-cyan-400';
+      if (type.includes('audio_received')) return 'text-cyan-300';
+      if (type.includes('play_start')) return 'text-green-300';
+      if (type.includes('play_end')) return 'text-orange-300';
+      if (type.includes('error')) return 'text-red-400';
+      if (type.includes('fallback')) return 'text-yellow-300';
+      return 'text-cyan-500';
+    }
+    if (type.includes('audioContext')) return 'text-purple-300';
+    
+    // STT events
     if (type.includes('start')) return 'text-green-400';
     if (type.includes('stop')) return 'text-red-400';
     if (type.includes('final')) return 'text-blue-400';
@@ -104,6 +135,7 @@ export function VoiceDebugPanel() {
           >
             <Bug className="h-4 w-4 mr-1" />
             Voice Debug ({events.length})
+            {isSpeaking && <Volume2 className="h-3 w-3 ml-1 animate-pulse text-cyan-400" />}
           </Button>
         ) : (
           <div className="w-96 max-h-80 bg-black/95 border border-green-500/50 rounded-lg overflow-hidden">
@@ -112,6 +144,12 @@ export function VoiceDebugPanel() {
               <span className="text-green-400 font-semibold flex items-center gap-2">
                 <Bug className="h-4 w-4" />
                 Voice Pipeline Debug
+                {isSpeaking && (
+                  <span className="text-cyan-400 text-[10px] flex items-center gap-1">
+                    <Volume2 className="h-3 w-3 animate-pulse" />
+                    TTS
+                  </span>
+                )}
               </span>
               <div className="flex gap-1">
                 <Button
@@ -137,7 +175,7 @@ export function VoiceDebugPanel() {
             <div className="max-h-64 overflow-y-auto p-2 space-y-1">
               {events.length === 0 ? (
                 <div className="text-gray-500 text-center py-4">
-                  No events yet. Start recording to see events.
+                  No events yet. Start recording or trigger TTS to see events.
                 </div>
               ) : (
                 events.slice().reverse().map((event, i) => (
