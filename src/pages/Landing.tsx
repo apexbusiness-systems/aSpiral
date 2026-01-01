@@ -471,7 +471,7 @@ const Landing = () => {
                     {item.step}
                   </div>
                   
-                  {/* Icon with glow effect */}
+                  {/* Icon with glow and particle effects */}
                   <motion.div 
                     className="mb-6 pt-4 relative"
                     whileHover={{ 
@@ -487,6 +487,16 @@ const Landing = () => {
                   >
                     {/* Pulsing glow background */}
                     <div className="absolute inset-0 -m-2 rounded-full bg-primary/0 group-hover:bg-primary/20 blur-xl group-hover:animate-pulse transition-all duration-500" />
+                    
+                    {/* Particle container */}
+                    <div className="particle-container absolute inset-0 flex items-center justify-center">
+                      <span className="particle particle-1 bg-primary/80 left-1/2 top-1/2" />
+                      <span className="particle particle-2 bg-accent/70 left-1/2 top-1/2" />
+                      <span className="particle particle-3 bg-primary/60 left-1/2 top-1/2" />
+                      <span className="particle particle-4 bg-accent/80 left-1/2 top-1/2" />
+                      <span className="particle particle-5 bg-primary/70 left-1/2 top-1/2" />
+                    </div>
+                    
                     <img 
                       src={item.customIcon} 
                       alt={item.title} 
