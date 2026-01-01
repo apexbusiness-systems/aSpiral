@@ -475,14 +475,14 @@ const Landing = () => {
                   <motion.div 
                     className="mb-6 pt-4"
                     whileHover={{ 
-                      scale: 1.08, 
-                      rotate: [0, -3, 3, 0],
-                      y: -2
+                      scale: 1.1, 
+                      rotate: 3,
+                      y: -4
                     }}
                     transition={{ 
                       type: "spring", 
-                      stiffness: 300,
-                      damping: 15
+                      stiffness: 400,
+                      damping: 12
                     }}
                   >
                     <img 
