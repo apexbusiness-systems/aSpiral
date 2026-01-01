@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { normalizeError, type NormalizedError } from '@/lib/normalizeError';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,8 @@ import {
   Loader2,
   Crown,
   UserPlus,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Workspace {
@@ -56,17 +59,20 @@ const Workspaces = () => {
   
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [error, setError] = useState<NormalizedError | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadWorkspaces();
+  const loadWorkspaces = useCallback(async (isRetry = false) => {
+    if (isRetry) {
+      setIsRetrying(true);
+    } else {
+      setIsLoading(true);
     }
-  }, [user]);
+    setError(null);
 
-  const loadWorkspaces = async () => {
     try {
       const db = supabase as any;
       
@@ -76,7 +82,14 @@ const Workspaces = () => {
         .select('workspace_id')
         .eq('user_id', user!.id);
 
-      if (memberError) throw memberError;
+      // Handle member query errors - but empty is OK
+      if (memberError) {
+        const normalized = normalizeError(memberError);
+        // Empty is success (no workspaces yet), not error
+        if (normalized.kind !== 'empty') {
+          throw memberError;
+        }
+      }
 
       const workspaceIds = memberData?.map((m: any) => m.workspace_id) || [];
       
@@ -86,20 +99,53 @@ const Workspaces = () => {
           .select('*')
           .in('id', workspaceIds);
 
-        if (workspacesError) throw workspacesError;
+        if (workspacesError) {
+          const normalized = normalizeError(workspacesError);
+          if (normalized.kind !== 'empty') {
+            throw workspacesError;
+          }
+        }
+        
         setWorkspaces(workspacesData || []);
       } else {
+        // No workspaces - this is SUCCESS, not an error
         setWorkspaces([]);
       }
-    } catch (error) {
-      console.error('Error loading workspaces:', error);
-      toast({
-        title: 'Error loading workspaces',
-        variant: 'destructive',
-      });
+
+      // Clear any previous error on success
+      setError(null);
+
+    } catch (err) {
+      console.error('Error loading workspaces:', err);
+      const normalized = normalizeError(err);
+      
+      // Only show error banner for real errors, not empty states
+      if (!normalized.isNonError) {
+        setError(normalized);
+        toast({
+          title: 'Error loading workspaces',
+          description: normalized.message,
+          variant: 'destructive',
+        });
+      } else {
+        // "Empty" is not an error - just show empty state
+        setWorkspaces([]);
+        setError(null);
+      }
     } finally {
       setIsLoading(false);
+      setIsRetrying(false);
     }
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadWorkspaces();
+    }
+  }, [user, loadWorkspaces]);
+
+  const handleRetry = () => {
+    loadWorkspaces(true);
   };
 
   const createWorkspace = async () => {
@@ -140,11 +186,12 @@ const Workspaces = () => {
       setNewWorkspaceName('');
       setDialogOpen(false);
       loadWorkspaces();
-    } catch (error: any) {
-      console.error('Error creating workspace:', error);
+    } catch (err: any) {
+      console.error('Error creating workspace:', err);
+      const normalized = normalizeError(err);
       toast({
         title: 'Failed to create workspace',
-        description: error.message,
+        description: normalized.message,
         variant: 'destructive',
       });
     } finally {
@@ -179,53 +226,91 @@ const Workspaces = () => {
             </div>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-xl">
-                <Plus className="w-4 h-4 mr-2" />
-                New Workspace
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-popover border-border">
-              <DialogHeader>
-                <DialogTitle>Create Workspace</DialogTitle>
-                <DialogDescription>
-                  Create a new workspace for your team
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Workspace Name</Label>
-                  <Input
-                    placeholder="My Team"
-                    value={newWorkspaceName}
-                    onChange={(e) => setNewWorkspaceName(e.target.value)}
-                    className="bg-input border-border"
-                  />
-                </div>
-                <Button 
-                  onClick={createWorkspace} 
-                  disabled={isCreating || !newWorkspaceName.trim()}
-                  className="w-full"
-                >
-                  {isCreating ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Plus className="w-4 h-4 mr-2" />
-                  )}
-                  Create Workspace
+          <div className="flex items-center gap-2">
+            {/* Refresh button */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRetry}
+              disabled={isRetrying || isLoading}
+              className="rounded-xl"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+            </Button>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-xl">
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Workspace
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="bg-popover border-border">
+                <DialogHeader>
+                  <DialogTitle>Create Workspace</DialogTitle>
+                  <DialogDescription>
+                    Create a new workspace for your team
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Workspace Name</Label>
+                    <Input
+                      placeholder="My Team"
+                      value={newWorkspaceName}
+                      onChange={(e) => setNewWorkspaceName(e.target.value)}
+                      className="bg-input border-border"
+                    />
+                  </div>
+                  <Button 
+                    onClick={createWorkspace} 
+                    disabled={isCreating || !newWorkspaceName.trim()}
+                    className="w-full"
+                  >
+                    {isCreating ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-2" />
+                    )}
+                    Create Workspace
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        {/* Error Banner - Only for real errors, not empty states */}
+        {error && !error.isNonError && (
+          <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-4">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-destructive">Error loading workspaces</p>
+              <p className="text-sm text-destructive/80">{error.message}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            >
+              {isRetrying ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Retry'
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Workspaces List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : workspaces.length === 0 ? (
+        ) : workspaces.length === 0 && !error ? (
+          // Empty state - NOT an error, valid first-run state
           <div className="glass-card p-12 text-center">
             <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-lg font-medium text-foreground mb-2">
@@ -239,7 +324,7 @@ const Workspaces = () => {
               Create First Workspace
             </Button>
           </div>
-        ) : (
+        ) : workspaces.length > 0 ? (
           <ScrollArea className="h-[calc(100vh-200px)]">
             <div className="space-y-3">
               {workspaces.map((workspace) => (
@@ -278,7 +363,7 @@ const Workspaces = () => {
               ))}
             </div>
           </ScrollArea>
-        )}
+        ) : null}
       </div>
     </div>
   );

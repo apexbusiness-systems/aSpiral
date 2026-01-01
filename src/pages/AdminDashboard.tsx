@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { normalizeError, type NormalizedError } from '@/lib/normalizeError';
 import {
   ArrowLeft,
   BarChart3,
@@ -14,6 +15,8 @@ import {
   TrendingUp,
   Calendar,
   Loader2,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -50,6 +53,18 @@ interface UsageStats {
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
 
+/**
+ * Default stats for first-run / empty states.
+ * These are NOT errors - zero is a valid state.
+ */
+const EMPTY_USAGE_STATS: UsageStats = {
+  totalSessions: 0,
+  totalBreakthroughs: 0,
+  totalEntities: 0,
+  totalMessages: 0,
+  activeUsers: 1,
+};
+
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -57,23 +72,20 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(true);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [error, setError] = useState<NormalizedError | null>(null);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
-  const [usageStats, setUsageStats] = useState<UsageStats>({
-    totalSessions: 0,
-    totalBreakthroughs: 0,
-    totalEntities: 0,
-    totalMessages: 0,
-    activeUsers: 0,
-  });
+  const [usageStats, setUsageStats] = useState<UsageStats>(EMPTY_USAGE_STATS);
   const [entityTypes, setEntityTypes] = useState<{name: string; value: number}[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      loadStats();
+  const loadStats = useCallback(async (isRetry = false) => {
+    if (isRetry) {
+      setIsRetrying(true);
+    } else {
+      setIsLoading(true);
     }
-  }, [user]);
+    setError(null);
 
-  const loadStats = async () => {
     try {
       // Cast supabase to any to bypass strict typing for tables not yet in schema
       const db = supabase as any;
@@ -84,22 +96,41 @@ const AdminDashboard = () => {
         .select('id, created_at, user_id')
         .eq('user_id', user!.id);
 
-      if (sessionsError) throw sessionsError;
+      // Handle sessions error - but empty is OK
+      if (sessionsError) {
+        const normalized = normalizeError(sessionsError);
+        // Empty is success, not error
+        if (normalized.kind !== 'empty') {
+          throw sessionsError;
+        }
+      }
 
       const sessionIds = sessions?.map((s: any) => s.id) || [];
 
-      // Get other stats
-      const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.all([
+      // Get other stats - use Promise.allSettled for partial rendering
+      const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.allSettled([
         db.from('breakthroughs').select('id, created_at, session_id'),
         db.from('entities').select('id, type, created_at, session_id'),
         db.from('messages').select('id, session_id'),
       ]);
 
-      const userBreakthroughs = breakthroughsRes.data?.filter((b: any) => sessionIds.includes(b.session_id)) || [];
-      const userEntities = entitiesRes.data?.filter((e: any) => sessionIds.includes(e.session_id)) || [];
-      const userMessages = messagesRes.data?.filter((m: any) => sessionIds.includes(m.session_id)) || [];
+      // Extract data, treating errors as empty arrays (partial rendering)
+      const breakthroughsData = breakthroughsRes.status === 'fulfilled' 
+        ? breakthroughsRes.value.data || []
+        : [];
+      const entitiesData = entitiesRes.status === 'fulfilled'
+        ? entitiesRes.value.data || []
+        : [];
+      const messagesData = messagesRes.status === 'fulfilled'
+        ? messagesRes.value.data || []
+        : [];
 
-      // Calculate usage stats
+      // Filter to user's sessions
+      const userBreakthroughs = breakthroughsData.filter((b: any) => sessionIds.includes(b.session_id));
+      const userEntities = entitiesData.filter((e: any) => sessionIds.includes(e.session_id));
+      const userMessages = messagesData.filter((m: any) => sessionIds.includes(m.session_id));
+
+      // Calculate usage stats - zeros are valid for first-run
       setUsageStats({
         totalSessions: sessions?.length || 0,
         totalBreakthroughs: userBreakthroughs.length,
@@ -115,7 +146,7 @@ const AdminDashboard = () => {
       });
       setEntityTypes(Object.entries(typeCounts).map(([name, value]) => ({ name, value })));
 
-      // Calculate daily stats for last 7 days
+      // Calculate daily stats for last 7 days - zeros are fine
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = startOfDay(subDays(new Date(), 6 - i));
         return {
@@ -127,7 +158,7 @@ const AdminDashboard = () => {
         };
       });
 
-      sessions?.forEach((s: any) => {
+      (sessions || []).forEach((s: any) => {
         const sessionDate = startOfDay(new Date(s.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === sessionDate.getTime());
         if (dayEntry) dayEntry.sessions++;
@@ -152,15 +183,51 @@ const AdminDashboard = () => {
         entities,
       })));
 
-    } catch (error) {
-      console.error('Error loading stats:', error);
-      toast({
-        title: 'Error loading dashboard',
-        variant: 'destructive',
-      });
+      // Clear any previous error
+      setError(null);
+
+      // Check if any partial failures occurred (non-blocking warning)
+      const partialFailures = [breakthroughsRes, entitiesRes, messagesRes]
+        .filter(r => r.status === 'rejected');
+      
+      if (partialFailures.length > 0 && partialFailures.length < 3) {
+        // Some data loaded, some failed - show non-blocking warning
+        console.warn('Dashboard partial load failures:', partialFailures);
+        toast({
+          title: 'Some data may be incomplete',
+          description: 'Retry to refresh all stats',
+          variant: 'default', // Not destructive - non-blocking
+        });
+      }
+
+    } catch (err) {
+      console.error('Error loading stats:', err);
+      const normalized = normalizeError(err);
+      
+      // Only show error for real failures, not empty data
+      if (!normalized.isNonError) {
+        setError(normalized);
+        toast({
+          title: 'Error loading dashboard',
+          description: normalized.message,
+          variant: 'destructive',
+        });
+      }
+      // Even on error, keep default zeros displayed
     } finally {
       setIsLoading(false);
+      setIsRetrying(false);
     }
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadStats();
+    }
+  }, [user, loadStats]);
+
+  const handleRetry = () => {
+    loadStats(true);
   };
 
   const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color: string }) => (
@@ -177,6 +244,7 @@ const AdminDashboard = () => {
     </div>
   );
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="app-container min-h-screen flex items-center justify-center">
@@ -201,7 +269,7 @@ const AdminDashboard = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="font-display text-2xl font-bold text-foreground">
               Dashboard
             </h1>
@@ -209,9 +277,44 @@ const AdminDashboard = () => {
               Your usage analytics and insights
             </p>
           </div>
+          {/* Retry button - always visible for manual refresh */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            disabled={isRetrying}
+            className="rounded-xl"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRetrying ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
-        {/* Stats Grid */}
+        {/* Error Banner - Only for real errors, not empty states */}
+        {error && !error.isNonError && (
+          <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-4">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-destructive">Error loading dashboard</p>
+              <p className="text-sm text-destructive/80">{error.message}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            >
+              {isRetrying ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Retry'
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Stats Grid - Always render, zeros are valid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             icon={Calendar}
