@@ -34,8 +34,6 @@ workflows:
       tag_patterns:
         - pattern: 'ios-v*'
           include: true
-    integrations:
-      app_store_connect: aSpiral_iOS_AppStoreConnect_2026
     environment:
       ios_signing:
         distribution_type: app_store
@@ -110,7 +108,7 @@ workflows:
 
     publishing:
       app_store_connect:
-        auth: integration
+        auth: api_key
         submit_to_testflight: true
         submit_to_app_store: false
       email:
