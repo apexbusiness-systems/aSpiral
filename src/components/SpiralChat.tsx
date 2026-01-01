@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward } from "lucide-react";
+import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -693,8 +693,27 @@ export function SpiralChat({ externalRecordingTrigger = 0 }: SpiralChatProps) {
         {/* Input Area */}
         <div className="border-t border-border/30 glass-card rounded-none border-x-0 border-b-0 p-4">
           <div className="mx-auto max-w-2xl">
-            {/* Mic Button with Stop/Pause controls */}
-            <div className="mb-5 flex justify-center">
+            {/* Mic Button with Stop/Pause controls + TTS Toggle */}
+            <div className="mb-5 flex items-center justify-center gap-4">
+              {/* TTS Toggle Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setTtsEnabled(!ttsEnabled);
+                  if (isTTSSpeaking) stopSpeaking();
+                }}
+                className={cn(
+                  "h-10 w-10 rounded-full transition-colors",
+                  ttsEnabled 
+                    ? "text-primary hover:text-primary/80 bg-primary/10" 
+                    : "text-muted-foreground hover:text-muted-foreground/80"
+                )}
+                title={ttsEnabled ? "Voice responses on" : "Voice responses off"}
+              >
+                {ttsEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+              </Button>
+
               <MicButton
                 isRecording={isRecording}
                 isProcessing={isAIProcessing}
