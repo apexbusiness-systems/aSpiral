@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BreakthroughDirector } from '../breakthrough/director';
-import type { MutatedVariant, MutationKnobs } from '../breakthrough/types';
+import type { MutatedVariant, MutationKnobs, DirectorPhase } from '../breakthrough/types';
 
 // Mock mutation knobs for testing
 const mockMutation: MutationKnobs = {
@@ -13,20 +13,51 @@ const mockMutation: MutationKnobs = {
   particleCountRange: [500, 2000],
   cameraArchetype: 'drift',
   curveProfile: 'ease',
-  particlePatterns: ['vortex'],
-  colorMood: 'cosmic',
-  audioMood: 'ethereal',
-  intensity: 0.7,
+  paletteSeed: 0.5,
+  audioIntensity: 0.7,
+  audioTimingOffset: 0,
+  speedMultiplier: 1.0,
+  scaleMultiplier: 1.0,
+  extraVisualsCount: 0,
 };
 
 // Mock variant for testing with required properties
 const mockVariant: MutatedVariant = {
   id: 'test-variant',
   name: 'Test Variant',
-  breakthroughClass: 'clarity',
-  baseParticleCount: 1000,
+  description: 'Test variant for WebGL recovery',
+  class: 'clarity',
+  intensity: 'medium',
+  colorMood: 'cosmic',
+  audioMood: 'ethereal',
   baseDuration: 5000,
-  supportedIntensities: ['low', 'medium', 'high'],
+  baseParticleCount: 1000,
+  particlePattern: 'vortex',
+  cameraArchetype: 'drift',
+  curveProfile: 'ease',
+  tags: ['test'],
+  lowTierSafe: true,
+  isFallback: false,
+  mutationBounds: {
+    durationRange: [3000, 8000],
+    particleCountRange: [500, 2000],
+    speedRange: [0.5, 2.0],
+    scaleRange: [0.5, 2.0],
+  },
+  baseColors: ['hsl(220, 90%, 60%)'],
+  cameraPath: {
+    from: [0, 0, 10],
+    to: [0, 0, 5],
+    fovFrom: 60,
+    fovTo: 75,
+    lookAt: 'center',
+  },
+  effects: {
+    bloom: true,
+    chromaticAberration: false,
+    motionBlur: false,
+    vignette: true,
+  },
   mutation: mockMutation,
   seed: 12345,
   finalDuration: 5000,
@@ -36,14 +67,14 @@ const mockVariant: MutatedVariant = {
 
 describe('WebGL Context Loss Recovery', () => {
   let director: BreakthroughDirector;
-  let onCompleteMock: ReturnType<typeof vi.fn>;
-  let onAbortMock: ReturnType<typeof vi.fn>;
-  let onPhaseChangeMock: ReturnType<typeof vi.fn>;
+  let onCompleteMock: () => void;
+  let onAbortMock: (reason: string) => void;
+  let onPhaseChangeMock: (phase: DirectorPhase) => void;
 
   beforeEach(() => {
-    onCompleteMock = vi.fn();
-    onAbortMock = vi.fn();
-    onPhaseChangeMock = vi.fn();
+    onCompleteMock = vi.fn() as unknown as () => void;
+    onAbortMock = vi.fn() as unknown as (reason: string) => void;
+    onPhaseChangeMock = vi.fn() as unknown as (phase: DirectorPhase) => void;
 
     // Create director with no-arg constructor
     director = new BreakthroughDirector();

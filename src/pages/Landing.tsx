@@ -6,7 +6,7 @@ import { Play, Sparkles, ArrowRight } from "lucide-react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import demoVideo from "@/assets/demo-video.mp4";
 import aspiralLogo from "@/assets/aspiral-logo.png";
-import heromark from "@/assets/aspiral-heromark.svg";
+import heromark from "@/assets/aspiral-heromark.png";
 import visualizeIcon from "@/assets/visualize-icon.png";
 import voiceIcon from "@/assets/voice-icon.png";
 import questionIcon from "@/assets/question-icon.png";
@@ -420,6 +420,8 @@ const Landing = () => {
               <motion.img 
                 src={heromark} 
                 alt="aSpiral Heromark" 
+                fetchPriority="high"
+                decoding="async"
                 className="w-full max-w-[360px] sm:max-w-[450px] lg:max-w-[550px] xl:max-w-[620px] h-auto drop-shadow-[0_0_60px_hsl(var(--primary)/0.3)] relative z-10"
                 animate={{ 
                   filter: [
@@ -478,6 +480,8 @@ const Landing = () => {
                     <img 
                       src={item.customIcon} 
                       alt={item.title} 
+                      loading="lazy"
+                      decoding="async"
                       className="w-14 h-14 lg:w-16 lg:h-16 opacity-90 group-hover:opacity-100 transition-opacity" 
                     />
                   </motion.div>

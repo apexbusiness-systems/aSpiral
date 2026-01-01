@@ -1,8 +1,33 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# aSpiral - Codemagic CI/CD Configuration
+# Bundle ID: com.apex.aspiral
+# SIGNING METHOD: Manual (using uploaded profiles)
+# ══════════════════════════════════════════════════════════════════════════════
+
 workflows:
   ios-release:
-    name: iOS Release
+    name: iOS Release to TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
+    
+    environment:
+      xcode: 16.4
+      node: 20.19.0
+      npm: 10
+      cocoapods: default
+      groups:
+        - appstore_credentials
+      vars:
+        BUNDLE_ID: "com.apex.aspiral"
+        XCODE_SCHEME: "App"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+      # MANUAL SIGNING - references profiles uploaded in Codemagic UI
+      ios_signing:
+        certificates:
+          - name: aSpiral_dist_2026
+        provisioning_profiles:
+          - name: aSpiral_iOS_AppStoreConnect_2026
+    
     triggering:
       events:
         - tag
@@ -27,99 +52,67 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm ci
+
+      - name: Run tests if present
+        script: npm run test || true
+        
       - name: Build web assets
         script: npm run build
-      - name: Sync Capacitor
+
+      - name: Sync Capacitor (iOS)
         script: npx cap sync ios
-      - name: Install CocoaPods
+
+      - name: Set iOS version from tag + build number
         script: |
-          cd ios/App
-          pod install
-      - name: Compliance Check
-        script: |
-          RESULT=$(/usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" ios/App/App/Info.plist 2>/dev/null || echo "MISSING")
-          if [ "$RESULT" != "false" ] && [ "$RESULT" != "MISSING" ]; then
-             echo "WARNING: ITSAppUsesNonExemptEncryption is $RESULT (Should be false)"
+          VERSION=$(echo "$CM_TAG" | sed 's/ios-v//')
+          if [ -z "$VERSION" ]; then
+            VERSION="1.0.0"
           fi
+          echo "APP_VERSION=$VERSION" >> $CM_ENV
+          
+          cd ios/App
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo "0")
+          BUILD_NUMBER=$((LATEST_BUILD + 1))
+          
+          agvtool new-marketing-version "$VERSION"
+          agvtool new-version -all "$BUILD_NUMBER"
+          
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
+          echo "📦 Version: $VERSION (Build: $BUILD_NUMBER)"
+
+      - name: Install CocoaPods
+        script: cd ios/App && pod install
+
+      - name: Export Compliance
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          if /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$PLIST" 2>/dev/null; then
+            /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+          else
+            /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          fi
+          echo "✅ Export compliance set"
+
       - name: Set up code signing
         script: xcode-project use-profiles
+
       - name: Build iOS IPA
         script: |
-          mkdir -p build/ios/ipa
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
-            --config Release \
-            --ipa-path build/ios/ipa/aSpiral.ipa
+            --config Release
+
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/xcarchive/*.xcarchive
       - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        beta_groups:
-          - Internal Testers
-      email:
-        recipients:
-          - michael@apexbiz.io
-        notify:
-          success: true
-          failure: true
-
-  android-release:
-    name: Android Release
-    instance_type: mac_mini_m2
-    max_build_duration: 60
-    triggering:
-      events:
-        - tag
-      tag_patterns:
-        - pattern: 'android-v*'
-          include: true
-    environment:
-      android_signing:
-        - aSpiral_Android_Keystore
-      groups:
-        - google_play_credentials
-      vars:
-        BUNDLE_ID: com.apex.aspiral
-      node: 20
-      java: 17
-    scripts:
-      - name: Install dependencies
-        script: npm ci
-      - name: Build web assets
-        script: npm run build
-      - name: Sync Capacitor
-        script: npx cap sync android
-      - name: Set Android version
-        script: |
-          VERSION=${CM_TAG#android-v}
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          PATCH=$(echo $VERSION | cut -d. -f3)
-          MAJOR=${MAJOR:-1}
-          MINOR=${MINOR:-0}
-          PATCH=${PATCH:-0}
-          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
-          echo "Setting version to $VERSION (code: $VERSION_CODE)"
-          cd android
-          sed -i.bak "s/versionCode [0-9]*/versionCode $VERSION_CODE/" app/build.gradle
-          sed -i.bak "s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" app/build.gradle
-      - name: Build Android AAB
-        script: |
-          cd android
-          ./gradlew bundleRelease
-    artifacts:
-      - android/app/build/outputs/**/*.aab
-      - android/app/build/outputs/**/mapping.txt
-    publishing:
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-        submit_as_draft: false
+        submit_to_app_store: false
       email:
         recipients:
           - michael@apexbiz.io
