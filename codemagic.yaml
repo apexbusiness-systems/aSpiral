@@ -15,7 +15,7 @@ workflows:
       groups:
         - appstore_credentials
 
-      # ✅ ONE signing strategy only: use uploaded profile + cert references
+      # One signing strategy only: uploaded profile + cert references
       ios_signing:
         provisioning_profiles:
           - aSpiral_iOS_AppStoreConnect_2026
@@ -28,19 +28,37 @@ workflows:
         IOS_INFO_PLIST: ios/App/App/Info.plist
         IOS_IPA_PATH: build/ios/ipa/aSpiral.ipa
 
-      # Capacitor docs commonly show Node 22 in examples; this also avoids EBADENGINE churn
       node: 22
       xcode: 26.1
       cocoapods: default
 
     scripts:
-      - name: Preflight — verify App Store Connect auth vars exist
+      - name: Preflight — normalize ASC env vars (KEY_IDENTIFIER)
         script: |
           set -euo pipefail
+
+          # Required (matches Codemagic docs)
           test -n "${APP_STORE_CONNECT_PRIVATE_KEY:-}" || (echo "Missing APP_STORE_CONNECT_PRIVATE_KEY" && exit 1)
-          test -n "${APP_STORE_CONNECT_KEY_ID:-}" || (echo "Missing APP_STORE_CONNECT_KEY_ID" && exit 1)
           test -n "${APP_STORE_CONNECT_ISSUER_ID:-}" || (echo "Missing APP_STORE_CONNECT_ISSUER_ID" && exit 1)
-          echo "✅ ASC auth vars present"
+
+          # Normalize Key ID: accept multiple historical spellings / casing
+          ASC_KEY_ID=""
+          if [ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ]; then
+            ASC_KEY_ID="${APP_STORE_CONNECT_KEY_IDENTIFIER}"
+          elif [ -n "${APP_STORE_CONNECT_KEY_ID:-}" ]; then
+            ASC_KEY_ID="${APP_STORE_CONNECT_KEY_ID}"
+          elif [ -n "${APP_STORE_CONNECT_KEY_iD:-}" ]; then
+            ASC_KEY_ID="${APP_STORE_CONNECT_KEY_iD}"
+          else
+            echo "Missing Key ID env var. Expected APP_STORE_CONNECT_KEY_IDENTIFIER (preferred)."
+            echo "Also accepts APP_STORE_CONNECT_KEY_ID or APP_STORE_CONNECT_KEY_iD."
+            exit 1
+          fi
+
+          # Persist normalized name for ALL subsequent steps (Codemagic CM_ENV mechanism)
+          echo "APP_STORE_CONNECT_KEY_IDENTIFIER=${ASC_KEY_ID}" >> "$CM_ENV"
+
+          echo "✅ ASC auth vars present (KEY_IDENTIFIER normalized)"
 
       - name: Install dependencies
         script: |
@@ -112,11 +130,10 @@ workflows:
 
     publishing:
       app_store_connect:
-        # ✅ Env-var auth method (Codemagic supported)
+        # Codemagic supports env-var auth for publishing:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_ID
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
