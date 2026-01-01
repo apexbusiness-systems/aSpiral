@@ -474,15 +474,23 @@ const Landing = () => {
                   {/* Icon */}
                   <motion.div 
                     className="mb-6 pt-4"
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ type: "spring", stiffness: 400 }}
+                    whileHover={{ 
+                      scale: 1.08, 
+                      rotate: [0, -3, 3, 0],
+                      y: -2
+                    }}
+                    transition={{ 
+                      type: "spring", 
+                      stiffness: 300,
+                      damping: 15
+                    }}
                   >
                     <img 
                       src={item.customIcon} 
                       alt={item.title} 
                       loading="lazy"
                       decoding="async"
-                      className="w-14 h-14 lg:w-16 lg:h-16 opacity-90 group-hover:opacity-100 transition-opacity" 
+                      className="w-14 h-14 lg:w-16 lg:h-16 opacity-90 group-hover:opacity-100 transition-opacity drop-shadow-md group-hover:drop-shadow-lg" 
                     />
                   </motion.div>
                   
