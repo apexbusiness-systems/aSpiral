@@ -15,10 +15,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.apex.aspiral
-        provisioning_profiles:
-          - aSpiral_iOS_AppStoreConnect_2026
-        certificates:
-          - aSpiral_dist_2026
       groups:
         - appstore_credentials
       vars:
