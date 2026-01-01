@@ -10,6 +10,7 @@ import i18n from '@/lib/i18n/config';
 import { SentinelProvider } from '@/components/SentinelProvider';
 import { VoiceDebugPanel } from '@/components/VoiceDebugPanel';
 import Landing from "./pages/Landing";
+import HowItWorks from "./pages/HowItWorks";
 import Story from "./pages/Story";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -38,6 +39,7 @@ const App = () => (
           <HashRouter>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/story" element={<Story />} />
               <Route path="/steps/voice" element={<VoiceYourChaos />} />
