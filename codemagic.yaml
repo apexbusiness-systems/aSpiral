@@ -1,172 +1,140 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# aSpiral - Codemagic CI/CD Configuration
+# Bundle ID: com.apex.aspiral
+# Team ID: NWGUYF42KW
+# ══════════════════════════════════════════════════════════════════════════════
+
 workflows:
   ios-release:
-    name: iOS Release (TestFlight)
+    name: iOS Release to TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
-
+    
+    environment:
+      xcode: 16.4
+      node: 20.19.0
+      npm: 10
+      cocoapods: default
+      groups:
+        - appstore_credentials
+        - ios_credentials
+      vars:
+        BUNDLE_ID: "com.apex.aspiral"
+        XCODE_SCHEME: "App"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+      ios_signing:
+        certificates:
+          - name: aSpiral_dist_2026
+        provisioning_profiles:
+          - name: aSpiral_iOS_AppStoreConnect_2026
+    
     triggering:
       events:
         - tag
       tag_patterns:
-        - pattern: "ios-v*"
+        - pattern: 'ios-v*'
           include: true
-
-    environment:
-      xcode: 26.1
-      node: 22
-      cocoapods: default
-
-      # IMPORTANT: Use ONLY one signing mode (manual identities below)
-      ios_signing:
-        provisioning_profiles:
-          - aSpiral_iOS_AppStoreConnect_2026
-        certificates:
-          - aSpiral_dist_2026
-
-      groups:
-        - appstore_credentials
-
-      vars:
-        IOS_INFO_PLIST: ios/App/App/Info.plist
-        XCODE_WORKSPACE: ios/App/App.xcworkspace
-        XCODE_SCHEME: App
-        IOS_IPA_PATH: build/ios/ipa/aSpiral.ipa
+      cancel_previous_builds: true
 
     scripts:
-      - name: Preflight — App Store Connect auth vars (canonicalize + fail fast)
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 1: Fix env var naming (KEY_ID → KEY_IDENTIFIER)
+      # ══════════════════════════════════════════════════════════════════════
+      - name: Canonicalize env vars
         script: |
-          set -euo pipefail
-
-          # Canonical variables per Codemagic docs:
-          # APP_STORE_CONNECT_PRIVATE_KEY
-          # APP_STORE_CONNECT_KEY_IDENTIFIER
-          # APP_STORE_CONNECT_ISSUER_ID
-          #
-          # Your project currently has a misnamed var: APP_STORE_CONNECT_KEY_iD
-          # We fail with a clear message so publishing doesn't silently break.
-          missing=()
-
-          [[ -z "${APP_STORE_CONNECT_PRIVATE_KEY:-}" ]] && missing+=("APP_STORE_CONNECT_PRIVATE_KEY")
-          [[ -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]] && missing+=("APP_STORE_CONNECT_ISSUER_ID")
-
-          if [[ -z "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ]]; then
-            if [[ -n "${APP_STORE_CONNECT_KEY_iD:-}" ]]; then
-              echo "Found APP_STORE_CONNECT_KEY_iD, but missing canonical APP_STORE_CONNECT_KEY_IDENTIFIER."
-              echo "Fix: create APP_STORE_CONNECT_KEY_IDENTIFIER with the SAME value as APP_STORE_CONNECT_KEY_iD."
-            fi
-            missing+=("APP_STORE_CONNECT_KEY_IDENTIFIER")
+          # Handle KEY_ID vs KEY_IDENTIFIER naming
+          if [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -z "$APP_STORE_CONNECT_KEY_IDENTIFIER" ]; then
+            echo "APP_STORE_CONNECT_KEY_IDENTIFIER=$APP_STORE_CONNECT_KEY_ID" >> $CM_ENV
+            echo "✅ Mapped KEY_ID → KEY_IDENTIFIER"
           fi
+          echo "✅ Env vars ready"
 
-          if (( ${#missing[@]} )); then
-            echo "Missing required App Store Connect env vars:"
-            printf ' - %s\n' "${missing[@]}"
-            exit 1
-          fi
-
-          echo "App Store Connect env vars: OK"
-
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 2: Install dependencies
+      # ══════════════════════════════════════════════════════════════════════
       - name: Install dependencies
         script: npm ci
 
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 3: Build web assets
+      # ══════════════════════════════════════════════════════════════════════
       - name: Build web assets
         script: npm run build
 
-      - name: Verify web build output exists (prevents blank purple shell)
-        script: |
-          set -euo pipefail
-          if [[ -f "dist/index.html" ]]; then
-            echo "Found dist/index.html"
-          elif [[ -f "build/index.html" ]]; then
-            echo "Found build/index.html"
-          else
-            echo "ERROR: No dist/index.html or build/index.html found."
-            echo "Fix: ensure capacitor.config webDir matches your build output folder."
-            exit 1
-          fi
-
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 4: Sync Capacitor
+      # ══════════════════════════════════════════════════════════════════════
       - name: Sync Capacitor (iOS)
         script: npx cap sync ios
 
-      - name: Verify iOS received web assets (post-cap sync)
-        script: |
-          set -euo pipefail
-          found="$(find ios/App/App -maxdepth 5 -name index.html | head -n 1 || true)"
-          if [[ -z "$found" ]]; then
-            echo "ERROR: index.html not found under ios/App/App after cap sync."
-            echo "This is the classic cause of a blank/purple shell."
-            exit 1
-          fi
-          echo "Found iOS index.html at: $found"
-
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 5: Install CocoaPods
+      # ══════════════════════════════════════════════════════════════════════
       - name: Install CocoaPods
+        script: cd ios/App && pod install
+
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 6: Set version + build number
+      # ══════════════════════════════════════════════════════════════════════
+      - name: Set version and build number
         script: |
-          set -euo pipefail
+          VERSION=$(echo "$CM_TAG" | sed 's/ios-v//')
+          [ -z "$VERSION" ] && VERSION="1.0.0"
+          echo "APP_VERSION=$VERSION" >> $CM_ENV
+          
           cd ios/App
-          pod install
+          
+          # Use whichever key var exists
+          KEY="${APP_STORE_CONNECT_KEY_IDENTIFIER:-$APP_STORE_CONNECT_KEY_ID}"
+          
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$KEY" \
+            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY 2>/dev/null || echo "0")
+          BUILD=$((LATEST + 1))
+          
+          agvtool new-marketing-version "$VERSION"
+          agvtool new-version -all "$BUILD"
+          
+          echo "BUILD_NUMBER=$BUILD" >> $CM_ENV
+          echo "📦 Version: $VERSION (Build: $BUILD)"
 
-      - name: Set iOS version from tag (ios-vX.Y.Z) + build number
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 7: Export compliance
+      # ══════════════════════════════════════════════════════════════════════
+      - name: Set export compliance
         script: |
-          set -euo pipefail
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Delete :ITSAppUsesNonExemptEncryption" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          echo "✅ Export compliance set"
 
-          VERSION="${CM_TAG#ios-v}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          MAJOR="${MAJOR:-1}"
-          MINOR="${MINOR:-0}"
-          PATCH="${PATCH:-0}"
-          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 8: Code signing
+      # ══════════════════════════════════════════════════════════════════════
+      - name: Set up code signing
+        script: xcode-project use-profiles
 
-          BUILD_NUMBER="${CM_BUILD_NUMBER}"
-
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$IOS_INFO_PLIST" \
-            || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$IOS_INFO_PLIST"
-
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$IOS_INFO_PLIST" \
-            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$IOS_INFO_PLIST"
-
-          echo "Set iOS version to $VERSION ($BUILD_NUMBER)"
-
-      - name: Compliance — set ITSAppUsesNonExemptEncryption=false
-        script: |
-          set -euo pipefail
-          KEY="ITSAppUsesNonExemptEncryption"
-          RESULT=$(/usr/libexec/PlistBuddy -c "Print :$KEY" "$IOS_INFO_PLIST" 2>/dev/null || echo "MISSING")
-          if [[ "$RESULT" == "MISSING" ]]; then
-            /usr/libexec/PlistBuddy -c "Add :$KEY bool false" "$IOS_INFO_PLIST"
-          elif [[ "$RESULT" != "false" ]]; then
-            /usr/libexec/PlistBuddy -c "Set :$KEY false" "$IOS_INFO_PLIST"
-          fi
-          echo "$KEY is set to false"
-
-      - name: Set up code signing (Internal TestFlight only export option)
-        script: |
-          set -euo pipefail
-          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
-
+      # ══════════════════════════════════════════════════════════════════════
+      # STEP 9: Build IPA
+      # ══════════════════════════════════════════════════════════════════════
       - name: Build iOS IPA
         script: |
-          set -euo pipefail
-          mkdir -p "$(dirname "$IOS_IPA_PATH")"
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
-            --config Release \
-            --ipa-path "$IOS_IPA_PATH"
+            --config Release
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/xcarchive/*.xcarchive
       - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
     publishing:
       app_store_connect:
-        # API-key auth via environment variables (no "integration" needed)
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
         submit_to_testflight: true
-        beta_groups:
-          - Internal Testers
-
+        submit_to_app_store: false
       email:
         recipients:
           - michael@apexbiz.io
