@@ -61,35 +61,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    // DEFENSIVE: Handle case where onAuthStateChange returns malformed data
+    let subscription: { unsubscribe: () => void } | undefined;
+
+    try {
+      const authListener = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+
+          // Defer profile fetch with setTimeout to avoid deadlock
+          if (session?.user) {
+            setTimeout(() => {
+              fetchProfile(session.user.id).then(setProfile);
+            }, 0);
+          } else {
+            setProfile(null);
+          }
+        }
+      );
+
+      // Safely extract subscription - prevents "Cannot read properties of undefined"
+      subscription = authListener?.data?.subscription;
+
+      if (!subscription) {
+        console.error('[AuthContext] onAuthStateChange did not return a valid subscription');
+      }
+    } catch (error) {
+      console.error('[AuthContext] Failed to set up auth listener:', error);
+    }
+
+    // THEN check for existing session
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Defer profile fetch with setTimeout to avoid deadlock
         if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id).then(setProfile);
-          }, 0);
-        } else {
-          setProfile(null);
+          fetchProfile(session.user.id).then(setProfile);
         }
-      }
-    );
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('[AuthContext] Failed to get session:', error);
+        setLoading(false);
+      });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription?.unsubscribe?.();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
