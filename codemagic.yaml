@@ -11,16 +11,19 @@ workflows:
         - pattern: 'ios-v*'
           include: true
 
-    integrations:
-      app_store_connect: aSpiral_iOS_AppStoreConnect_2026
-
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.apex.aspiral
+        provisioning_profiles:
+          - aSpiral_iOS_AppStoreConnect_2026
+        certificates:
+          - aSpiral_dist_2026
       groups:
         - appstore_credentials
+        - ios_credentials
       vars:
+        APP_STORE_CONNECT_API_KEY_2: $APP_STORE_CONNECT_PRIVATE_KEY
         BUNDLE_ID: com.apex.aspiral
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
@@ -74,7 +77,10 @@ workflows:
 
     publishing:
       app_store_connect:
-        auth: integration
+        auth: api_key
+        api_key: $APP_STORE_CONNECT_API_KEY_2
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
@@ -174,6 +180,12 @@ workflows:
       ios_signing:
         distribution_type: development
         bundle_identifier: com.apex.aspiral
+        provisioning_profiles:
+          - aSpiral_iOS_Dev_2026
+        certificates:
+          - aSpiral_Dev_2026
+      groups:
+        - ios_credentials
       vars:
         BUNDLE_ID: com.apex.aspiral
         XCODE_WORKSPACE: ios/App/App.xcworkspace
