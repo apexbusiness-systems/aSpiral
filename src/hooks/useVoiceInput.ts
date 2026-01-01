@@ -17,6 +17,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("useVoiceInput");
@@ -81,6 +82,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const resultIndexRef = useRef(0); // Track processed results
 
   const { isRecording, setRecording, setError } = useSessionStore();
+  
+  // Assistant speaking gate - mute STT when assistant is speaking to prevent feedback loops
+  const assistantIsSpeaking = useAssistantSpeakingStore(state => state.isSpeaking);
+  const assistantIsSpeakingRef = useRef(assistantIsSpeaking);
+  assistantIsSpeakingRef.current = assistantIsSpeaking;
 
   // Check for browser support
   useEffect(() => {
@@ -149,6 +155,15 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       };
 
       recognition.onresult = (event) => {
+        // FEEDBACK LOOP PREVENTION: Ignore transcripts while assistant is speaking
+        if (assistantIsSpeakingRef.current) {
+          emitDebugEvent({ 
+            type: 'stt.partial', 
+            data: { ignored: true, reason: 'assistant_speaking' } 
+          });
+          return;
+        }
+        
         let newFinalText = "";
         let newInterimText = "";
 

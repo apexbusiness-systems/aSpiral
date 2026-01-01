@@ -20,6 +20,7 @@ import { FilmGrainCSS } from "@/components/effects/FilmGrainOverlay";
 import { EntityCardList } from "@/components/EntityCard";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSessionPersistence } from "@/hooks/useSessionPersistence";
 import { useAuth } from "@/contexts/AuthContext";
@@ -152,6 +153,22 @@ export function SpiralChat({ externalRecordingTrigger = 0 }: SpiralChatProps) {
   });
 
   const [liveTranscript, setLiveTranscript] = useState("");
+  const [ttsEnabled, setTtsEnabled] = useState(true); // User can toggle TTS
+
+  // Text-to-Speech for AI responses
+  const { 
+    speak: speakText, 
+    stop: stopSpeaking, 
+    isSpeaking: isTTSSpeaking,
+    isLoading: isTTSLoading,
+  } = useTextToSpeech({
+    voice: 'nova', // Warm, friendly voice
+    speed: 1.0,
+    fallbackToWebSpeech: true,
+    onError: (error) => {
+      console.warn('[TTS] Error:', error.message);
+    },
+  });
 
   const { 
     isRecording, 
@@ -166,6 +183,13 @@ export function SpiralChat({ externalRecordingTrigger = 0 }: SpiralChatProps) {
       accumulateTranscript(text);
     },
   });
+
+  // Speak AI questions when they arrive (if TTS enabled)
+  useEffect(() => {
+    if (currentQuestion && ttsEnabled && !isTTSSpeaking && !isTTSLoading) {
+      speakText(currentQuestion);
+    }
+  }, [currentQuestion, ttsEnabled, speakText, isTTSSpeaking, isTTSLoading]);
 
   // Update live transcript display
   useEffect(() => {
