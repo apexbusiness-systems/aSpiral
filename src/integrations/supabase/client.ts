@@ -2,8 +2,15 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Support both build-time (Vite) and runtime (window.ENV) environment variables
+// This allows the app to work even if build-time variables are missing
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ||
+  (typeof window !== 'undefined' ? (window as any).ENV?.SUPABASE_URL : undefined);
+
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  (typeof window !== 'undefined' ? (window as any).ENV?.SUPABASE_PUBLISHABLE_KEY : undefined);
 
 /**
  * Creates a mock Supabase client that logs errors on usage.
