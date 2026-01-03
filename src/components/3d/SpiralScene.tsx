@@ -11,6 +11,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { usePhysicsWorker, useFallbackLayout } from "@/hooks/usePhysicsWorker";
 import { getVisibleLimit, getStaggerDelay } from "@/lib/entityLimits";
 import { detectDeviceCapabilities } from "@/lib/performance/optimizer";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Entity } from "@/lib/types";
 import * as THREE from "three";
 
@@ -22,13 +23,14 @@ type Position3D = [number, number, number];
  */
 function SpiralEntities() {
   const currentSession = useSessionStore((state) => state.currentSession);
-  
+  const { profile } = useAuth();
+
   const [visibleEntityIds, setVisibleEntityIds] = useState<Set<string>>(new Set());
-  
+
   // Position refs for 60FPS updates (bypass React state)
   const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
-  
+
   const entities = currentSession?.entities || [];
   const connections = currentSession?.connections || [];
   
@@ -93,11 +95,12 @@ function SpiralEntities() {
     }
     
     // Sort by importance
-    const sorted = [...entities].sort((a, b) => 
+    const sorted = [...entities].sort((a, b) =>
       (b.metadata?.importance || 0.5) - (a.metadata?.importance || 0.5)
     );
-    
-    const visibleLimit = getVisibleLimit("free"); // TODO: Get from user tier
+
+    const userTier = profile?.tier || "free";
+    const visibleLimit = getVisibleLimit(userTier);
     
     // Show initial entities immediately
     const initial = new Set(sorted.slice(0, visibleLimit).map(e => e.id));
@@ -110,7 +113,7 @@ function SpiralEntities() {
         setVisibleEntityIds(prev => new Set([...prev, entity.id]));
       }, delay);
     });
-  }, [entities]);
+  }, [entities, profile]);
 
   const handleEntityClick = (entity: Entity) => {
     console.log("Entity clicked:", entity);

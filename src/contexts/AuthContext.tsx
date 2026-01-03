@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import type { UserTier } from '@/lib/entityLimits';
 
 interface Profile {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  tier: UserTier;
   created_at: string;
   updated_at: string;
 }
