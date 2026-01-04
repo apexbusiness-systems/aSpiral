@@ -24,7 +24,7 @@ import { addBreadcrumb } from "@/lib/debugOverlay";
 import { featureFlags } from "@/lib/featureFlags";
 
 // Audit Fix: Explicit keywords to stop recording
-const STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on'];
+const VOICE_STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on'];
 
 const logger = createLogger("useVoiceInput");
 
@@ -224,7 +224,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       const text = result[0].transcript;
 
       // Audit Fix: Keyword Detection
-      if (STOP_KEYWORDS.some(keyword => text.toLowerCase().includes(keyword))) {
+      if (VOICE_STOP_KEYWORDS.some(keyword => text.toLowerCase().includes(keyword))) {
         stopRecording();
         return;
       }
