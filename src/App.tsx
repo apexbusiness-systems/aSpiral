@@ -9,6 +9,7 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '@/lib/i18n/config';
 import { SentinelProvider } from '@/components/SentinelProvider';
 import { Analytics } from "@vercel/analytics/react";
+import { DebugOverlay } from "@/components/DebugOverlay";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
 import Story from "./pages/Story";
@@ -37,6 +38,7 @@ const App = () => (
           <Sonner />
           <Analytics />
           <HashRouter>
+            <DebugOverlay />
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/how-it-works" element={<HowItWorks />} />

@@ -1,7 +1,7 @@
 # aSpiral Production Status Report
 
-**Document Version:** 1.6
-**Last Updated:** December 30, 2025
+**Document Version:** 1.7
+**Last Updated:** January 4, 2026
 **Confidential - For Investor Review**
 
 ---
@@ -71,6 +71,8 @@ aSpiral provides a unique voice-first interface where users can speak their thou
 | Voice activity detection | ✅ Production | Automatic start/stop |
 | Continuous listening mode | ✅ Production | Extended conversation support |
 | Multi-language support | ✅ Production | 5 languages (EN, ES, FR, DE, JA) |
+| Audio session coordination | ✅ Production | Centralized TTS/STT lifecycle to prevent feedback loops |
+| Transcript buffering | ✅ Production | Dual-buffer interim/final transcript handling |
 
 ### 2. AI Processing Pipeline
 | Feature | Status | Description |
@@ -118,6 +120,7 @@ aSpiral provides a unique voice-first interface where users can speak their thou
 | Mobile responsive | ✅ Production | Full mobile support |
 | PWA offline support | ✅ Production | Service worker caching |
 | Analytics opt-out | ✅ Production | GDPR/CCPA compliant toggle |
+| Runtime debug overlay | ✅ Production | On-demand diagnostics via `?debug=1` |
 | Accessibility | 🔄 In Progress | WCAG 2.1 compliance |
 
 ### 6. Internationalization
@@ -344,6 +347,13 @@ Comprehensive device-aware rendering optimization:
 | Fallback | Animated CSS-based completion message |
 | Analytics | Error tracked with device context |
 | State | Clean reset to idle (no hang) |
+
+### Runtime Reliability Guards
+| Guard | Purpose |
+|-------|---------|
+| Render storm detector | Prevents runaway render loops from degrading UX |
+| Feature flag kill-switches | Safe toggles for risky subsystems at runtime |
+| Breadcrumb + fatal snapshots | Lightweight error context capture for debugging |
 
 ### Application Performance
 | Metric | Current | Target | Industry Benchmark |
@@ -802,6 +812,10 @@ Comprehensive device-aware rendering optimization:
 | 3D Components | `/src/components/3d/` |
 | Cinematics | `/src/components/cinematics/` |
 | Performance | `/src/lib/performance/optimizer.ts` |
+| Audio Session | `/src/lib/audioSession.ts` |
+| Debug Overlay | `/src/components/DebugOverlay.tsx` |
+| Feature Flags | `/src/lib/featureFlags.ts` |
+| Render Storm Guard | `/src/hooks/useRenderStormDetector.ts` |
 | Analytics | `/src/lib/analytics.ts` |
 | Edge Functions | `/supabase/functions/spiral-ai/` |
 
@@ -838,3 +852,4 @@ Comprehensive device-aware rendering optimization:
 | 1.4 | Dec 30, 2025 | aSpiral Team | Added performance optimization: GPU fingerprinting, adaptive quality, O(1) FPS monitoring, battery API, WebGL recovery, analytics opt-out, Three.js 0.168.0, verification tests |
 | 1.5 | Dec 30, 2025 | aSpiral Team | Added detailed battery test results: 26/26 passed, all injection categories 100% block rate, 109,930 req/s throughput |
 | 1.6 | Dec 30, 2025 | aSpiral Team | Corrected tech stack: OpenAI API (not Gemini), IONOS.ca hosting |
+| 1.7 | Jan 04, 2026 | aSpiral Team | Added audio session coordination, runtime debug overlay, feature flags, and render storm diagnostics |

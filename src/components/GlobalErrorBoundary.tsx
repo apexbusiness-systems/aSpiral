@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { analytics } from '@/lib/analytics';
+import { addBreadcrumb, setFatalErrorSnapshot } from '@/lib/debugOverlay';
 
 interface Props {
   children: ReactNode;
@@ -38,6 +39,12 @@ class GlobalErrorBoundary extends Component<Props, State> {
     // Log error for debugging - critical for mobile diagnostics
     console.error('[GlobalErrorBoundary] Caught error:', error);
     console.error('[GlobalErrorBoundary] Component stack:', errorInfo.componentStack);
+
+    setFatalErrorSnapshot({
+      message: error.message || 'Unknown error',
+      stack: error.stack?.slice(0, 2000),
+    });
+    addBreadcrumb({ type: 'system', message: 'fatal_ui_error' });
 
     if (!import.meta.env.DEV && !this.hasLoggedFatal) {
       this.hasLoggedFatal = true;
