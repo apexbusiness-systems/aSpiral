@@ -1,9 +1,10 @@
 import { Suspense, useMemo, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
+import { OrbitControls, Stars, Sparkles } from "@react-three/drei";
 import { detectDeviceCapabilities } from "@/lib/performance/optimizer";
 import { SpiralEntities } from "./SpiralEntities";
 import { FrictionEffects } from "./FrictionEffects";
+import * as THREE from "three";
 
 // ============================================================================
 // CSS Variable Color Extraction for 3D Theme Unification
@@ -79,73 +80,52 @@ function SceneContent() {
   // Adaptive star count based on device capabilities
   const starCount = useMemo(() => {
     const capabilities = detectDeviceCapabilities();
-
-    // Low-end devices: minimal stars
-    if (capabilities.deviceType === 'mobile' || capabilities.gpuTier === 1) {
-      return 300;
-    }
-
-    // Mid-range: moderate stars
-    if (capabilities.deviceType === 'tablet' || capabilities.gpuTier === 2) {
-      return 500;
-    }
-
-    // High-end: full stars
-    return 800;
+    if (capabilities.deviceType === 'mobile' || capabilities.gpuTier === 1) return 300;
+    return 1000;
   }, []);
 
   return (
     <>
-      {/* Lighting - uses theme-aware colors */}
-      <ambientLight intensity={0.3} />
-      <pointLight position={[10, 10, 10]} intensity={1} />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} color={themeColors.secondary} />
+      {/* Audit Fix: Environmental Atmosphere */}
+      <fogExp2 attach="fog" args={['#0f0c29', 0.02]} />
+
+      {/* Lighting - Dramatic "Aurora" Setup */}
+      <ambientLight intensity={0.4} />
+      <pointLight position={[10, 10, 10]} intensity={1.5} color="#ff00cc" distance={50} />
+      <pointLight position={[-10, -5, -10]} intensity={1.5} color="#00dbde" distance={50} />
+      <spotLight position={[0, 10, 0]} angle={0.5} penumbra={1} intensity={1} color="#ffffff" />
 
       {/* Environment - adaptive count for performance */}
       <Stars
-        radius={80}
-        depth={40}
+        radius={50}
+        depth={50}
         count={starCount}
-        factor={3}
-        saturation={0}
+        factor={4}
+        saturation={1}
         fade
-        speed={0.2}
+        speed={0.5}
       />
 
-      {/* Spiral center indicator - uses primary theme color */}
-      <mesh position={[0, 0, 0]}>
-        <torusGeometry args={[0.5, 0.02, 8, 48]} />
-        <meshBasicMaterial
-          color={themeColors.primary}
-          transparent
-          opacity={0.6}
-        />
-      </mesh>
+      {/* Audit Fix: Additional floating particles for "Space Dust" */}
+      <Sparkles count={100} scale={10} size={2} speed={0.4} opacity={0.5} color="#cfcfff" />
 
-      {/* Ground plane hint - uses background theme color */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <ringGeometry args={[0.5, 5, 32]} />
-        <meshBasicMaterial
-          color={themeColors.background}
-          transparent
-          opacity={0.2}
-          side={2}
-        />
-      </mesh>
-      
-      {/* Entities */}
+      {/* Ground plane hint - subtle grid */}
+      <gridHelper args={[20, 20, 0x444444, 0x222222]} position={[0, -2, 0]} rotation={[0, 0, 0]}>
+         <meshBasicMaterial transparent opacity={0.1} />
+      </gridHelper>
+
+      {/* Entities & Core */}
       <SpiralEntities />
-      
-      {/* Friction & Breakthrough Effects */}
       <FrictionEffects />
-      
+
       {/* Camera controls */}
       <OrbitControls
         enablePan={false}
         minDistance={3}
         maxDistance={15}
         autoRotate
-        autoRotateSpeed={0.3}
+        autoRotateSpeed={0.5} // Slightly faster for more cinematic feel
+        maxPolarAngle={Math.PI / 1.5} // Don't let user go under the floor
       />
     </>
   );
@@ -155,11 +135,12 @@ export function SpiralScene() {
   return (
     <div className="h-full w-full gpu-accelerated">
       <Canvas
-        camera={{ position: [5, 3, 5], fov: 60 }}
+        camera={{ position: [6, 4, 6], fov: 50 }} // Slightly tighter FOV for cinematic feel
         style={{ background: "transparent" }}
-        dpr={[1, 1.5]} // Limit pixel ratio for performance
-        performance={{ min: 0.5 }} // Allow quality reduction
-        frameloop="demand" // Only render when needed
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
+        frameloop="demand"
+        gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
       >
         <Suspense fallback={null}>
           <SceneContent />
