@@ -86,7 +86,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const lastBackendRef = useRef(getAudioSessionStatus().backend);
 
   useEffect(() => {
-    return subscribeAudioSession((status) => {
+    const unsubscribe = subscribeAudioSession((status) => {
       const backendChanged = lastBackendRef.current !== status.backend;
       if (backendChanged) {
         lastBackendRef.current = status.backend;
@@ -109,6 +109,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         };
       });
     });
+    return unsubscribe;
   }, []);
 
   const stop = useCallback(() => {
@@ -127,6 +128,9 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
       logger.warn('speak called with empty text');
       return;
     }
+
+    // 1. Ensure we cancel any existing speech first
+    window.speechSynthesis.cancel();
 
     emitTTSDebugEvent({
       type: 'tts.request',

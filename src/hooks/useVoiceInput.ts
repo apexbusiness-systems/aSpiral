@@ -28,9 +28,6 @@ const VOICE_STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on
 
 const logger = createLogger("useVoiceInput");
 
-// Audit Fix: Explicit keywords to stop recording
-const STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on'];
-
 /**
  * Detect iOS Safari for voice input fallback handling
  * iOS Safari has quirks with continuous speech recognition
@@ -136,6 +133,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const isStartedRef = useRef(false); // Idempotent guard
   const isIntentionalStop = useRef(false); // Audit Fix: Track if user clicked stop
+  const silenceTimer = useRef<NodeJS.Timeout | null>(null); // Audit Fix: Silence detection timer
   const interimTranscriptRef = useRef("");
   const lastInterimEmitRef = useRef(0);
   const INTERIM_UPDATE_INTERVAL = 150;
@@ -253,6 +251,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           },
         });
       }
+    }
+
+    // 3. Smart Silence Detection
+    // Only stop if user has been silent for 2.5 seconds AFTER a final result
+    if (newFinalText) {
+      // Clear previous silence timer - user is talking!
+      if (silenceTimer.current) clearTimeout(silenceTimer.current);
+
+      silenceTimer.current = setTimeout(() => {
+        console.log("Silence detected. Stopping recording.");
+        stopRecording();
+      }, 2500); // Increased from 1000ms to 2500ms for natural pauses
     }
 
     // Update transcript buffers correctly:

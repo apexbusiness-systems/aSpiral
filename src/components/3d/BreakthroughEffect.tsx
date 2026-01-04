@@ -45,6 +45,7 @@ function Particle({
 
 export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectProps) {
   const { scene } = useThree();
+  const sceneRef = useRef<THREE.Group>(null);
   const [particles, setParticles] = useState<
     Array<{ id: number; pos: THREE.Vector3; vel: THREE.Vector3; color: string; size: number }>
   >([]);
@@ -58,10 +59,18 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
     if (isActive && !hasTriggered.current) {
       hasTriggered.current = true;
 
+      // CLEANUP: Force remove previous instances before adding new ones
+      // This fixes the "Doubled Animation" bug
+      if (sceneRef.current) {
+        while(sceneRef.current.children.length > 0){
+          sceneRef.current.remove(sceneRef.current.children[0]);
+        }
+      }
+
       // Create explosion particles
       const newParticles = [];
       const colors = ["#22c55e", "#10b981", "#34d399", "#6ee7b7", "#ffffff", "#fbbf24"];
-      
+
       for (let i = 0; i < 50; i++) {
         const angle = Math.random() * Math.PI * 2;
         const elevation = (Math.random() - 0.5) * Math.PI;
@@ -96,6 +105,16 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
         onComplete?.();
       }, 2000);
     }
+
+    // CRITICAL: Do NOT add any fallback mesh code here.
+    // If particles fail to load, show nothing rather than a green wireframe.
+
+    return () => {
+      // Strict cleanup on unmount
+      if (sceneRef.current) {
+        sceneRef.current.clear();
+      }
+    };
   }, [isActive, onComplete]);
 
   // Animate flash and ring
