@@ -520,6 +520,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         onViewHistory={handleViewHistory}
         onSettings={handleSettings}
         onHelp={handleHelp}
+        installPwa={deferredPrompt ? handleInstallPwa : undefined}
         sessionProgress={
           sessionState !== "idle"
             ? {

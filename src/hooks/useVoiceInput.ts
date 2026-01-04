@@ -28,6 +28,9 @@ const STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on'];
 
 const logger = createLogger("useVoiceInput");
 
+// Audit Fix: Explicit keywords to stop recording
+const STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on'];
+
 /**
  * Detect iOS Safari for voice input fallback handling
  * iOS Safari has quirks with continuous speech recognition

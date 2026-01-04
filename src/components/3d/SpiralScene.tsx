@@ -119,10 +119,8 @@ function SceneContent() {
       
       {/* Entities */}
       <SpiralEntities />
-      
-      {/* Friction & Breakthrough Effects */}
       <FrictionEffects />
-      
+
       {/* Camera controls */}
       <OrbitControls
         enablePan={false}
