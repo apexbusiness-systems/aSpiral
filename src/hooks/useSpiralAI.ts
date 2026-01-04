@@ -444,6 +444,22 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }, 50);
         }
 
+        // FAILSAFE: If readyForBreakthrough but server returned a question, ignore it and force breakthrough
+        if (fastTrackRef.current.readyForBreakthrough && data.question) {
+           logger.warn("Server returned question despite breakthrough ready - forcing breakthrough locally");
+           
+           // Mock a basic breakthrough data if none exists
+           const forcedData: BreakthroughData = {
+               friction: "The tension between your goals and your fears",
+               grease: "Trusting your own intuition",
+               insight: "You already know the answer, you just need to act."
+           };
+           
+           forceBreakthrough(forcedData);
+           sendEvent({ type: "RESPONSE_COMPLETE" }); // Reset FSM
+           return data;
+        }
+
         // Track question and count with anti-repetition + energy matching
         if (data.question) {
           let processedQuestion = data.question;
