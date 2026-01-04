@@ -1,79 +1,72 @@
 workflows:
   aspiral_ios_testflight:
-    name: aSpiral iOS -> TestFlight (Green Next Run)
+    name: aSpiral iOS → TestFlight (Green Lane)
     instance_type: mac_mini_m2
     max_build_duration: 90
 
     environment:
       xcode: 16.4
-      node: 22
       cocoapods: default
-
       groups:
         - ios_credentials
         - appstore_credentials
-
       vars:
         NODE_OPTIONS: "--max_old_space_size=8192"
 
+        # Repo-known paths (override in UI only if these ever change)
+        INFO_PLIST_PATH: "ios/App/App/Info.plist"
         XCODE_SCHEME: "App"
 
-        IOS_PROJECT_PATH: "ios/App/App.xcodeproj"
-        IOS_WORKSPACE_PATH: "ios/App/App.xcworkspace"
-        IOS_FALLBACK_WORKSPACE_PATH: "ios/App/App.xcodeproj/project.xcworkspace"
-
-        INFO_PLIST_PATH: "ios/App/App/Info.plist"
+        # Build output
         IPA_PATH: "build/ios/ipa/App.ipa"
 
+        # iOS build targets (auto-resolved in scripts)
+        XCODE_PRIMARY_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_FALLBACK_WORKSPACE: "ios/App/App.xcodeproj/project.xcworkspace"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+
     scripts:
-      - name: Preflight (fail fast + normalize Key ID)
+      - name: Preflight (fail fast + normalize env)
         script: |
           set -euo pipefail
 
-          # Normalize Key ID drift: prefer APP_STORE_CONNECT_KEY_ID, fallback to mis-cased KEY_iD
-          if [ -z "${APP_STORE_CONNECT_KEY_ID:-}" ] && [ -n "${APP_STORE_CONNECT_KEY_iD:-}" ]; then
-            echo "APP_STORE_CONNECT_KEY_ID=${APP_STORE_CONNECT_KEY_iD}" >> "$CM_ENV"
+          # Normalize App Store Connect Key ID naming drift (you had KEY_ID / KEY_iD variants in logs)
+          if [ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ] && [ -z "${APP_STORE_CONNECT_KEY_ID:-}" ]; then
+            export APP_STORE_CONNECT_KEY_ID="${APP_STORE_CONNECT_KEY_IDENTIFIER}"
+          fi
+          if [ -n "${APP_STORE_CONNECT_KEY_iD:-}" ] && [ -z "${APP_STORE_CONNECT_KEY_ID:-}" ]; then
             export APP_STORE_CONNECT_KEY_ID="${APP_STORE_CONNECT_KEY_iD}"
           fi
 
-          required_vars=(
+          required=(
             TEAM_ID
             BUNDLE_ID
             APP_STORE_CONNECT_ISSUER_ID
-            APP_STORE_CONNECT_PRIVATE_KEY
             APP_STORE_CONNECT_KEY_ID
+            APP_STORE_CONNECT_PRIVATE_KEY
             CERTIFICATE_PRIVATE_KEY
           )
 
-          for v in "${required_vars[@]}"; do
+          for v in "${required[@]}"; do
             if [ -z "${!v:-}" ]; then
-              echo "Missing required env var: ${v}"
+              echo "❌ Missing required env var: ${v}"
               exit 1
             fi
           done
 
-          test -f package.json || (echo "package.json missing at repo root" && exit 1)
-          test -f "$INFO_PLIST_PATH" || (echo "Info.plist missing at $INFO_PLIST_PATH" && exit 1)
+          if [ ! -f "package.json" ]; then
+            echo "❌ package.json missing at repo root"
+            exit 1
+          fi
 
-          echo "Preflight OK"
+          if [ ! -f "${INFO_PLIST_PATH}" ]; then
+            echo "❌ Info.plist missing at ${INFO_PLIST_PATH}"
+            exit 1
+          fi
 
-      - name: Initialize keychain + fetch/create signing files (fail fast on Apple auth)
-        script: |
-          set -euo pipefail
-
-          keychain initialize
-
-          app-store-connect fetch-signing-files \
-            --type IOS_APP_STORE \
-            --create \
-            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --key-id "$APP_STORE_CONNECT_KEY_ID" \
-            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
-            "$BUNDLE_ID"
-
-          keychain add-certificates
-          echo "Signing assets ready"
+          echo "✅ Preflight OK"
+          echo "TEAM_ID=${TEAM_ID}"
+          echo "BUNDLE_ID=${BUNDLE_ID}"
 
       - name: Pin npm (matches known-good lane behavior)
         script: |
@@ -88,7 +81,7 @@ workflows:
           export NODE_OPTIONS="--max_old_space_size=8192"
           npm ci
 
-      - name: Build web assets (OOM hardened)
+      - name: Build web assets
         script: |
           set -euo pipefail
           export NODE_OPTIONS="--max_old_space_size=8192"
@@ -99,52 +92,75 @@ workflows:
           set -euo pipefail
           npx cap sync ios
 
-      - name: CocoaPods (ONLY if Podfile exists anywhere under ios/)
+      - name: CocoaPods (ONLY if Podfile exists)
         script: |
           set -euo pipefail
 
-          PODFILE_PATH="$(find ios -maxdepth 4 -name Podfile -print -quit || true)"
+          PODFILE_PATH="$(find ios -maxdepth 4 -type f -name Podfile -print -quit || true)"
           if [ -n "${PODFILE_PATH}" ]; then
+            echo "✅ Podfile found at: ${PODFILE_PATH}"
             POD_DIR="$(dirname "${PODFILE_PATH}")"
-            echo "Podfile found at: ${PODFILE_PATH}"
-            cd "${POD_DIR}"
-            pod install
-            cd "$CM_BUILD_DIR"
+            (cd "${POD_DIR}" && pod install)
           else
-            echo "No Podfile found. Skipping CocoaPods (SPM-based project)."
+            echo "ℹ️ No Podfile found. Skipping CocoaPods (SPM-only project)."
           fi
 
-      - name: Resolve iOS build target (workspace vs project) AFTER sync/pods
+      - name: Resolve iOS build target (workspace vs project)
         script: |
           set -euo pipefail
 
-          if [ -d "$IOS_WORKSPACE_PATH" ]; then
-            echo "BUILD_TARGET=workspace" >> "$CM_ENV"
-            echo "XCODE_WORKSPACE=$IOS_WORKSPACE_PATH" >> "$CM_ENV"
-            echo "Using workspace: $IOS_WORKSPACE_PATH"
-          elif [ -d "$IOS_FALLBACK_WORKSPACE_PATH" ]; then
-            echo "BUILD_TARGET=workspace" >> "$CM_ENV"
-            echo "XCODE_WORKSPACE=$IOS_FALLBACK_WORKSPACE_PATH" >> "$CM_ENV"
-            echo "Using fallback workspace: $IOS_FALLBACK_WORKSPACE_PATH"
-          elif [ -d "$IOS_PROJECT_PATH" ]; then
-            echo "BUILD_TARGET=project" >> "$CM_ENV"
-            echo "XCODE_PROJECT=$IOS_PROJECT_PATH" >> "$CM_ENV"
-            echo "Using project: $IOS_PROJECT_PATH"
+          if [ -d "${XCODE_PRIMARY_WORKSPACE}" ]; then
+            echo "XCODE_WORKSPACE=${XCODE_PRIMARY_WORKSPACE}" >> "${CM_ENV}"
+          elif [ -d "${XCODE_FALLBACK_WORKSPACE}" ]; then
+            echo "XCODE_WORKSPACE=${XCODE_FALLBACK_WORKSPACE}" >> "${CM_ENV}"
           else
-            echo "No workspace or project found. Listing ios/App:"
-            ls -la ios/App || true
-            exit 1
+            echo "XCODE_WORKSPACE=" >> "${CM_ENV}"
           fi
+
+          # Always export project path as fallback
+          echo "XCODE_PROJECT=${XCODE_PROJECT}" >> "${CM_ENV}"
+
+          echo "Resolved:"
+          echo "  workspace=${XCODE_WORKSPACE:-}"
+          echo "  project=${XCODE_PROJECT}"
+          echo "  scheme=${XCODE_SCHEME}"
+          echo "  plist=${INFO_PLIST_PATH}"
 
       - name: Set unique build number (TestFlight-safe)
         script: |
           set -euo pipefail
-
           BUILD="$(date -u +%Y%m%d%H%M%S)"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$INFO_PLIST_PATH" \
-            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD" "$INFO_PLIST_PATH"
 
-          echo "CFBundleVersion set to $BUILD"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD}" "${INFO_PLIST_PATH}" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${BUILD}" "${INFO_PLIST_PATH}"
+
+          echo "✅ CFBundleVersion set to ${BUILD}"
+
+      - name: Initialize keychain + fetch/create signing files (fail fast on Apple 409)
+        script: |
+          set -euo pipefail
+
+          keychain initialize
+
+          set +e
+          app-store-connect fetch-signing-files "${BUNDLE_ID}" \
+            --type IOS_APP_STORE \
+            --create \
+            --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}" \
+            --key-id "${APP_STORE_CONNECT_KEY_ID}" \
+            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+          status=$?
+          set -e
+
+          if [ $status -ne 0 ]; then
+            echo "❌ Signing fetch/create failed."
+            echo "If you saw Apple 409 about an existing Distribution certificate/pending request:"
+            echo "→ Apple Developer > Certificates > Apple Distribution: revoke one unused cert, then rerun."
+            exit $status
+          fi
+
+          keychain add-certificates
 
       - name: Configure code signing (Internal Testing Only)
         script: |
@@ -156,25 +172,41 @@ workflows:
           set -euo pipefail
           mkdir -p build/ios/ipa
 
-          if [ "${BUILD_TARGET:-}" = "workspace" ]; then
+          if [ -n "${XCODE_WORKSPACE:-}" ] && [ -d "${XCODE_WORKSPACE}" ]; then
             xcode-project build-ipa \
-              --workspace "$XCODE_WORKSPACE" \
-              --scheme "$XCODE_SCHEME" \
+              --workspace "${XCODE_WORKSPACE}" \
+              --scheme "${XCODE_SCHEME}" \
               --config Release \
-              --ipa-path "$IPA_PATH"
+              --ipa-path "${IPA_PATH}"
           else
             xcode-project build-ipa \
-              --project "$XCODE_PROJECT" \
-              --scheme "$XCODE_SCHEME" \
+              --project "${XCODE_PROJECT}" \
+              --scheme "${XCODE_SCHEME}" \
               --config Release \
-              --ipa-path "$IPA_PATH"
+              --ipa-path "${IPA_PATH}"
           fi
 
-      - name: Verify IPA exists
+          test -f "${IPA_PATH}"
+          echo "✅ IPA created at ${IPA_PATH}"
+
+      - name: Verify IPA (minimal, non-flaky)
         script: |
           set -euo pipefail
-          test -f "$IPA_PATH" || (echo "IPA not found at $IPA_PATH" && exit 1)
-          echo "IPA OK: $IPA_PATH"
+          test -f "${IPA_PATH}" || (echo "❌ IPA not found: ${IPA_PATH}" && exit 1)
+
+          TEMP_DIR="$(mktemp -d)"
+          unzip -q "${IPA_PATH}" -d "${TEMP_DIR}"
+
+          PLIST_IN_IPA="${TEMP_DIR}/Payload/App.app/Info.plist"
+          test -f "${PLIST_IN_IPA}" || (echo "❌ Info.plist not found in IPA payload" && rm -rf "${TEMP_DIR}" && exit 1)
+
+          IPA_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "${PLIST_IN_IPA}")
+          IPA_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "${PLIST_IN_IPA}")
+
+          echo "✅ IPA Version: ${IPA_VERSION}"
+          echo "✅ IPA Build:   ${IPA_BUILD}"
+
+          rm -rf "${TEMP_DIR}"
 
     artifacts:
       - build/ios/ipa/*.ipa
