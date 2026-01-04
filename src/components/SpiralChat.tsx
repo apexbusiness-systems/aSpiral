@@ -11,6 +11,8 @@ import { MicButton } from "@/components/MicButton";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { QuestionBubble } from "@/components/QuestionBubble";
 import { SpiralScene } from "@/components/3d/SpiralScene";
+import { EnhancedSpiralScene } from "@/components/3d/EnhancedSpiralScene";
+import { isRendererV2Enabled } from "@/lib/rendererFlags";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
@@ -536,7 +538,7 @@ export function SpiralChat({ externalRecordingTrigger = 0 }: SpiralChatProps) {
             : "h-48 lg:h-full lg:w-1/3"
         }`}
       >
-        <SpiralScene />
+        {isRendererV2Enabled() ? <EnhancedSpiralScene /> : <SpiralScene />}
         
         {/* Question Bubble - positioned in 3D area */}
         <QuestionBubble
