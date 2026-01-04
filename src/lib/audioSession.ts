@@ -52,6 +52,38 @@ let audioContext: AudioContext | null = null;
 let sttController: STTController | null = null;
 let resumeListeningRequestId: number | null = null;
 
+// ============================================================================
+// REVERB BUFFER: Prevents echo/feedback loops by gating STT input after TTS ends
+// The AI needs 600ms of silence to prevent picking up its own voice echo
+// ============================================================================
+const REVERB_BUFFER_MS = 600;
+let isGatedFlag = false;
+let gateTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Check if STT input should be ignored (gated) due to recent TTS playback.
+ * Use this to prevent the AI from "hearing" itself speak.
+ */
+export function isGated(): boolean {
+  return isGatedFlag;
+}
+
+function setGate(): void {
+  isGatedFlag = true;
+  if (gateTimeoutId) {
+    clearTimeout(gateTimeoutId);
+  }
+  addBreadcrumb({ type: 'audio', message: 'reverb_gate_set', data: { durationMs: REVERB_BUFFER_MS } });
+}
+
+function clearGateAfterDelay(): void {
+  gateTimeoutId = setTimeout(() => {
+    isGatedFlag = false;
+    gateTimeoutId = null;
+    addBreadcrumb({ type: 'audio', message: 'reverb_gate_cleared' });
+  }, REVERB_BUFFER_MS);
+}
+
 const notify = () => {
   listeners.forEach((listener) => listener(status));
 };
@@ -171,6 +203,10 @@ async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
 function pauseListeningForRequest(requestId: number) {
   if (!sttController) return;
   const wasListening = sttController.isListening();
+
+  // Set the reverb gate immediately when TTS starts
+  setGate();
+
   if (wasListening) {
     sttController.stopListening();
     resumeListeningRequestId = requestId;
@@ -182,10 +218,20 @@ function pauseListeningForRequest(requestId: number) {
 function resumeListeningIfNeeded(requestId: number) {
   if (!sttController) return;
   if (resumeListeningRequestId !== requestId) return;
-  sttController.resumeListening();
-  updateStatus({ isListening: sttController.isListening() });
-  resumeListeningRequestId = null;
-  addBreadcrumb({ type: 'audio', message: 'stt_resumed_after_tts' });
+
+  // CRITICAL: Start the gate clear timer - this gives 600ms of silence before STT resumes
+  clearGateAfterDelay();
+
+  // Delay the actual STT resume by REVERB_BUFFER_MS to prevent echo
+  setTimeout(() => {
+    if (!sttController) return;
+    if (resumeListeningRequestId !== requestId) return; // Request may have been superseded
+
+    sttController.resumeListening();
+    updateStatus({ isListening: sttController.isListening() });
+    resumeListeningRequestId = null;
+    addBreadcrumb({ type: 'audio', message: 'stt_resumed_after_tts', data: { delayMs: REVERB_BUFFER_MS } });
+  }, REVERB_BUFFER_MS);
 }
 
 async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOptions): Promise<void> {

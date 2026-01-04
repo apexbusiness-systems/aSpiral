@@ -40,6 +40,7 @@ export interface SpiralChatHandle {
   openSettings: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SpiralChatProps {}
 
 export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref) => {
@@ -52,6 +53,8 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // CRITICAL FIX: Ref to track last spoken question to prevent TTS loops
+  const lastSpokenQuestionRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   useRenderStormDetector('SpiralChat');
@@ -712,9 +715,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             <MicButton
               isRecording={isRecording}
               isPaused={isRecordingPaused}
+              isProcessing={isAIProcessing}
               isSupported={isSupported}
-              onToggle={handleMicToggle}
+              onClick={handleMicToggle}
               onPause={isRecording ? toggleRecordingPause : undefined}
+              onStop={isRecording ? stopRecording : undefined}
             />
             <Input
               value={input}

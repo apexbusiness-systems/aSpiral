@@ -19,7 +19,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 import { createLogger } from "@/lib/logger";
-import { registerSTTController, updateListeningState } from "@/lib/audioSession";
+import { registerSTTController, updateListeningState, isGated } from "@/lib/audioSession";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { featureFlags } from "@/lib/featureFlags";
 
@@ -152,11 +152,15 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [emitInterimUpdate, options]);
 
   const handleRecognitionResult = useCallback((event: SpeechRecognitionEvent) => {
-    // FEEDBACK LOOP PREVENTION: Ignore transcripts while assistant is speaking
-    if (assistantIsSpeakingRef.current) {
+    // FEEDBACK LOOP PREVENTION: Ignore transcripts while assistant is speaking OR during reverb gate
+    // The isGated() check handles the 600ms "reverb buffer" after TTS ends
+    if (assistantIsSpeakingRef.current || isGated()) {
       emitDebugEvent({
         type: 'stt.partial',
-        data: { ignored: true, reason: 'assistant_speaking' },
+        data: {
+          ignored: true,
+          reason: assistantIsSpeakingRef.current ? 'assistant_speaking' : 'reverb_gated'
+        },
       });
       return;
     }

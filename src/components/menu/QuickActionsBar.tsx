@@ -93,12 +93,13 @@ export function QuickActionsBar({
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Pause/Resume - Primary visual hierarchy */}
+              {/* MOBILE FIX: min-w-[48px] min-h-[48px] ensures touch target compliance */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
                     className={cn(
-                      "h-11 w-11 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
-                      "transition-all cursor-pointer",
+                      "min-w-[48px] min-h-[48px] h-12 w-12 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
+                      "transition-all cursor-pointer touch-manipulation",
                       isPaused
                         ? "bg-accent/30 border-2 border-accent text-accent hover:bg-accent/40"
                         : "bg-warning/30 border-2 border-warning text-warning hover:bg-warning/40"
@@ -115,14 +116,15 @@ export function QuickActionsBar({
               </Tooltip>
 
               {/* Stop - Destructive action */}
+              {/* MOBILE FIX: min-w-[48px] min-h-[48px] ensures touch target compliance */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
                     className={cn(
-                      "h-11 w-11 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
+                      "min-w-[48px] min-h-[48px] h-12 w-12 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
                       "bg-destructive/20 border-2 border-destructive/60",
                       "text-destructive hover:bg-destructive/30",
-                      "transition-all cursor-pointer"
+                      "transition-all cursor-pointer touch-manipulation"
                     )}
                     onClick={onStop}
                     whileTap={{ scale: 0.95 }}
@@ -139,15 +141,16 @@ export function QuickActionsBar({
               <div className="hidden sm:block h-6 w-px bg-border/30 mx-1" />
 
               {/* Skip to Breakthrough - Accent action */}
+              {/* MOBILE FIX: min-h-[48px] ensures touch target compliance */}
               {!isBreakthrough && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <motion.button
                       className={cn(
-                        "h-11 sm:h-10 px-3 sm:px-4 flex items-center gap-1.5 sm:gap-2 rounded-xl",
+                        "min-h-[48px] h-12 sm:h-10 px-4 sm:px-4 flex items-center gap-1.5 sm:gap-2 rounded-xl",
                         "bg-secondary/30 border-2 border-secondary",
                         "text-secondary hover:bg-secondary/40",
-                        "transition-all cursor-pointer font-medium text-xs sm:text-sm"
+                        "transition-all cursor-pointer touch-manipulation font-medium text-xs sm:text-sm"
                       )}
                       onClick={onSkip}
                       whileTap={{ scale: 0.98 }}
