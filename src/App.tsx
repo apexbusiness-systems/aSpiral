@@ -11,7 +11,7 @@ import i18n from "@/lib/i18n/config";
 import { SentinelProvider } from "@/components/SentinelProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { DebugOverlay } from "@/components/DebugOverlay";
-import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import { toast } from "sonner";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
 import Story from "./pages/Story";
@@ -44,36 +44,48 @@ function PWAUpdateHandler() {
   }, [registration]);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((reg) => {
-        setRegistration(reg);
+    if (!('serviceWorker' in navigator)) return;
 
-        // Listen for new service worker installation
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New content is available, show toast
-                toast("New version available", {
-                  description: "Refresh to get the latest features",
-                  action: {
-                    label: "Refresh",
-                    onClick: handleUpdate,
-                  },
-                  duration: Infinity,
-                });
-              }
-            });
-          }
-        });
-      });
+    let mounted = true;
 
-      // Handle controller change (when SKIP_WAITING is called)
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
+    // Handler for controller changes - triggers reload when new SW takes control
+    const handleControllerChange = () => {
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.ready.then((reg) => {
+      if (!mounted) return;
+      setRegistration(reg);
+
+      // Listen for new service worker installation
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New content is available, show toast
+              toast("New version available", {
+                description: "Refresh to get the latest features",
+                action: {
+                  label: "Refresh",
+                  onClick: handleUpdate,
+                },
+                duration: Infinity,
+              });
+            }
+          });
+        }
       });
-    }
+    });
+
+    // Handle controller change (when SKIP_WAITING is called)
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+    // Cleanup: remove event listener on unmount
+    return () => {
+      mounted = false;
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+    };
   }, [handleUpdate]);
 
   return null;
@@ -109,7 +121,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <Analytics />
-          <PwaInstallPrompt />
+          <PWAUpdateHandler />
           <HashRouter>
             <StandaloneModeRedirect />
             <DebugOverlay />

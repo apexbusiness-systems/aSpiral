@@ -93,10 +93,12 @@ export function QuickActionsBar({
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Pause/Resume - Primary visual hierarchy */}
+              {/* ACCESSIBILITY: aria-label for screen readers */}
               {/* MOBILE FIX: min-w-[48px] min-h-[48px] ensures touch target compliance */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
+                    aria-label={isPaused ? "Resume session" : "Pause session"}
                     className={cn(
                       "min-w-[48px] min-h-[48px] h-12 w-12 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
                       "transition-all cursor-pointer touch-manipulation",
@@ -107,7 +109,7 @@ export function QuickActionsBar({
                     onClick={isPaused ? onResume : onPause}
                     whileTap={{ scale: 0.95 }}
                   >
-                    {isPaused ? <Play size={20} /> : <Pause size={20} />}
+                    {isPaused ? <Play size={20} aria-hidden="true" /> : <Pause size={20} aria-hidden="true" />}
                   </motion.button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="hidden sm:block">
@@ -116,10 +118,12 @@ export function QuickActionsBar({
               </Tooltip>
 
               {/* Stop - Destructive action */}
+              {/* ACCESSIBILITY: aria-label for screen readers */}
               {/* MOBILE FIX: min-w-[48px] min-h-[48px] ensures touch target compliance */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
+                    aria-label="Stop session"
                     className={cn(
                       "min-w-[48px] min-h-[48px] h-12 w-12 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl",
                       "bg-destructive/20 border-2 border-destructive/60",
@@ -129,7 +133,7 @@ export function QuickActionsBar({
                     onClick={onStop}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Square size={18} />
+                    <Square size={18} aria-hidden="true" />
                   </motion.button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="hidden sm:block">
@@ -138,14 +142,16 @@ export function QuickActionsBar({
               </Tooltip>
 
               {/* Divider - hidden on mobile */}
-              <div className="hidden sm:block h-6 w-px bg-border/30 mx-1" />
+              <div className="hidden sm:block h-6 w-px bg-border/30 mx-1" aria-hidden="true" />
 
               {/* Skip to Breakthrough - Accent action */}
+              {/* ACCESSIBILITY: aria-label for screen readers */}
               {/* MOBILE FIX: min-h-[48px] ensures touch target compliance */}
               {!isBreakthrough && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <motion.button
+                      aria-label={`Skip to breakthrough (${questionCount + 1} of ${maxQuestions})`}
                       className={cn(
                         "min-h-[48px] h-12 sm:h-10 px-4 sm:px-4 flex items-center gap-1.5 sm:gap-2 rounded-xl",
                         "bg-secondary/30 border-2 border-secondary",
@@ -155,7 +161,7 @@ export function QuickActionsBar({
                       onClick={onSkip}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <Zap size={16} />
+                      <Zap size={16} aria-hidden="true" />
                       <span className="hidden xs:inline">Breakthrough</span>
                     </motion.button>
                   </TooltipTrigger>
@@ -166,9 +172,11 @@ export function QuickActionsBar({
               )}
 
               {/* Save - hidden on mobile */}
+              {/* ACCESSIBILITY: aria-label for screen readers */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
+                    aria-label="Save session progress"
                     className={cn(
                       "hidden sm:flex h-10 w-10 items-center justify-center rounded-xl",
                       "bg-accent/20 border-2 border-accent/50",
@@ -178,7 +186,7 @@ export function QuickActionsBar({
                     onClick={onSave}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Save size={16} />
+                    <Save size={16} aria-hidden="true" />
                   </motion.button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">

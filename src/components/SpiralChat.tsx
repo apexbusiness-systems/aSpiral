@@ -579,15 +579,17 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         />
         
         {/* Skip to Breakthrough Button - shows when there's a question */}
+        {/* Positioned above QuestionBubble, safe from input overlap on mobile */}
         {currentQuestion && !isRecording && currentStage !== "breakthrough" && (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
+          <div className="absolute bottom-24 sm:bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleSkipToBreakthrough}
-              className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2"
+              aria-label={`Skip to breakthrough, currently on question ${questionCount + 1} of ${maxQuestions}`}
+              className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2 touch-manipulation"
             >
-              <SkipForward className="h-3 w-3 mr-1.5" />
+              <SkipForward className="h-3 w-3 mr-1.5" aria-hidden="true" />
               Skip to breakthrough ({questionCount + 1}/{maxQuestions})
             </Button>
           </div>

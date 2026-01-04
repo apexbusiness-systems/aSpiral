@@ -143,6 +143,40 @@ function clearSpeechUtterance() {
   }
 }
 
+// ============================================================================
+// TTS SENTENCE CHUNKING: Improves iOS Safari reliability by breaking long text
+// iOS Safari has issues with long utterances - they can cut off or fail silently
+// ============================================================================
+
+/**
+ * Split text into sentences for chunked TTS playback.
+ * Handles common sentence endings while preserving meaning.
+ */
+function splitIntoSentences(text: string): string[] {
+  // Match sentence endings: period, exclamation, question mark followed by space or end
+  // Also handles ellipsis and keeps punctuation with the sentence
+  const sentences = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
+
+  if (!sentences) return [text];
+
+  // Filter empty strings and trim
+  return sentences
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
+/**
+ * Check if current browser is iOS Safari (needs sentence chunking)
+ */
+function needsSentenceChunking(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  return isIOS && isSafari;
+}
+
 function cancelActive(reason: string, resumeListening: boolean) {
   updateStatus({
     isSpeaking: false,
@@ -282,54 +316,93 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
 
   window.speechSynthesis.cancel();
 
-  return new Promise<void>((resolve, reject) => {
-    const utterance = new SpeechSynthesisUtterance(options.text);
-    utterance.rate = options.speed;
-    utterance.pitch = 1.0;
+  // iOS Safari: use sentence chunking for reliability
+  const useChunking = needsSentenceChunking();
+  const sentences = useChunking ? splitIntoSentences(options.text) : [options.text];
 
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice =
-      voices.find((v) =>
-        v.name.includes('Google') ||
-        v.name.includes('Samantha') ||
-        v.name.includes('Daniel')
-      ) || voices[0];
+  if (useChunking && sentences.length > 1) {
+    addBreadcrumb({
+      type: 'audio',
+      message: 'tts_chunking_enabled',
+      data: { sentenceCount: sentences.length }
+    });
+  }
 
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+  const voices = window.speechSynthesis.getVoices();
+  const preferredVoice =
+    voices.find((v) =>
+      v.name.includes('Google') ||
+      v.name.includes('Samantha') ||
+      v.name.includes('Daniel')
+    ) || voices[0];
+
+  let isFirstSentence = true;
+  let hasErrored = false;
+
+  // Speak each sentence sequentially
+  for (let i = 0; i < sentences.length; i++) {
+    if (requestId !== status.requestId || hasErrored) break;
+
+    const sentence = sentences[i];
+    const isLastSentence = i === sentences.length - 1;
+
+    await new Promise<void>((resolve, reject) => {
+      const utterance = new SpeechSynthesisUtterance(sentence);
+      utterance.rate = options.speed;
+      utterance.pitch = 1.0;
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onstart = () => {
+        if (requestId !== status.requestId) return;
+        if (isFirstSentence) {
+          updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
+          useAssistantSpeakingStore.getState().startSpeaking();
+          addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'webSpeech', chunked: useChunking } });
+          options.onStart?.();
+          isFirstSentence = false;
+        }
+      };
+
+      utterance.onend = () => {
+        if (requestId !== status.requestId) return;
+        if (isLastSentence) {
+          updateStatus({ isSpeaking: false, backend: 'webSpeech' });
+          useAssistantSpeakingStore.getState().stopSpeaking();
+          resumeListeningIfNeeded(requestId);
+          addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'webSpeech', chunked: useChunking } });
+          options.onEnd?.();
+        }
+        resolve();
+      };
+
+      utterance.onerror = (event) => {
+        if (requestId !== status.requestId) return;
+        // On iOS, 'interrupted' errors are common during chunking - ignore them
+        if (event.error === 'interrupted' && useChunking && !isLastSentence) {
+          resolve();
+          return;
+        }
+        hasErrored = true;
+        const error = new Error(`Speech synthesis error: ${event.error}`);
+        updateStatus({ isSpeaking: false, isLoading: false, backend: 'webSpeech' });
+        useAssistantSpeakingStore.getState().stopSpeaking();
+        addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'webSpeech', error: event.error } });
+        options.onError?.(error);
+        reject(error);
+      };
+
+      speechUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
+    });
+
+    // Small pause between sentences for natural pacing (iOS needs this)
+    if (useChunking && !isLastSentence && requestId === status.requestId) {
+      await new Promise(r => setTimeout(r, 50));
     }
-
-    utterance.onstart = () => {
-      if (requestId !== status.requestId) return;
-      updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
-      useAssistantSpeakingStore.getState().startSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'webSpeech' } });
-      options.onStart?.();
-    };
-
-    utterance.onend = () => {
-      if (requestId !== status.requestId) return;
-      updateStatus({ isSpeaking: false, backend: 'webSpeech' });
-      useAssistantSpeakingStore.getState().stopSpeaking();
-      resumeListeningIfNeeded(requestId);
-      addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'webSpeech' } });
-      options.onEnd?.();
-      resolve();
-    };
-
-    utterance.onerror = (event) => {
-      if (requestId !== status.requestId) return;
-      const error = new Error(`Speech synthesis error: ${event.error}`);
-      updateStatus({ isSpeaking: false, isLoading: false, backend: 'webSpeech' });
-      useAssistantSpeakingStore.getState().stopSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'webSpeech' } });
-      options.onError?.(error);
-      reject(error);
-    };
-
-    speechUtterance = utterance;
-    window.speechSynthesis.speak(utterance);
-  });
+  }
 }
 
 export async function speak(options: SpeakOptions): Promise<void> {
@@ -387,6 +460,13 @@ export function stop(reason = 'stopped') {
 }
 
 export function disposeAudioSession() {
+  // Clear any pending gate timeout to prevent memory leaks
+  if (gateTimeoutId) {
+    clearTimeout(gateTimeoutId);
+    gateTimeoutId = null;
+    isGatedFlag = false;
+  }
+
   cancelActive('disposed', true);
   if (audioContext) {
     audioContext.close();

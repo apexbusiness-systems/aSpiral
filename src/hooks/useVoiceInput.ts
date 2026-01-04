@@ -25,6 +25,46 @@ import { featureFlags } from "@/lib/featureFlags";
 
 const logger = createLogger("useVoiceInput");
 
+/**
+ * Detect iOS Safari for voice input fallback handling
+ * iOS Safari has quirks with continuous speech recognition
+ */
+function isIOSSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  return isIOS && isSafari;
+}
+
+/**
+ * Check if device supports Web Speech API reliably
+ * Returns { supported: boolean, requiresFallback: boolean, reason?: string }
+ */
+function checkVoiceSupport(): { supported: boolean; requiresFallback: boolean; reason?: string } {
+  if (typeof window === 'undefined') {
+    return { supported: false, requiresFallback: false, reason: 'no_window' };
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    return { supported: false, requiresFallback: false, reason: 'no_speech_api' };
+  }
+
+  // iOS Safari requires special handling - continuous mode is unreliable
+  if (isIOSSafari()) {
+    return {
+      supported: true,
+      requiresFallback: true,
+      reason: 'ios_safari_continuous_unreliable'
+    };
+  }
+
+  return { supported: true, requiresFallback: false };
+}
+
 // Debug event emitter for optional debug panel
 type VoiceDebugEvent = {
   type: 'stt.start' | 'stt.stop' | 'stt.partial' | 'stt.final' | 'stt.error' | 'listener.attach' | 'listener.detach';
@@ -101,20 +141,26 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const assistantIsSpeakingRef = useRef(assistantIsSpeaking);
   assistantIsSpeakingRef.current = assistantIsSpeaking;
 
-  // Check for browser support
+  // Track iOS Safari mode for special handling
+  const isIOSSafariMode = useRef(false);
+
+  // Check for browser support with iOS Safari detection
   useEffect(() => {
     if (!voiceEnabled) {
       setIsSupported(false);
       return;
     }
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    setIsSupported(!!SpeechRecognition);
+    const voiceCheck = checkVoiceSupport();
+    setIsSupported(voiceCheck.supported);
+    isIOSSafariMode.current = voiceCheck.requiresFallback;
 
-    if (!SpeechRecognition) {
-      logger.warn("Speech recognition not supported");
-      emitDebugEvent({ type: 'stt.error', data: { error: 'not_supported' } });
+    if (!voiceCheck.supported) {
+      logger.warn("Speech recognition not supported", { reason: voiceCheck.reason });
+      emitDebugEvent({ type: 'stt.error', data: { error: 'not_supported', reason: voiceCheck.reason } });
+    } else if (voiceCheck.requiresFallback) {
+      logger.info("iOS Safari detected - using non-continuous mode for reliability");
+      emitDebugEvent({ type: 'stt.start', data: { ios_safari_mode: true } });
     }
   }, [voiceEnabled]);
 
@@ -237,7 +283,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    // iOS Safari: use non-continuous mode for reliability (auto-restarts on silence)
+    // Other browsers: use continuous mode for seamless recording
+    recognition.continuous = !isIOSSafariMode.current;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
@@ -296,11 +344,27 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           emitDebugEvent({ type: 'stt.start', data: { lang: 'en-US' } });
         },
         onEnd: () => {
-          emitDebugEvent({ type: 'stt.stop', data: { wasPaused: isPaused } });
+          emitDebugEvent({ type: 'stt.stop', data: { wasPaused: isPaused, iosSafari: isIOSSafariMode.current } });
 
           // Only update state if we're not paused (paused means intentional stop)
           if (!isPaused) {
             commitInterimAsFinal();
+
+            // iOS Safari auto-restart: if in non-continuous mode and still recording, restart
+            if (isIOSSafariMode.current && isStartedRef.current) {
+              logger.debug("iOS Safari: auto-restarting recognition");
+              setTimeout(() => {
+                if (recognitionRef.current && isStartedRef.current) {
+                  try {
+                    recognitionRef.current.start();
+                  } catch (e) {
+                    // Already started or other issue, ignore
+                  }
+                }
+              }, 100);
+              return; // Don't set recording to false
+            }
+
             setRecording(false);
             isStartedRef.current = false;
           }
