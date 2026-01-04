@@ -10,6 +10,7 @@ import {
 } from '@/lib/breakthrough/director';
 import type { DirectorPhase, MutatedVariant, QualityTier } from '@/lib/breakthrough/types';
 import { prefersReducedMotion } from '@/lib/performance/optimizer';
+import { addBreadcrumb } from '@/lib/debugOverlay';
 
 interface UseBreakthroughDirectorOptions {
   onComplete?: () => void;
@@ -49,6 +50,9 @@ export function useBreakthroughDirector(
   const [phase, setPhase] = useState<DirectorPhase>('idle');
   const [variant, setVariant] = useState<MutatedVariant | null>(null);
   const [isSafeMode, setIsSafeMode] = useState(false);
+  const lastPhaseRef = useRef<DirectorPhase>('idle');
+  const lastVariantIdRef = useRef<string | null>(null);
+  const lastSafeModeRef = useRef(false);
   
   // Initialize director
   useEffect(() => {
@@ -62,12 +66,26 @@ export function useBreakthroughDirector(
         onAbort?.(reason);
       },
       onPhaseChange: (newPhase) => {
-        setPhase(newPhase);
+        if (lastPhaseRef.current !== newPhase) {
+          lastPhaseRef.current = newPhase;
+          setPhase(newPhase);
+          addBreadcrumb({ type: 'director', message: `phase:${newPhase}` });
+        }
         
         // Update variant and safe mode state
         if (directorRef.current) {
-          setVariant(directorRef.current.getCurrentVariant());
-          setIsSafeMode(directorRef.current.isSafeMode());
+          const currentVariant = directorRef.current.getCurrentVariant();
+          const nextVariantId = currentVariant?.id ?? null;
+          if (lastVariantIdRef.current !== nextVariantId) {
+            lastVariantIdRef.current = nextVariantId;
+            setVariant(currentVariant);
+          }
+
+          const nextSafeMode = directorRef.current.isSafeMode();
+          if (lastSafeModeRef.current !== nextSafeMode) {
+            lastSafeModeRef.current = nextSafeMode;
+            setIsSafeMode(nextSafeMode);
+          }
         }
       },
     });

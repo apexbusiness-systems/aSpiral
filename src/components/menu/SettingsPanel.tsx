@@ -34,6 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createUpdateGuard } from "@/lib/updateGuard";
+import { addBreadcrumb } from "@/lib/debugOverlay";
+import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
 
 export interface SettingsState {
   // Voice settings
@@ -159,6 +161,8 @@ export function SettingsPanel({
   settings: externalSettings,
   onSettingsChange,
 }: SettingsPanelProps) {
+  useRenderStormDetector('SettingsPanel');
+
   const [settings, setSettings] = useState<SettingsState>(() => {
     if (externalSettings) return externalSettings;
     const stored = loadStoredSettings();
@@ -187,6 +191,15 @@ export function SettingsPanel({
       // Don't remove on unmount - reuse for performance
     };
   }, []);
+
+  // Track open/close for debugging
+  useEffect(() => {
+    if (isOpen) {
+      addBreadcrumb({ type: 'settings', message: 'open' });
+    } else {
+      addBreadcrumb({ type: 'settings', message: 'close' });
+    }
+  }, [isOpen]);
 
   // Handle Escape key
   useEffect(() => {
@@ -558,7 +571,7 @@ export function SettingsPanel({
                 <TabsContent value="ai" className="space-y-6">
                   <SettingRow
                     label="Ultra-Fast Mode"
-                    description="Skip questions and go straight to breakthrough"
+                    description="Skip the questioning and go straight to breakthrough"
                   >
                     <Switch
                       checked={settings.ultraFastMode}
@@ -569,32 +582,26 @@ export function SettingsPanel({
 
                   <SettingRow
                     label="Max Questions"
-                    description="Number of clarifying questions before breakthrough"
+                    description="Number of questions before breakthrough"
                   >
-                    <Select
-                      value={settings.maxQuestions.toString()}
-                      onValueChange={(v) => updateSetting("maxQuestions", parseInt(v))}
-                      disabled={settings.ultraFastMode}
-                    >
-                      <SelectTrigger className="w-20 touch-manipulation">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent 
-                        className="bg-popover border-border"
-                        style={{ zIndex: CONTENT_Z + 10 }}
-                      >
-                        <SelectItem value="1">1</SelectItem>
-                        <SelectItem value="2">2</SelectItem>
-                        <SelectItem value="3">3</SelectItem>
-                        <SelectItem value="4">4</SelectItem>
-                        <SelectItem value="5">5</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="w-32">
+                      <Slider
+                        value={[settings.maxQuestions]}
+                        onValueChange={([v]) => updateSetting("maxQuestions", v)}
+                        min={1}
+                        max={5}
+                        step={1}
+                        className="touch-manipulation"
+                      />
+                    </div>
+                    <span className="text-sm text-muted-foreground w-10 text-right">
+                      {settings.maxQuestions}
+                    </span>
                   </SettingRow>
 
                   <SettingRow
                     label="Auto-Breakthrough"
-                    description="Automatically trigger breakthrough when ready"
+                    description="Automatically trigger breakthrough when patterns are detected"
                   >
                     <Switch
                       checked={settings.autoBreakthrough}
@@ -605,7 +612,7 @@ export function SettingsPanel({
 
                   <SettingRow
                     label="Frustration Detection"
-                    description="Detect frustration and skip to breakthrough"
+                    description="Detect and respond to user frustration"
                   >
                     <Switch
                       checked={settings.frustrationDetection}
@@ -616,7 +623,7 @@ export function SettingsPanel({
 
                   <SettingRow
                     label="Verbose Responses"
-                    description="Get more detailed AI explanations"
+                    description="Provide more detailed AI explanations"
                   >
                     <Switch
                       checked={settings.verboseResponses}
@@ -627,7 +634,7 @@ export function SettingsPanel({
 
                   <SettingRow
                     label="Sound Effects"
-                    description="Play sounds for actions and breakthrough"
+                    description="Enable UI sound effects"
                   >
                     <Switch
                       checked={settings.soundEffects}
@@ -640,29 +647,20 @@ export function SettingsPanel({
             </div>
 
             {/* Footer */}
-            <div 
-              className="flex items-center justify-between p-6 border-t border-border/50"
-              style={{ 
-                flexShrink: 0,
-                // Respect safe area at bottom for iPhone home indicator
-                paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))',
-              }}
+            <div
+              className="p-6 border-t border-border/50 flex items-center justify-between"
+              style={{ flexShrink: 0 }}
             >
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={resetToDefaults}
-                className="text-muted-foreground hover:text-foreground touch-manipulation"
+                className="flex items-center gap-2 text-muted-foreground"
               >
-                <RotateCcw size={16} className="mr-2" />
-                Reset to Defaults
+                <RotateCcw size={16} />
+                Reset
               </Button>
-              <Button 
-                onClick={onClose}
-                className="touch-manipulation"
-              >
-                Done
-              </Button>
+              <Button onClick={onClose}>Done</Button>
             </div>
           </motion.div>
         </>
@@ -670,32 +668,27 @@ export function SettingsPanel({
     </AnimatePresence>
   );
 
-  // Portal to body to escape all stacking contexts
-  if (!portalContainer) {
-    return null;
-  }
+  if (!portalContainer) return null;
 
   return createPortal(modalContent, portalContainer);
 }
 
-// Helper component for setting rows
 interface SettingRowProps {
   label: string;
-  description: string;
+  description?: string;
   children: React.ReactNode;
 }
 
 function SettingRow({ label, description, children }: SettingRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-border/30 last:border-0">
-      <div className="flex-1 min-w-0">
-        <Label className="text-foreground font-medium">{label}</Label>
-        <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex-1">
+        <Label className="text-sm font-medium">{label}</Label>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
       </div>
-      <div 
-        className="flex items-center gap-2 flex-shrink-0"
-        style={{ pointerEvents: 'auto' }} // Ensure controls receive touch
-      >
+      <div className="flex items-center gap-2">
         {children}
       </div>
     </div>

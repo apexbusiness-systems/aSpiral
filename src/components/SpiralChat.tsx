@@ -277,11 +277,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     toggleRecording: handleMicToggle,
     openSettings: () => {
       trackFeature('settings_opened');
+      addBreadcrumb({ type: 'settings', message: 'open' });
       setIsSettingsOpen(true);
     },
   }), [handleMicToggle, trackFeature]);
 
-  // Helper to add test data for development
   const addTestEntities = () => {
     const testEntities: Array<{ type: EntityType; label: string }> = [
       { type: "problem", label: "Should I take the job offer?" },
@@ -431,6 +431,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   const handleSettings = useCallback(() => {
     trackFeature('settings_opened');
+    addBreadcrumb({ type: 'settings', message: 'open' });
     setIsSettingsOpen(true);
   }, [trackFeature]);
 
@@ -668,14 +669,6 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             </>
           )}
         </div>
-        
-        {/* OMNiLiNK Status */}
-        {OmniLinkAdapter.isEnabled() && (
-          <div className="absolute bottom-3 right-3 glass-card rounded-xl px-3 py-1.5 text-xs text-accent flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            OMNiLiNK
-          </div>
-        )}
       </div>
 
       {/* Chat Panel */}
@@ -735,57 +728,73 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
               {/* TTS Toggle Button */}
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => {
                   setTtsEnabled(!ttsEnabled);
-                  if (isTTSSpeaking) stopSpeaking();
                 }}
-                className={cn(
-                  "h-10 w-10 rounded-full transition-colors",
-                  ttsEnabled 
-                    ? "text-primary hover:text-primary/80 bg-primary/10" 
-                    : "text-muted-foreground hover:text-muted-foreground/80"
+                className="text-xs"
+              >
+                {ttsEnabled ? (
+                  <Volume2 className="h-4 w-4 mr-1" />
+                ) : (
+                  <VolumeX className="h-4 w-4 mr-1" />
                 )}
-                title={ttsEnabled ? "Voice responses on" : "Voice responses off"}
-              >
-                {ttsEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                {ttsEnabled ? 'TTS On' : 'TTS Off'}
               </Button>
-
-              <MicButton
-                isRecording={isRecording}
-                isProcessing={isAIProcessing}
-                isSupported={isSupported}
-                isPaused={isRecordingPaused}
-                onClick={handleMicToggle}
-                onPause={isRecording ? toggleRecordingPause : undefined}
-                onStop={isRecording ? stopRecording : undefined}
-              />
             </div>
-            {!isSupported && (
-              <p className="text-xs text-muted-foreground text-center mb-4">
-                Voice input isn’t supported on this device. You can still type your thoughts.
-              </p>
-            )}
-
-            {/* Text Input */}
-            <form onSubmit={handleSubmit} className="flex gap-3">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Or type your thoughts here..."
-                disabled={isAIProcessing || isRecording}
-                className="bg-input/50 border-border/50 rounded-xl h-12 text-fluid-base placeholder:text-muted-foreground/50"
-              />
-              <Button
-                type="submit"
-                disabled={!input.trim() || isAIProcessing}
-                className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 rounded-xl h-12 px-5"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
           </div>
-        </div>
+        )}
+
+        {/* Messages */}
+        <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+          </div>
+        </ScrollArea>
+
+        {/* Live Transcript */}
+        {isRecording && (
+          <LiveTranscript transcript={liveTranscript} isRecording={isRecording} />
+        )}
+
+        {/* Input Area */}
+        <form onSubmit={handleSubmit} className="p-4 border-t border-border/30">
+          <div className="flex gap-2 items-center">
+            <MicButton
+              isRecording={isRecording}
+              isPaused={isRecordingPaused}
+              isSupported={isSupported}
+              onToggle={handleMicToggle}
+              onPause={isRecording ? toggleRecordingPause : undefined}
+            />
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your thoughts..."
+              className="flex-1"
+              disabled={isAIProcessing}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!input.trim() || isAIProcessing}
+              className="bg-primary text-primary-foreground"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </form>
+
+        {/* Entity Cards */}
+        {currentSession?.entities?.length ? (
+          <EntityCardList
+            entities={currentSession.entities}
+            selectedEntityId={selectedEntityId}
+            onEntityClick={handleEntityClick}
+          />
+        ) : null}
       </div>
     </div>
     </LayoutGroup>
