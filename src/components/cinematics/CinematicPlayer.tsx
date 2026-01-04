@@ -30,6 +30,8 @@ import { AudioManager } from '@/lib/cinematics/AudioManager';
 import { AdaptiveQuality, prefersReducedMotion, calculateParticleCount, detectDeviceTier, detectDeviceCapabilities } from '@/lib/performance/optimizer';
 import { analytics } from '@/lib/analytics';
 import type { CinematicPlayerProps, CinematicVariant } from '@/lib/cinematics/types';
+import { addBreadcrumb } from '@/lib/debugOverlay';
+import { featureFlags } from '@/lib/featureFlags';
 
 // Error Boundary for WebGL crashes
 interface ErrorBoundaryState {
@@ -99,6 +101,7 @@ export function CinematicPlayer({
   // Check if V2 is enabled
   const useV2 = isBreakthroughV2Enabled();
   const deviceTier = detectDeviceTier();
+  const cinematicsEnabled = featureFlags.cinematicsEnabled;
   
   // V2 Director integration
   const {
@@ -141,6 +144,7 @@ export function CinematicPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [particleCount, setParticleCount] = useState(config.particles?.count || 1000);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const hasCompletedRef = useRef(false);
   const [webglFailed, setWebglFailed] = useState(false);
   const startTimeRef = useRef<number>(0);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -149,9 +153,9 @@ export function CinematicPlayer({
   // Check for reduced motion preference
   const shouldReduceMotion = reducedMotion || prefersReducedMotion();
 
-  // Handle completion (deduplicated)
-  const handleComplete = useRef(() => {
-    if (hasCompleted) return;
+  const handleComplete = useCallback(() => {
+    if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
     setHasCompleted(true);
     setIsPlaying(false);
     audioManager.current?.stop();
@@ -188,23 +192,39 @@ export function CinematicPlayer({
       }
     }
 
+    addBreadcrumb({ type: 'cinematic', message: 'complete' });
     onComplete?.();
-  }).current;
+  }, [enableAnalytics, particleCount, qualitySettings.particleMultiplier, selectedVariant, onComplete]);
+
+  const handleV2Complete = useCallback(() => {
+    completeDirector();
+    handleComplete();
+  }, [completeDirector, handleComplete]);
 
   // Handle WebGL/canvas errors - show fallback UI then complete
-  const handleWebGLError = useRef(() => {
+  const handleWebGLError = useCallback(() => {
     console.warn('[CinematicPlayer] WebGL error - showing fallback UI');
     setWebglFailed(true);
     audioManager.current?.stop();
+    addBreadcrumb({ type: 'cinematic', message: 'webgl_error' });
 
     // Brief delay to show fallback UI before completion
     setTimeout(() => {
       handleComplete();
     }, 1500);
-  }).current;
+  }, [handleComplete]);
+
+  // Kill switch: bypass cinematics
+  useEffect(() => {
+    if (!cinematicsEnabled) {
+      addBreadcrumb({ type: 'cinematic', message: 'disabled' });
+      handleComplete();
+    }
+  }, [cinematicsEnabled, handleComplete]);
 
   // Initialize V2 if enabled
   useEffect(() => {
+    if (!cinematicsEnabled) return;
     if (useV2 && !v2Initialized) {
       setV2Initialized(true);
       prewarm(sessionEntities, breakthroughType)
@@ -216,14 +236,16 @@ export function CinematicPlayer({
         })
         .catch((err) => {
           console.warn('[CinematicPlayer] V2 prewarm failed:', err);
+          abortDirector('prewarm_failed');
+          handleComplete();
         });
     }
-  }, [useV2, v2Initialized, sessionEntities, breakthroughType, autoPlay, prewarm, playDirector]);
+  }, [useV2, v2Initialized, sessionEntities, breakthroughType, autoPlay, prewarm, playDirector, cinematicsEnabled, abortDirector, handleComplete]);
 
   // Initialize (V1 mode)
   useEffect(() => {
     // Skip V1 init if V2 is enabled
-    if (useV2) return;
+    if (useV2 || !cinematicsEnabled) return;
     
     // Create adaptive quality manager
     adaptiveQuality.current = new AdaptiveQuality(setQualitySettings);
@@ -242,6 +264,7 @@ export function CinematicPlayer({
 
     startTimeRef.current = performance.now();
     onStart?.();
+    addBreadcrumb({ type: 'cinematic', message: 'start', data: { variant: selectedVariant } });
 
     if (autoPlay) {
       setIsPlaying(true);
@@ -262,7 +285,7 @@ export function CinematicPlayer({
         clearTimeout(fallbackTimeoutRef.current);
       }
     };
-  }, [useV2, selectedVariant, config, autoPlay, enableAnalytics, onStart, handleComplete]);
+  }, [useV2, selectedVariant, config, autoPlay, enableAnalytics, onStart, handleComplete, cinematicsEnabled]);
 
   // Update particle count based on quality
   useEffect(() => {
@@ -323,7 +346,7 @@ export function CinematicPlayer({
 
   // Render variant component
   const renderVariant = () => {
-    const props = { onComplete: handleComplete, particleCount };
+    const props = { onComplete: useV2 ? handleV2Complete : handleComplete, particleCount };
 
     switch (selectedVariant) {
       case 'spiral_ascend':

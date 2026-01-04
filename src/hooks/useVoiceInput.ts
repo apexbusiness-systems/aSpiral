@@ -19,6 +19,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 import { createLogger } from "@/lib/logger";
+import { registerSTTController, updateListeningState } from "@/lib/audioSession";
+import { addBreadcrumb } from "@/lib/debugOverlay";
+import { featureFlags } from "@/lib/featureFlags";
 
 const logger = createLogger("useVoiceInput");
 
@@ -38,6 +41,14 @@ function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
   const fullEvent: VoiceDebugEvent = { ...event, timestamp: Date.now() };
   debugBuffer = [...debugBuffer.slice(-(DEBUG_BUFFER_SIZE - 1)), fullEvent];
   debugSubscribers.forEach(cb => cb(debugBuffer));
+
+  if (event.type === 'stt.start' || event.type === 'stt.stop' || event.type === 'stt.error') {
+    addBreadcrumb({
+      type: 'voice',
+      message: event.type,
+      data: event.data,
+    });
+  }
   
   // Also log to console for debugging
   logger.debug(`[${event.type}]`, event.data);
@@ -85,6 +96,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const INTERIM_UPDATE_INTERVAL = 150;
 
   const { isRecording, setRecording, setError } = useSessionStore();
+  const voiceEnabled = featureFlags.voiceEnabled;
   
   // Assistant speaking gate - mute STT when assistant is speaking to prevent feedback loops
   const assistantIsSpeaking = useAssistantSpeakingStore(state => state.isSpeaking);
@@ -93,6 +105,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // Check for browser support
   useEffect(() => {
+    if (!voiceEnabled) {
+      setIsSupported(false);
+      return;
+    }
+
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     setIsSupported(!!SpeechRecognition);
@@ -101,7 +118,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       logger.warn("Speech recognition not supported");
       emitDebugEvent({ type: 'stt.error', data: { error: 'not_supported' } });
     }
-  }, []);
+  }, [voiceEnabled]);
 
   // Cleanup function - ensures all resources are released
   const cleanup = useCallback(() => {
@@ -139,6 +156,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [emitInterimUpdate, options]);
 
   const startRecording = useCallback(() => {
+    if (!voiceEnabled) {
+      setError("Voice input disabled");
+      return;
+    }
+
     // Idempotent guard - prevent double-start
     if (isStartedRef.current) {
       logger.warn("startRecording called but already started - ignoring");
@@ -271,7 +293,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       isStartedRef.current = false;
       options.onError?.(error as Error);
     }
-  }, [setRecording, setError, options, cleanup, isPaused, emitInterimUpdate, commitInterimAsFinal]);
+  }, [setRecording, setError, options, cleanup, isPaused, emitInterimUpdate, commitInterimAsFinal, voiceEnabled]);
 
   const stopRecording = useCallback(() => {
     emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
@@ -381,6 +403,35 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       pauseRecording();
     }
   }, [isPaused, pauseRecording, resumeRecording]);
+
+  // Register STT controller for audio session coordination
+  const stopListening = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
+  const resumeListening = useCallback(() => {
+    if (!isRecording && !isPaused) {
+      startRecording();
+    }
+  }, [isRecording, isPaused, startRecording]);
+
+  const isListening = useCallback(() => isRecording && !isPaused, [isRecording, isPaused]);
+
+  useEffect(() => {
+    registerSTTController({ stopListening, resumeListening, isListening });
+  }, [stopListening, resumeListening, isListening]);
+
+  useEffect(() => {
+    updateListeningState(isRecording && !isPaused);
+  }, [isRecording, isPaused]);
+
+  useEffect(() => {
+    if (!voiceEnabled && isRecording) {
+      stopRecording();
+    }
+  }, [voiceEnabled, isRecording, stopRecording]);
 
   // Cleanup on unmount - MUST be idempotent
   useEffect(() => {
