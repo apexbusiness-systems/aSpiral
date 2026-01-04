@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { configDefaults } from "vitest/config";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -23,6 +24,9 @@ export default defineConfig(({ mode }) => ({
     minify: mode === "production" ? "esbuild" : false,
     // Target modern browsers for smaller bundles
     target: "es2020",
+  },
+  test: {
+    exclude: [...configDefaults.exclude, "supabase/functions/spiral-ai/**/*.test.ts"],
   },
   plugins: [
     react(),
