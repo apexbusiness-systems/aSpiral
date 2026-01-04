@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,10 @@ import { SentinelProvider } from "@/components/SentinelProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { DebugOverlay } from "@/components/DebugOverlay";
 import { toast } from "sonner";
+import { SplashScreen } from '@capacitor/splash-screen';
+import PremiumSplash from "@/components/PremiumSplash";
+
+// Pages
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
 import Story from "./pages/Story";
@@ -30,123 +34,99 @@ import GetBreakthrough from "./pages/steps/GetBreakthrough";
 
 const queryClient = new QueryClient();
 
-// ============================================================================
-// PWA Update Detection & Notification
-// ============================================================================
+/**
+ * PWA Update Handler (Auto-Update Mode)
+ */
 function PWAUpdateHandler() {
-  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
-
-  const handleUpdate = useCallback(() => {
-    if (registration?.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
-    }
-  }, [registration]);
-
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    let mounted = true;
-
-    // Handler for controller changes - triggers reload when new SW takes control
     const handleControllerChange = () => {
-      window.location.reload();
+      console.log("[PWA] Controller changed - App updated");
+      toast.success("App updated to latest version", { duration: 3000 });
     };
 
-    navigator.serviceWorker.ready.then((reg) => {
-      if (!mounted) return;
-      setRegistration(reg);
-
-      // Listen for new service worker installation
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New content is available, show toast
-              toast("New version available", {
-                description: "Refresh to get the latest features",
-                action: {
-                  label: "Refresh",
-                  onClick: handleUpdate,
-                },
-                duration: Infinity,
-              });
-            }
-          });
-        }
-      });
-    });
-
-    // Handle controller change (when SKIP_WAITING is called)
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-
-    // Cleanup: remove event listener on unmount
-    return () => {
-      mounted = false;
-      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-    };
-  }, [handleUpdate]);
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+  }, []);
 
   return null;
 }
 
-// ============================================================================
-// Standalone Mode Router - Bypass Landing for installed PWA
-// ============================================================================
 function StandaloneModeRedirect() {
   const location = useLocation();
   const { user, loading } = useAuth();
 
-  // Check if running as installed PWA (standalone mode)
-  const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    // @ts-expect-error - Safari-specific property
-    window.navigator.standalone === true;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true;
 
-  // If in standalone mode, authenticated, and on landing page, redirect to /app
   if (isStandalone && !loading && user && location.pathname === '/') {
     return <Navigate to="/app" replace />;
   }
-
   return null;
 }
 
-const App = () => (
-  <I18nextProvider i18n={i18n}>
-    <QueryClientProvider client={queryClient}>
-      <SentinelProvider />
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Analytics />
-          <PWAUpdateHandler />
-          <HashRouter>
-            <StandaloneModeRedirect />
-            <DebugOverlay />
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/story" element={<Story />} />
-              <Route path="/steps/voice" element={<VoiceYourChaos />} />
-              <Route path="/steps/visualize" element={<WatchItVisualize />} />
-              <Route path="/steps/questions" element={<AnswerQuestions />} />
-              <Route path="/steps/breakthrough" element={<GetBreakthrough />} />
-              <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
-              <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
-              <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/notification-test" element={<NotificationTest />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </HashRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </I18nextProvider>
-);
+const App = () => {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const initApp = async () => {
+      // 1. Hide Native Splash IMMEDIATELY
+      try {
+        await SplashScreen.hide();
+      } catch (e) {
+        // Web environment - ignore
+      }
+
+      // 2. Keep React Splash visible for branding
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 3. Exit animation
+      setShowSplash(false);
+    };
+
+    initApp();
+  }, []);
+
+  return (
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <SentinelProvider />
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Analytics />
+            <PWAUpdateHandler />
+
+            <PremiumSplash isVisible={showSplash} />
+
+            <HashRouter>
+              <StandaloneModeRedirect />
+              <DebugOverlay />
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/story" element={<Story />} />
+                <Route path="/steps/voice" element={<VoiceYourChaos />} />
+                <Route path="/steps/visualize" element={<WatchItVisualize />} />
+                <Route path="/steps/questions" element={<AnswerQuestions />} />
+                <Route path="/steps/breakthrough" element={<GetBreakthrough />} />
+                <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
+                <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
+                <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/notification-test" element={<NotificationTest />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </HashRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </I18nextProvider>
+  );
+};
 
 export default App;
