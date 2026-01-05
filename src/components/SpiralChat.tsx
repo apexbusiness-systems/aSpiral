@@ -10,9 +10,7 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { MicButton } from "@/components/MicButton";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { QuestionBubble } from "@/components/QuestionBubble";
-import { SpiralScene } from "@/components/3d/SpiralScene";
-import { EnhancedSpiralScene } from "@/components/3d/EnhancedSpiralScene";
-import { isRendererV2Enabled } from "@/lib/rendererFlags";
+import { HaloOrbScene } from "@/components/3d/HaloOrbScene";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
@@ -589,7 +587,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             : "h-48 lg:h-full lg:w-1/3"
         }`}
       >
-        {isRendererV2Enabled() ? <EnhancedSpiralScene /> : <SpiralScene />}
+        <HaloOrbScene />
         
         {/* Question Bubble - positioned in 3D area */}
         <QuestionBubble
