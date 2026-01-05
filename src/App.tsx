@@ -91,7 +91,7 @@ const App = () => {
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <SentinelProvider />
+        {/* <SentinelProvider /> */}
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
