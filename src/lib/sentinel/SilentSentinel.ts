@@ -16,7 +16,7 @@ export const SilentSentinel = {
         sessionStorage.removeItem('sentinel_just_recovered');
         // Reset last boot to now so we don't flag this valid boot as a crash later
         localStorage.setItem(SENTINEL_KEYS.LAST_BOOT, Date.now().toString());
-        return;
+        return; 
       }
 
       const now = Date.now();
@@ -54,11 +54,8 @@ export const SilentSentinel = {
     console.error('[SilentSentinel] EXECUTE TACTICAL NUKE: EMERGENCY PROTOCOL ENGAGED');
     const authToken = localStorage.getItem('supabase.auth.token');
     
-    // Clear storage but preserve auth
     localStorage.clear();
     if (authToken) localStorage.setItem('supabase.auth.token', authToken);
-    
-    // Reset crash count
     localStorage.setItem(SENTINEL_KEYS.CRASH_COUNT, '0');
 
     // CRITICAL FIX: Signal recovery to next boot and DO NOT update LAST_BOOT here
