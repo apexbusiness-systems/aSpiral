@@ -1,35 +1,29 @@
 /**
- * SPIRAL HERO SVG - Lightweight CSS-only visual replacement for WebGL
- * Eliminates Three.js overhead (~500KB) on mobile
- * Uses pure CSS animations for 60fps performance
+ * SPIRAL HERO VISUAL - Lightweight CSS-only visual replacement for WebGL
+ * Keeps FPS stable on mobile while delivering a cohesive glass/aurora look.
  */
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface SpiralHeroSVGProps {
   className?: string;
 }
 
 export function SpiralHeroSVG({ className }: SpiralHeroSVGProps) {
-  // Generate spiral path once
-  const spiralPath = useMemo(() => {
-    const points: string[] = [];
-    const turns = 5;
-    const maxRadius = 120;
-    const centerX = 150;
-    const centerY = 150;
-
-    for (let i = 0; i <= 360 * turns; i += 5) {
-      const angle = (i * Math.PI) / 180;
-      const radius = (i / (360 * turns)) * maxRadius;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
-      points.push(`${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`);
-    }
-    return points.join(" ");
-  }, []);
+  const reduceMotion = useReducedMotion();
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 10 }, (_, i) => ({
+        id: i,
+        left: 30 + Math.random() * 40,
+        top: 28 + Math.random() * 44,
+        delay: Math.random() * 2,
+        duration: 3 + Math.random() * 2,
+      })),
+    []
+  );
 
   return (
     <div
@@ -41,48 +35,55 @@ export function SpiralHeroSVG({ className }: SpiralHeroSVGProps) {
       {/* Ambient glow layers */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className="absolute w-[400px] h-[400px] rounded-full opacity-30 animate-pulse"
+          className="absolute w-[420px] h-[420px] rounded-full opacity-30"
           style={{
             background:
-              "radial-gradient(circle, hsl(280 85% 65% / 0.4) 0%, transparent 70%)",
+              "radial-gradient(circle, hsl(272 82% 62% / 0.45) 0%, transparent 70%)",
             filter: "blur(60px)",
           }}
         />
         <div
-          className="absolute w-[300px] h-[300px] rounded-full opacity-20"
+          className="absolute w-[320px] h-[320px] rounded-full opacity-25"
           style={{
             background:
-              "radial-gradient(circle, hsl(50 95% 55% / 0.3) 0%, transparent 60%)",
+              "radial-gradient(circle, hsl(292 95% 68% / 0.3) 0%, transparent 65%)",
             filter: "blur(40px)",
-            animation: "ambient-float 25s ease-in-out infinite",
+            animation: reduceMotion ? "none" : "ambient-float 24s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute w-[280px] h-[280px] rounded-full opacity-20"
+          style={{
+            background:
+              "radial-gradient(circle, hsl(35 90% 60% / 0.25) 0%, transparent 70%)",
+            filter: "blur(50px)",
           }}
         />
       </div>
 
-      {/* Central Orb - CSS glass effect */}
+      {/* Central Orb - glassmorphism */}
       <motion.div
-        className="absolute w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full"
+        className="absolute w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full"
         style={{
           background:
-            "radial-gradient(circle at 30% 30%, hsl(280 85% 75% / 0.8), hsl(280 60% 50% / 0.6) 50%, hsl(280 40% 30% / 0.4))",
+            "radial-gradient(circle at 30% 30%, hsl(280 85% 82% / 0.8), hsl(270 55% 48% / 0.6) 50%, hsl(265 45% 25% / 0.5))",
           boxShadow: `
             inset 0 0 60px hsl(280 85% 65% / 0.3),
-            0 0 80px hsl(280 85% 65% / 0.4),
-            0 0 120px hsl(280 85% 65% / 0.2)
+            0 0 90px hsl(280 85% 65% / 0.45),
+            0 0 140px hsl(280 85% 65% / 0.25)
           `,
           backdropFilter: "blur(10px)",
         }}
         animate={{
-          scale: [1, 1.05, 1],
-          opacity: [0.9, 1, 0.9],
+          scale: reduceMotion ? 1 : [1, 1.05, 1],
+          opacity: reduceMotion ? 0.95 : [0.9, 1, 0.9],
         }}
         transition={{
           duration: 4,
-          repeat: Infinity,
+          repeat: reduceMotion ? 0 : Infinity,
           ease: "easeInOut",
         }}
       >
-        {/* Inner core pulse */}
         <motion.div
           className="absolute inset-4 rounded-full"
           style={{
@@ -90,86 +91,68 @@ export function SpiralHeroSVG({ className }: SpiralHeroSVGProps) {
               "radial-gradient(circle at 40% 40%, hsl(280 90% 80% / 0.6), transparent 70%)",
           }}
           animate={{
-            scale: [0.9, 1.1, 0.9],
-            opacity: [0.6, 0.9, 0.6],
+            scale: reduceMotion ? 1 : [0.92, 1.08, 0.92],
+            opacity: reduceMotion ? 0.7 : [0.6, 0.9, 0.6],
           }}
           transition={{
             duration: 2,
-            repeat: Infinity,
+            repeat: reduceMotion ? 0 : Infinity,
             ease: "easeInOut",
           }}
         />
       </motion.div>
 
-      {/* Rotating SVG Spiral */}
-      <svg
-        viewBox="0 0 300 300"
-        className="absolute w-[280px] h-[280px] sm:w-[350px] sm:h-[350px] md:w-[400px] md:h-[400px]"
-        style={{
-          animation: "spiral-rotate 30s linear infinite",
-        }}
-      >
-        <defs>
-          <linearGradient id="spiralGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(280, 85%, 65%)" stopOpacity="0.8" />
-            <stop offset="50%" stopColor="hsl(50, 95%, 55%)" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="hsl(280, 85%, 65%)" stopOpacity="0.4" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <path
-          d={spiralPath}
-          fill="none"
-          stroke="url(#spiralGradient)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          filter="url(#glow)"
-          opacity="0.7"
-        />
-      </svg>
-
-      {/* Halo Ring - pure CSS */}
+      {/* Halo rings */}
       <motion.div
-        className="absolute w-[250px] h-[250px] sm:w-[300px] sm:h-[300px] md:w-[350px] md:h-[350px] rounded-full border-2"
+        className="absolute w-[250px] h-[250px] sm:w-[310px] sm:h-[310px] md:w-[360px] md:h-[360px] rounded-full border-2"
         style={{
           borderColor: "hsl(280 70% 70% / 0.4)",
           boxShadow: "0 0 20px hsl(280 85% 65% / 0.3)",
         }}
         animate={{
-          rotate: [0, 360],
-          scale: [1, 1.02, 1],
+          rotate: reduceMotion ? 0 : [0, 360],
+          scale: reduceMotion ? 1 : [1, 1.03, 1],
         }}
         transition={{
-          rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-          scale: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+          rotate: { duration: 22, repeat: reduceMotion ? 0 : Infinity, ease: "linear" },
+          scale: { duration: 3, repeat: reduceMotion ? 0 : Infinity, ease: "easeInOut" },
+        }}
+      />
+      <motion.div
+        className="absolute w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px] rounded-full border"
+        style={{
+          borderColor: "hsl(32 92% 60% / 0.25)",
+          boxShadow: "0 0 14px hsl(32 92% 60% / 0.2)",
+        }}
+        animate={{
+          rotate: reduceMotion ? 0 : [360, 0],
+        }}
+        transition={{
+          duration: 18,
+          repeat: reduceMotion ? 0 : Infinity,
+          ease: "linear",
         }}
       />
 
-      {/* Floating particles - CSS only */}
-      {[...Array(12)].map((_, i) => (
+      {/* Floating particles */}
+      {particles.map((particle) => (
         <motion.div
-          key={i}
+          key={particle.id}
           className="absolute w-1.5 h-1.5 rounded-full bg-primary/60"
           style={{
-            left: `${30 + Math.random() * 40}%`,
-            top: `${30 + Math.random() * 40}%`,
+            left: `${particle.left}%`,
+            top: `${particle.top}%`,
           }}
           animate={{
-            y: [0, -20 - Math.random() * 20, 0],
-            x: [0, Math.random() * 15 - 7.5, 0],
+            y: reduceMotion ? 0 : [0, -20, 0],
+            x: reduceMotion ? 0 : [0, 8, 0],
             opacity: [0.3, 0.8, 0.3],
-            scale: [0.8, 1.2, 0.8],
+            scale: reduceMotion ? 1 : [0.85, 1.2, 0.85],
           }}
           transition={{
-            duration: 3 + Math.random() * 2,
-            repeat: Infinity,
-            delay: Math.random() * 2,
+            duration: particle.duration,
+            repeat: reduceMotion ? 0 : Infinity,
+            delay: particle.delay,
             ease: "easeInOut",
           }}
         />

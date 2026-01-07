@@ -37,6 +37,9 @@ workflows:
           if [ -n "${APP_STORE_CONNECT_KEY_iD:-}" ] && [ -z "${APP_STORE_CONNECT_KEY_ID:-}" ]; then
             export APP_STORE_CONNECT_KEY_ID="${APP_STORE_CONNECT_KEY_iD}"
           fi
+          if [ -n "${APP_STORE_CONNECT_KEY_ID:-}" ] && [ -z "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ]; then
+            export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_ID}"
+          fi
 
           required=(
             TEAM_ID
@@ -126,6 +129,30 @@ workflows:
           echo "  scheme=${XCODE_SCHEME}"
           echo "  plist=${INFO_PLIST_PATH}"
 
+      - name: Detect bundle identifier
+        script: |
+          set -euo pipefail
+
+          DETECTED=""
+          if [ -n "${XCODE_WORKSPACE:-}" ] && [ -d "${XCODE_WORKSPACE}" ]; then
+            DETECTED="$(xcode-project detect-bundle-id --workspace "${XCODE_WORKSPACE}" --scheme "${XCODE_SCHEME}" || true)"
+          else
+            DETECTED="$(xcode-project detect-bundle-id --project "${XCODE_PROJECT}" --scheme "${XCODE_SCHEME}" || true)"
+          fi
+
+          if [ -z "${DETECTED}" ]; then
+            echo "❌ Failed to detect bundle id"
+            exit 1
+          fi
+
+          echo "DETECTED_BUNDLE_ID=${DETECTED}" >> "${CM_ENV}"
+          echo "✅ Detected bundle id: ${DETECTED}"
+
+          if [ "${DETECTED}" != "${BUNDLE_ID}" ]; then
+            echo "❌ BUNDLE_ID mismatch. Expected ${BUNDLE_ID}, detected ${DETECTED}"
+            exit 1
+          fi
+
       - name: Set unique build number (TestFlight-safe)
         script: |
           set -euo pipefail
@@ -176,18 +203,21 @@ workflows:
             xcode-project build-ipa \
               --workspace "${XCODE_WORKSPACE}" \
               --scheme "${XCODE_SCHEME}" \
-              --config Release \
-              --ipa-path "${IPA_PATH}"
+              --config Release
           else
             xcode-project build-ipa \
               --project "${XCODE_PROJECT}" \
               --scheme "${XCODE_SCHEME}" \
-              --config Release \
-              --ipa-path "${IPA_PATH}"
+              --config Release
           fi
 
-          test -f "${IPA_PATH}"
-          echo "✅ IPA created at ${IPA_PATH}"
+          IPA="$(ls -1 build/ios/ipa/*.ipa 2>/dev/null | head -n 1)"
+          if [ -z "${IPA}" ]; then
+            echo "❌ IPA not found in build/ios/ipa"
+            exit 1
+          fi
+          echo "IPA_PATH=${IPA}" >> "${CM_ENV}"
+          echo "✅ IPA created at ${IPA}"
 
       - name: Verify IPA (minimal, non-flaky)
         script: |
