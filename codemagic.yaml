@@ -27,12 +27,27 @@ workflows:
         script: |
           set -euo pipefail
 
-          # Normalize Key ID naming drift (your logs show KEY_ID and KEY_iD variants)
-          if [ -z "${APP_STORE_CONNECT_KEY_ID:-}" ] && [ -n "${APP_STORE_CONNECT_KEY_iD:-}" ]; then
-            export APP_STORE_CONNECT_KEY_ID="${APP_STORE_CONNECT_KEY_iD}"
+          # Normalize Key ID naming drift:
+          # Codemagic App Store Connect CLI expects APP_STORE_CONNECT_KEY_IDENTIFIER
+          KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-}"
+
+          if [ -z "${KEY_IDENTIFIER}" ] && [ -n "${APP_STORE_CONNECT_KEY_ID:-}" ]; then
+            KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_ID}"
           fi
 
-          for v in TEAM_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+          if [ -z "${KEY_IDENTIFIER}" ] && [ -n "${APP_STORE_CONNECT_KEY_iD:-}" ]; then
+            KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_iD}"
+          fi
+
+          if [ -z "${KEY_IDENTIFIER}" ]; then
+            echo "❌ Missing App Store Connect Key ID. Provide APP_STORE_CONNECT_KEY_IDENTIFIER (or KEY_ID/KEY_iD)."
+            exit 1
+          fi
+
+          # Persist for ALL later steps + publishing
+          echo "APP_STORE_CONNECT_KEY_IDENTIFIER=${KEY_IDENTIFIER}" >> "$CM_ENV"
+
+          for v in TEAM_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
             if [ -z "${!v:-}" ]; then
               echo "❌ Missing required env var: $v"
               exit 1
@@ -44,8 +59,6 @@ workflows:
 
           echo "✅ Preflight OK"
           echo "TEAM_ID=${TEAM_ID}"
-          echo "APP_STORE_CONNECT_ISSUER_ID=${APP_STORE_CONNECT_ISSUER_ID}"
-          echo "APP_STORE_CONNECT_KEY_ID=${APP_STORE_CONNECT_KEY_ID}"
 
       - name: Pin npm (matches known-good lane behavior)
         script: |
@@ -80,7 +93,7 @@ workflows:
             cd ../..
             echo "✅ CocoaPods installed"
           else
-            echo "ℹ️ No Podfile found. Skipping pod install (expected for SPM-only Capacitor projects)."
+            echo "ℹ️ No Podfile found. Skipping pod install (SPM-only Capacitor project)."
           fi
 
       - name: Resolve iOS build target (workspace vs project) + detect bundle id
@@ -88,9 +101,9 @@ workflows:
           set -euo pipefail
 
           if [ -d "${XCODE_WORKSPACE_PRIMARY}" ]; then
-            export XCODE_WORKSPACE="${XCODE_WORKSPACE_PRIMARY}"
+            XCODE_WORKSPACE="${XCODE_WORKSPACE_PRIMARY}"
           elif [ -d "${XCODE_WORKSPACE_FALLBACK}" ]; then
-            export XCODE_WORKSPACE="${XCODE_WORKSPACE_FALLBACK}"
+            XCODE_WORKSPACE="${XCODE_WORKSPACE_FALLBACK}"
           else
             echo "❌ No Xcode workspace found."
             echo "Listing ios/App:"
@@ -98,10 +111,10 @@ workflows:
             exit 1
           fi
 
-          echo "✅ Using workspace: ${XCODE_WORKSPACE}"
           echo "XCODE_WORKSPACE=${XCODE_WORKSPACE}" >> "$CM_ENV"
+          echo "✅ Using workspace: ${XCODE_WORKSPACE}"
 
-          # Detect PRODUCT_BUNDLE_IDENTIFIER from Xcode build settings (more reliable than Info.plist)
+          # Detect PRODUCT_BUNDLE_IDENTIFIER (prevents wrong env like com.apex.tradeline)
           BUNDLE_ID_DETECTED="$(xcodebuild -showBuildSettings \
             -workspace "${XCODE_WORKSPACE}" \
             -scheme "${XCODE_SCHEME}" \
@@ -109,7 +122,6 @@ workflows:
             | awk -F' = ' '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2; exit}')"
 
           if [ -z "${BUNDLE_ID_DETECTED:-}" ]; then
-            # Fallback to provided env var if you still keep one in Codemagic UI/groups
             if [ -n "${BUNDLE_ID:-}" ]; then
               BUNDLE_ID_DETECTED="${BUNDLE_ID}"
               echo "⚠️ Could not detect bundle id; falling back to env BUNDLE_ID=${BUNDLE_ID_DETECTED}"
@@ -119,9 +131,8 @@ workflows:
             fi
           fi
 
-          export BUNDLE_ID="${BUNDLE_ID_DETECTED}"
-          echo "✅ Bundle ID: ${BUNDLE_ID}"
-          echo "BUNDLE_ID=${BUNDLE_ID}" >> "$CM_ENV"
+          echo "BUNDLE_ID=${BUNDLE_ID_DETECTED}" >> "$CM_ENV"
+          echo "✅ Bundle ID: ${BUNDLE_ID_DETECTED}"
 
       - name: Set unique build number (TestFlight-safe)
         script: |
@@ -131,11 +142,27 @@ workflows:
             || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${BUILD}" "${INFO_PLIST_PATH}"
           echo "✅ Build number set: ${BUILD}"
 
-      - name: Initialize keychain + fetch/create signing files
+      - name: Initialize keychain + fetch/create signing files (explicit key vars)
         script: |
           set -euo pipefail
+
+          : "${BUNDLE_ID:?BUNDLE_ID missing}"
+          : "${APP_STORE_CONNECT_ISSUER_ID:?APP_STORE_CONNECT_ISSUER_ID missing}"
+          : "${APP_STORE_CONNECT_KEY_IDENTIFIER:?APP_STORE_CONNECT_KEY_IDENTIFIER missing}"
+          : "${APP_STORE_CONNECT_PRIVATE_KEY:?APP_STORE_CONNECT_PRIVATE_KEY missing}"
+          : "${CERTIFICATE_PRIVATE_KEY:?CERTIFICATE_PRIVATE_KEY missing}"
+
           keychain initialize
-          app-store-connect fetch-signing-files "${BUNDLE_ID}" --type IOS_APP_STORE --create
+
+          # Explicit flags prevent the CLI from failing on env-name drift
+          app-store-connect fetch-signing-files "${BUNDLE_ID}" \
+            --type IOS_APP_STORE \
+            --create \
+            --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}" \
+            --key-id "${APP_STORE_CONNECT_KEY_IDENTIFIER}" \
+            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+
           keychain add-certificates
           echo "✅ Signing assets ready"
 
@@ -145,7 +172,7 @@ workflows:
           xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
           echo "✅ Profiles applied"
 
-      - name: Build IPA (NO unsupported args)
+      - name: Build IPA
         script: |
           set -euo pipefail
           xcode-project build-ipa --workspace "${XCODE_WORKSPACE}" --scheme "${XCODE_SCHEME}"
@@ -171,6 +198,6 @@ workflows:
     publishing:
       app_store_connect:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_ID
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
