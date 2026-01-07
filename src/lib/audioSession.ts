@@ -2,6 +2,7 @@ import { createLogger } from '@/lib/logger';
 import { addBreadcrumb } from '@/lib/debugOverlay';
 import { useAssistantSpeakingStore } from '@/hooks/useAssistantSpeaking';
 import { featureFlags } from '@/lib/featureFlags';
+import { audioDebug } from '@/lib/audioLogger';
 
 const logger = createLogger('AudioSession');
 
@@ -112,6 +113,10 @@ export function updateListeningState(isListening: boolean) {
   updateStatus({ isListening });
 }
 
+/**
+ * Ensures AudioContext is ready and resumed.
+ * CRITICAL for iOS: Must be called inside a user gesture handler initially.
+ */
 async function ensureAudioContext(): Promise<void> {
   if (!audioContext) {
     audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
@@ -120,8 +125,10 @@ async function ensureAudioContext(): Promise<void> {
   if (audioContext.state === 'suspended') {
     try {
       await audioContext.resume();
+      audioDebug.log('audio_route_change', { status: 'context_resumed' });
     } catch (error) {
       logger.warn('AudioContext resume failed', error as Error);
+      audioDebug.error('audio_route_change', { error: 'resume_failed' });
     }
   }
 }
@@ -201,11 +208,7 @@ function cancelActive(reason: string, resumeListening: boolean) {
     resumeListeningRequestId = null;
   }
 
-  addBreadcrumb({
-    type: 'audio',
-    message: 'tts_cancel',
-    data: { reason },
-  });
+  audioDebug.log('tts_end', { reason });
 }
 
 async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
@@ -245,7 +248,7 @@ function pauseListeningForRequest(requestId: number) {
     sttController.stopListening();
     resumeListeningRequestId = requestId;
     updateStatus({ isListening: sttController.isListening() });
-    addBreadcrumb({ type: 'audio', message: 'stt_paused_for_tts' });
+    audioDebug.log('app_state_change', { status: 'stt_paused_for_tts' });
   }
 }
 
@@ -278,7 +281,7 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       if (requestId !== status.requestId) return;
       updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().startSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai' } });
+      audioDebug.log('tts_start', { backend: 'openai' });
       options.onStart?.();
     };
 
@@ -288,7 +291,7 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       useAssistantSpeakingStore.getState().stopSpeaking();
       URL.revokeObjectURL(audioUrl);
       resumeListeningIfNeeded(requestId);
-      addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'openai' } });
+      audioDebug.log('tts_end', { backend: 'openai' });
       options.onEnd?.();
       resolve();
     };
@@ -298,7 +301,7 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       const error = new Error('Audio playback failed');
       updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().stopSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'openai' } });
+      audioDebug.error('tts_error', { backend: 'openai' });
       options.onError?.(error);
       reject(error);
     };
@@ -417,16 +420,18 @@ export async function speak(options: SpeakOptions): Promise<void> {
     return;
   }
 
+  // Ensure AudioContext is active first
+  await ensureAudioContext();
+
   const requestId = status.requestId + 1;
   updateStatus({ requestId });
   cancelActive('superseded', false);
   updateStatus({ isLoading: true, backend: 'none' });
   pauseListeningForRequest(requestId);
 
-  addBreadcrumb({ type: 'audio', message: 'tts_request', data: { textLength: trimmed.length } });
+  audioDebug.log('tts_enqueue', { textLength: trimmed.length });
 
   try {
-    await ensureAudioContext();
     const blob = await fetchOpenAiAudio({ ...options, text: trimmed });
     if (requestId !== status.requestId) return;
     await playOpenAiAudio(blob, requestId, options);
@@ -436,6 +441,7 @@ export async function speak(options: SpeakOptions): Promise<void> {
     }
 
     logger.error('OpenAI TTS failed, trying fallback', error as Error);
+    audioDebug.error('tts_error', { backend: 'openai', fallback: true });
 
     if (options.fallbackToWebSpeech) {
       try {

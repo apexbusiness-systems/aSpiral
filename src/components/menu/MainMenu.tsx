@@ -1,6 +1,7 @@
 import { useState, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   X,
   Pause,
@@ -17,6 +18,7 @@ import {
   Users,
   Key,
   LayoutDashboard,
+  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmationModal } from "./ConfirmationModal";
@@ -35,6 +37,7 @@ interface MainMenuProps {
   onViewHistory: () => void;
   onSettings: () => void;
   onHelp: () => void;
+  installPwa?: () => void;
   sessionProgress?: {
     questionCount: number;
     entityCount: number;
@@ -56,6 +59,7 @@ export function MainMenu({
   onViewHistory,
   onSettings,
   onHelp,
+  installPwa,
   sessionProgress,
 }: MainMenuProps) {
   const navigate = useNavigate();
@@ -64,6 +68,8 @@ export function MainMenu({
   const hasActiveSession = sessionState !== "idle";
   const isPaused = sessionState === "paused";
   const isBreakthrough = sessionState === "breakthrough";
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
   function handleActionWithConfirmation(action: string, handler: () => void) {
     const needsConfirmation = ["stop", "restart"];
@@ -364,7 +370,53 @@ export function MainMenu({
                   />
                 </div>
               </div>
+
+              {/* Audit Fix: PWA Static CTA Section */}
+              {(installPwa || isIOS) && (
+                <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-white/10">
+                  <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                    <Smartphone size={16} />
+                    Install App
+                  </h3>
+
+                  {installPwa ? (
+                     <Button
+                       variant="secondary"
+                       className="w-full justify-start gap-2"
+                       onClick={installPwa}
+                     >
+                       <Download size={16} />
+                       Add to Home Screen
+                     </Button>
+                  ) : isIOS ? (
+                     <p className="text-xs text-muted-foreground">
+                       Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
+                     </p>
+                  ) : null}
+                </div>
+              )}
             </div>
+
+            {/* Audit Fix: PWA Static CTA Section */}
+            {(installPwa || (/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream)) && (
+              <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-white/10">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <Smartphone size={16} />
+                  Install App
+                </h3>
+                {installPwa ? (
+                   <MenuAction
+                     icon={Download}
+                     label="Add to Home Screen"
+                     onClick={installPwa}
+                   />
+                ) : (/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream) ? (
+                   <p className="text-xs text-muted-foreground">
+                     Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
+                   </p>
+                ) : null}
+              </div>
+            )}
 
             {/* Footer */}
             <div className="p-6 border-t border-border/50 text-center">

@@ -10,6 +10,15 @@ const STABILITY_WINDOW_MS = 10000;
 export const SilentSentinel = {
   init: () => {
     try {
+      // 1. Check if we just recovered from an emergency
+      if (sessionStorage.getItem('sentinel_just_recovered')) {
+        console.log('[SilentSentinel] Recovery successful. Monitoring resumed.');
+        sessionStorage.removeItem('sentinel_just_recovered');
+        // Reset last boot to now so we don't flag this valid boot as a crash later
+        localStorage.setItem(SENTINEL_KEYS.LAST_BOOT, Date.now().toString());
+        return;
+      }
+
       const now = Date.now();
       const lastBoot = parseInt(localStorage.getItem(SENTINEL_KEYS.LAST_BOOT) || '0', 10);
       const crashCount = parseInt(localStorage.getItem(SENTINEL_KEYS.CRASH_COUNT) || '0', 10);
@@ -44,10 +53,16 @@ export const SilentSentinel = {
   emergencyProtocol: () => {
     console.error('[SilentSentinel] EXECUTE TACTICAL NUKE: EMERGENCY PROTOCOL ENGAGED');
     const authToken = localStorage.getItem('supabase.auth.token');
+    
+    // Clear storage but preserve auth
     localStorage.clear();
     if (authToken) localStorage.setItem('supabase.auth.token', authToken);
+    
+    // Reset crash count
     localStorage.setItem(SENTINEL_KEYS.CRASH_COUNT, '0');
-    localStorage.setItem(SENTINEL_KEYS.LAST_BOOT, Date.now().toString());
+
+    // CRITICAL FIX: Signal recovery to next boot and DO NOT update LAST_BOOT here
+    sessionStorage.setItem('sentinel_just_recovered', 'true');
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
