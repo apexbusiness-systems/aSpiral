@@ -28,14 +28,13 @@ const logger = createLogger("useVoiceInput");
 /**
  * Detect iOS Safari for voice input fallback handling
  * iOS Safari has quirks with continuous speech recognition
- * Excludes Chrome iOS (CriOS), Firefox iOS (FxiOS), and other iOS browsers
  */
 function isIOSSafari(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
   return isIOS && isSafari;
 }
 

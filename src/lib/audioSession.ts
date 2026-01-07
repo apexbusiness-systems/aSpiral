@@ -153,28 +153,27 @@ function clearSpeechUtterance() {
  * Handles common sentence endings while preserving meaning.
  */
 function splitIntoSentences(text: string): string[] {
-  // Handle empty or whitespace-only input
-  if (!text || text.trim().length === 0) return [text];
-
   // Match sentence endings: period, exclamation, question mark followed by space or end
+  // Also handles ellipsis and keeps punctuation with the sentence
   const sentences = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
+
   if (!sentences) return [text];
 
-  const filtered = sentences.map(s => s.trim()).filter(s => s.length > 0);
-  // If all filtered out, return original text
-  return filtered.length > 0 ? filtered : [text];
+  // Filter empty strings and trim
+  return sentences
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
 }
 
 /**
  * Check if current browser is iOS Safari (needs sentence chunking)
- * Excludes Chrome iOS (CriOS), Firefox iOS (FxiOS), and other iOS browsers
  */
 function needsSentenceChunking(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
   return isIOS && isSafari;
 }
 
