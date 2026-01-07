@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { SplashScreen } from '@capacitor/splash-screen';
 import PremiumSplash from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import { unlockAudioFromGesture } from "@/lib/audioSession";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -87,6 +88,39 @@ const App = () => {
     };
 
     initApp();
+  }, []);
+
+  useEffect(() => {
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
+    let unlocked = false;
+
+    const handler = async () => {
+      if (unlocked) return;
+      unlocked = true;
+      try {
+        await unlockAudioFromGesture();
+        if (import.meta.env.DEV) {
+          console.info("[Audio] User gesture unlock completed");
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn("[Audio] User gesture unlock failed", error);
+        }
+        toast.error("Audio unlock failed", {
+          description: "Tap again to enable voice playback.",
+        });
+        unlocked = false;
+        return;
+      }
+      cleanup();
+    };
+
+    const cleanup = () => {
+      events.forEach((event) => window.removeEventListener(event, handler));
+    };
+
+    events.forEach((event) => window.addEventListener(event, handler, { passive: true }));
+    return cleanup;
   }, []);
 
   return (

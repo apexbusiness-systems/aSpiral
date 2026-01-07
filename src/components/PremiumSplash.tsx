@@ -32,7 +32,7 @@ export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#2d1b4e]/80 to-[#0f0c29]" />
           </div>
 
-          <div className="relative z-10 flex flex-col items-center gap-8 p-6 text-center">
+          <div className="relative z-10 flex flex-col items-center gap-6 p-6 text-center">
             {/* Logo Mark - Spinning/Pulsing */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -54,27 +54,6 @@ export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
                {/* Fallback Text if Image Missing */}
                <div className="absolute inset-0 flex items-center justify-center text-6xl text-white font-cinzel opacity-0">A</div>
             </motion.div>
-
-            {/* Text Content */}
-            <div className="space-y-2">
-              <motion.h1
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.8 }}
-                className="text-4xl md:text-6xl font-cinzel font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-cyan-200 drop-shadow-lg"
-              >
-                aSpiral
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6, duration: 1 }}
-                className="text-lg md:text-xl font-cormorant text-purple-200/80 tracking-widest uppercase"
-              >
-                Transform Confusion into Clarity
-              </motion.p>
-            </div>
 
             {/* Loading Indicator */}
             <motion.div

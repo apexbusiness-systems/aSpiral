@@ -40,10 +40,10 @@ export function MicButton({
   // Desktop: Fixed 72px for consistency
   // All sizes guarantee minimum 48px touch target (WCAG 2.5.5)
   const mainSize = isMobile
-    ? "h-[20vw] w-[20vw] min-h-[80px] min-w-[80px] max-h-[120px] max-w-[120px]"
+    ? "h-[20vw] w-[20vw] min-h-[88px] min-w-[88px] max-h-[124px] max-w-[124px]"
     : "h-[72px] w-[72px]";
   const secondarySize = isMobile
-    ? "h-[12vw] w-[12vw] min-h-[48px] min-w-[48px] max-h-[64px] max-w-[64px]"
+    ? "h-[12vw] w-[12vw] min-h-[52px] min-w-[52px] max-h-[68px] max-w-[68px]"
     : "h-12 w-12";
   const iconSize = isMobile ? "h-[6vw] min-h-[24px] w-[6vw] min-w-[24px]" : "h-7 w-7";
   const smallIconSize = isMobile ? "h-[4vw] min-h-[16px] w-[4vw] min-w-[16px]" : "h-4 w-4";
@@ -91,7 +91,7 @@ export function MicButton({
   };
 
   return (
-    <div className={cn("relative flex items-center justify-center", isMobile ? "gap-4" : "gap-3", "min-h-[96px]")}>
+    <div className={cn("relative flex items-center justify-center", isMobile ? "gap-4" : "gap-3", "min-h-[104px]")}>
       {/* Stop Button - visible when recording */}
       <AnimatePresence>
         {isRecording && onStop && (
