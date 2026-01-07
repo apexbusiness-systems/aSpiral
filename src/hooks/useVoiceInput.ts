@@ -63,7 +63,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const transcript = (finalTranscript + " " + interimTranscript).trim();
 
   // Refs
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isStartedRef = useRef(false);
   const isIntentionalStop = useRef(false);
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -361,30 +361,4 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     resumeRecording,
     togglePause
   };
-}
-
-// Types
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-interface SpeechRecognitionInstance extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-}
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition: new () => SpeechRecognitionInstance;
-  }
 }
