@@ -61,46 +61,24 @@ export function SpiralHeroSVG({ className }: SpiralHeroSVGProps) {
         />
       </div>
 
-      {/* Central Orb - glassmorphism */}
+      {/* Empty platform glow (orb removed) */}
       <motion.div
         className="absolute w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-full"
         style={{
           background:
-            "radial-gradient(circle at 30% 30%, hsl(280 85% 82% / 0.8), hsl(270 55% 48% / 0.6) 50%, hsl(265 45% 25% / 0.5))",
-          boxShadow: `
-            inset 0 0 60px hsl(280 85% 65% / 0.3),
-            0 0 90px hsl(280 85% 65% / 0.45),
-            0 0 140px hsl(280 85% 65% / 0.25)
-          `,
-          backdropFilter: "blur(10px)",
+            "radial-gradient(circle, hsl(280 85% 65% / 0.15), transparent 70%)",
+          filter: "blur(30px)",
         }}
         animate={{
-          scale: reduceMotion ? 1 : [1, 1.05, 1],
-          opacity: reduceMotion ? 0.95 : [0.9, 1, 0.9],
+          scale: reduceMotion ? 1 : [1, 1.08, 1],
+          opacity: reduceMotion ? 0.3 : [0.2, 0.4, 0.2],
         }}
         transition={{
-          duration: 4,
+          duration: 5,
           repeat: reduceMotion ? 0 : Infinity,
           ease: "easeInOut",
         }}
-      >
-        <motion.div
-          className="absolute inset-4 rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle at 40% 40%, hsl(280 90% 80% / 0.6), transparent 70%)",
-          }}
-          animate={{
-            scale: reduceMotion ? 1 : [0.92, 1.08, 0.92],
-            opacity: reduceMotion ? 0.7 : [0.6, 0.9, 0.6],
-          }}
-          transition={{
-            duration: 2,
-            repeat: reduceMotion ? 0 : Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      </motion.div>
+      />
 
       {/* Halo rings */}
       <motion.div
