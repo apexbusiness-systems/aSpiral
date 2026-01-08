@@ -1,142 +1,128 @@
 import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Sparkles, Float } from "@react-three/drei";
 import * as THREE from "three";
 import { detectDeviceCapabilities } from "@/lib/performance/optimizer";
-import { useSessionStore } from "@/stores/sessionStore";
 
 // ============================================================================
-// HALO ORB VISUAL - "Apple Polished" Aesthetic
-// Replaces the chaotic spiral with a serene, glass-like orb and halo ring.
+// AURORA PLATFORM - Minimal scene with floating platform and aurora glows
 // ============================================================================
 
-function GlassOrb() {
-  const meshRef = useRef<THREE.Mesh>(null);
+function AuroraGlow() {
+  const glowRef = useRef<THREE.Mesh>(null);
+  const glow2Ref = useRef<THREE.Mesh>(null);
 
-  // Subtle breathing animation
   useFrame((state) => {
-    if (meshRef.current) {
-      const t = state.clock.getElapsedTime();
-      meshRef.current.position.y = Math.sin(t * 0.5) * 0.2;
-      meshRef.current.rotation.y = t * 0.1;
+    const t = state.clock.getElapsedTime();
+    
+    if (glowRef.current) {
+      glowRef.current.rotation.z = t * 0.05;
+      const scale = 1 + Math.sin(t * 0.5) * 0.1;
+      glowRef.current.scale.set(scale, scale, 1);
+    }
+    
+    if (glow2Ref.current) {
+      glow2Ref.current.rotation.z = -t * 0.03;
+      const scale = 1 + Math.sin(t * 0.3 + Math.PI) * 0.08;
+      glow2Ref.current.scale.set(scale, scale, 1);
     }
   });
 
   return (
-    <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[1.8, 64, 64]} />
-        <meshPhysicalMaterial
-          roughness={0.1} // Glass-like
-          metalness={0.1}
-          transmission={0.9} // Glass transparency
-          thickness={1.5} // Refraction depth
-          color="#8b5cf6" // Dark purple base
-          emissive="#6d28d9"
-          emissiveIntensity={0.2}
-          ior={1.5} // Refraction index
-          clearcoat={1}
-          clearcoatRoughness={0.1}
-          attenuationTint="#ffffff"
-          attenuationDistance={5}
+    <group position={[0, -0.5, 0]}>
+      {/* Primary aurora glow */}
+      <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <ringGeometry args={[2, 5, 64]} />
+        <meshBasicMaterial
+          color="#7c3aed"
+          transparent
+          opacity={0.15}
+          side={THREE.DoubleSide}
         />
       </mesh>
-    </Float>
+
+      {/* Secondary aurora glow */}
+      <mesh ref={glow2Ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
+        <ringGeometry args={[1.5, 4, 64]} />
+        <meshBasicMaterial
+          color="#a78bfa"
+          transparent
+          opacity={0.1}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Subtle center glow */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+        <circleGeometry args={[2, 64]} />
+        <meshBasicMaterial
+          color="#8b5cf6"
+          transparent
+          opacity={0.08}
+        />
+      </mesh>
+    </group>
   );
 }
 
-function HaloRing() {
-  const ringRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (ringRef.current) {
-      const t = state.clock.getElapsedTime();
-      ringRef.current.rotation.x = Math.PI / 2 + Math.sin(t * 0.2) * 0.1;
-      ringRef.current.rotation.z = t * 0.05;
-    }
-  });
-
+function EmptyPlatform() {
   return (
-    <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[3.5, 0.02, 16, 100]} />
-      <meshBasicMaterial color="#a78bfa" transparent opacity={0.6} />
-    </mesh>
+    <group position={[0, -1, 0]}>
+      {/* Subtle platform disc */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[3, 64]} />
+        <meshStandardMaterial
+          color="#1a1a2e"
+          transparent
+          opacity={0.4}
+          roughness={0.9}
+          metalness={0.1}
+        />
+      </mesh>
+
+      {/* Platform edge glow */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <ringGeometry args={[2.8, 3, 64]} />
+        <meshBasicMaterial
+          color="#6d28d9"
+          transparent
+          opacity={0.2}
+        />
+      </mesh>
+    </group>
   );
-}
-
-function ParticleField() {
-  return (
-    <Sparkles
-      count={150}
-      scale={8}
-      size={2}
-      speed={0.4}
-      opacity={0.5}
-      color="#ddd6fe"
-    />
-  );
-}
-
-function InnerCore() {
-    const coreRef = useRef<THREE.Mesh>(null);
-    useFrame((state) => {
-        if(coreRef.current) {
-            const t = state.clock.getElapsedTime();
-             // Pulse scale based on audio (simulated here with sine) or just breathing
-             const scale = 0.8 + Math.sin(t * 2) * 0.05;
-             coreRef.current.scale.set(scale, scale, scale);
-        }
-    })
-
-    return (
-        <mesh ref={coreRef}>
-            <sphereGeometry args={[1.0, 32, 32]} />
-            <meshBasicMaterial color="#7c3aed" transparent opacity={0.8} />
-        </mesh>
-    )
 }
 
 function SceneContent() {
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} intensity={1.5} color="#c4b5fd" />
-      <pointLight position={[-10, -10, -5]} intensity={1} color="#4c1d95" />
+      {/* Soft ambient lighting */}
+      <ambientLight intensity={0.3} />
+      
+      {/* Subtle purple point lights for atmosphere */}
+      <pointLight position={[5, 5, 5]} intensity={0.5} color="#c4b5fd" />
+      <pointLight position={[-5, 3, -5]} intensity={0.3} color="#7c3aed" />
 
-      <GlassOrb />
-      <InnerCore />
-      <HaloRing />
-      <ParticleField />
-
-      <OrbitControls
-        enablePan={false}
-        enableZoom={false}
-        autoRotate
-        autoRotateSpeed={0.5}
-        minPolarAngle={Math.PI / 3}
-        maxPolarAngle={Math.PI / 1.5}
-      />
+      <EmptyPlatform />
+      <AuroraGlow />
     </>
   );
 }
 
 export function HaloOrbScene() {
   const capabilities = useMemo(() => detectDeviceCapabilities(), []);
-
-  // Performance optimization: lower pixel ratio on low-end devices
   const dpr = capabilities.gpuTier === 1 ? [1, 1.5] : [1, 2];
 
   return (
     <div className="h-full w-full gpu-accelerated">
       <Canvas
-        camera={{ position: [0, 0, 8], fov: 45 }}
+        camera={{ position: [0, 2, 6], fov: 50 }}
         style={{ background: "transparent" }}
-        dpr={dpr as any}
+        dpr={dpr as [number, number]}
         gl={{
-            alpha: true,
-            antialias: true,
-            toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.2
+          alpha: true,
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.1,
         }}
       >
         <SceneContent />
