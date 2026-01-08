@@ -110,7 +110,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         };
       });
     });
-    return unsubscribe;
+    return () => { unsubscribe(); };
   }, []);
 
   const stop = useCallback(() => {

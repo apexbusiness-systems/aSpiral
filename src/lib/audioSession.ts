@@ -180,9 +180,9 @@ async function ensureAudioContext(): Promise<void> {
     try {
       await audioContext.resume();
       audioDebug.log('audio_route_change', { status: 'context_resumed' });
-    } catch (error) {
-      logger.warn('AudioContext resume failed', error as Error);
-      audioDebug.error('audio_route_change', { error: 'resume_failed' });
+    } catch (err) {
+      logger.warn('AudioContext resume failed', { errorMessage: String(err) });
+      audioDebug.error('audio_route_change', { error: 'resume_failed', message: String(err) });
     }
   }
 }
