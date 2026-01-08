@@ -24,10 +24,17 @@ function useDeviceProfile(): { capabilities: DeviceCapabilities; reducedMotion: 
 }
 
 function EnhancedSceneContent({ capabilities, reducedMotion }: { capabilities: DeviceCapabilities; reducedMotion: boolean }) {
+  const isBreakthroughImminent = useSessionStore((state) => state.isBreakthroughImminent);
+  const isBreakthroughActive = useSessionStore((state) => state.isBreakthroughActive);
+  
+  const showPremiumSpiral = isBreakthroughImminent || isBreakthroughActive;
+
   return (
     <>
       <SceneLighting capabilities={capabilities} enableEnvironment={!reducedMotion} />
-      <PremiumSpiral capabilities={capabilities} reducedMotion={reducedMotion} />
+      {showPremiumSpiral && (
+        <PremiumSpiral capabilities={capabilities} reducedMotion={reducedMotion} />
+      )}
       <SpiralEntities />
       <FrictionEffects />
       <CameraRig autoRotate={!reducedMotion} />
