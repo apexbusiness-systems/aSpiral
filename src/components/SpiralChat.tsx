@@ -10,9 +10,7 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { MicButton } from "@/components/MicButton";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { QuestionBubble } from "@/components/QuestionBubble";
-import { SpiralScene } from "@/components/3d/SpiralScene";
-import { EnhancedSpiralScene } from "@/components/3d/EnhancedSpiralScene";
-import { isRendererV2Enabled } from "@/lib/rendererFlags";
+import { SpiralStage } from "@/components/SpiralStage";
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
@@ -56,6 +54,27 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   // CRITICAL FIX: Ref to track last spoken question to prevent TTS loops
   const lastSpokenQuestionRef = useRef<string | null>(null);
   const { toast } = useToast();
+
+  // Audit Fix: PWA Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  // Audit Fix: Global listener for PWA install
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      // Optional: Show a toast that app is ready to install
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+  const handleInstallPwa = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   useRenderStormDetector('SpiralChat');
 
@@ -175,7 +194,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const { 
     speak: speakText, 
     stop: stopSpeaking, 
-    isSpeaking: isTTSSpeaking,
+    isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
@@ -499,6 +518,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         onViewHistory={handleViewHistory}
         onSettings={handleSettings}
         onHelp={handleHelp}
+        installPwa={deferredPrompt ? handleInstallPwa : undefined}
         sessionProgress={
           sessionState !== "idle"
             ? {
@@ -559,15 +579,15 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         onNewSession={handleNewSession}
       />
 
-      {/* 3D Visualization Panel */}
+      {/* Visual Spiral Panel (WebGL stage with safe SVG fallback) */}
       <div
         className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${
-          is3DExpanded 
-            ? "h-[60vh] lg:h-full lg:w-2/3" 
+          is3DExpanded
+            ? "h-[60vh] lg:h-full lg:w-2/3"
             : "h-48 lg:h-full lg:w-1/3"
         }`}
       >
-        {isRendererV2Enabled() ? <EnhancedSpiralScene /> : <SpiralScene />}
+        <SpiralStage />
         
         {/* Question Bubble - positioned in 3D area */}
         <QuestionBubble
@@ -708,7 +728,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
         {/* Live Transcript */}
         {isRecording && (
-          <LiveTranscript transcript={liveTranscript} isRecording={isRecording} />
+          <LiveTranscript transcript={liveTranscript} isRecording={isRecording} isProcessing={isAIProcessing} />
         )}
 
         {/* Input Area */}
@@ -745,7 +765,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         {currentSession?.entities?.length ? (
           <EntityCardList
             entities={currentSession.entities}
-            selectedEntityId={selectedEntityId}
+            selectedId={selectedEntityId}
             onEntityClick={handleEntityClick}
           />
         ) : null}
