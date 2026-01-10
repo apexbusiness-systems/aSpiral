@@ -1,7 +1,7 @@
 import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
-import { detectDeviceCapabilities, prefersReducedMotion } from "lib/performance/optimizer";
+import { detectDeviceCapabilities, prefersReducedMotion } from "@/lib/performance/optimizer";
 import { SpiralEntities } from "./SpiralEntities";
 import { FrictionEffects } from "./FrictionEffects";
 import { SceneLighting } from "./SceneLighting";
@@ -9,9 +9,9 @@ import { PremiumSpiral } from "./PremiumSpiral";
 import { EffectsHandler } from "./EffectsHandler";
 import { CameraRig } from "./CameraRig";
 import { OffscreenSpiralCanvas } from "./OffscreenSpiralCanvas";
-import { isRendererWorkerEnabled } from "lib/rendererFlags";
-import { useSessionStore } from "stores/sessionStore";
-import type { DeviceCapabilities } from "lib/cinematics/types";
+import { isRendererWorkerEnabled } from "@/lib/rendererFlags";
+import { useSessionStore } from "@/stores/sessionStore";
+import type { DeviceCapabilities } from "@/lib/cinematics/types";
 
 function supportsOffscreenCanvas(): boolean {
   return (

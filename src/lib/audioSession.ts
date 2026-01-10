@@ -3,6 +3,7 @@ import { addBreadcrumb } from '@/lib/debugOverlay';
 import { useAssistantSpeakingStore } from '@/hooks/useAssistantSpeaking';
 import { featureFlags } from '@/lib/featureFlags';
 import { audioDebug } from '@/lib/audioLogger';
+import { getDocumentLangFallback, getSpeechLocale } from '@/lib/i18n/speechLocale';
 
 const logger = createLogger('AudioSession');
 
@@ -179,10 +180,8 @@ async function ensureAudioContext(): Promise<void> {
   if (audioContext.state === 'suspended') {
     try {
       await audioContext.resume();
-      audioDebug.log('audio_route_change', { status: 'context_resumed' });
-    } catch (err) {
-      logger.warn('AudioContext resume failed', { errorMessage: String(err) });
-      audioDebug.error('audio_route_change', { error: 'resume_failed', message: String(err) });
+    } catch (error) {
+      logger.warn('AudioContext resume failed', { error: (error as Error).message });
     }
   }
 }
@@ -387,12 +386,22 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   }
 
   const voices = window.speechSynthesis.getVoices();
+  const desiredLang = getSpeechLocale(getDocumentLangFallback());
+  const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
+
+  const matchingVoices = voices.filter((v) => {
+    const vLang = (v.lang ?? "").toLowerCase();
+    return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
+  });
+
+  const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
+
   const preferredVoice =
-    voices.find((v) =>
-      v.name.includes('Google') ||
-      v.name.includes('Samantha') ||
-      v.name.includes('Daniel')
-    ) || voices[0];
+    pickFrom.find((v) => v.default) ||
+    pickFrom.find((v) => v.name.includes("Google")) ||
+    pickFrom.find((v) => v.name.includes("Samantha")) ||
+    pickFrom.find((v) => v.name.includes("Daniel")) ||
+    pickFrom[0];
 
   let isFirstSentence = true;
   let hasErrored = false;
@@ -408,6 +417,9 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       const utterance = new SpeechSynthesisUtterance(sentence);
       utterance.rate = options.speed;
       utterance.pitch = 1.0;
+
+      // ✅ Bind TTS language to active document/app language
+      utterance.lang = preferredVoice?.lang ?? desiredLang;
 
       if (preferredVoice) {
         utterance.voice = preferredVoice;

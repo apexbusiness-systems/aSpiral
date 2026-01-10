@@ -52,3 +52,4 @@ android/build/
 
 # Capacitor
 capacitor.config.ts.bak
+node_modules

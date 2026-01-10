@@ -1,5 +1,5 @@
 import { Component, type ReactNode, useMemo, useState } from "react";
-import { cn } from "../../lib/utils";
+import { cn } from "@/lib/utils";
 import { EnhancedSpiralScene } from "./3d/EnhancedSpiralScene";
 import { SpiralHeroSVG } from "./SpiralHeroSVG";
 
