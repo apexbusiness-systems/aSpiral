@@ -49,8 +49,10 @@ export function subscribeToTTSDebug(callback: (events: TTSDebugEvent[]) => void)
 }
 
 interface UseTextToSpeechOptions {
-  voice?: string; // OpenAI voices: alloy, ash, ballad, coral, echo, sage, shimmer, verse, nova
+  voice?: string; // OpenAI voices: alloy, ash, ballot, coral, echo, sage, shimmer, verse, nova
   speed?: number; // 0.25 to 4.0
+  volume?: number; // 0.0 to 1.0
+  forceWebSpeech?: boolean;
   fallbackToWebSpeech?: boolean;
   onStart?: () => void;
   onEnd?: () => void;
@@ -68,6 +70,8 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const {
     voice = 'nova',
     speed = 1.0,
+    volume = 1.0,
+    forceWebSpeech = false,
     fallbackToWebSpeech = true,
     onStart,
     onEnd,
@@ -149,6 +153,8 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         text,
         voice,
         speed,
+        volume,
+        forceWebSpeech,
         fallbackToWebSpeech,
         supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
         supabaseKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,

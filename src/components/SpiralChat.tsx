@@ -32,6 +32,8 @@ import { OmniLinkAdapter } from "@/integrations/omnilink";
 import { createUpdateGuard } from "@/lib/updateGuard";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
+import { loadStoredSettings, defaultSettings } from "@/lib/settings";
+import type { SettingsState } from "@/lib/settings";
 
 export interface SpiralChatHandle {
   toggleRecording: () => void;
@@ -188,51 +190,54 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     () => createUpdateGuard({ name: "SpiralChat.setLiveTranscript" }),
     []
   );
-  const [ttsEnabled, setTtsEnabled] = useState(true); // User can toggle TTS
+  const [settings, setSettings] = useState<SettingsState>(() => loadStoredSettings() ?? defaultSettings);
 
   // Text-to-Speech for AI responses
-  const { 
-    speak: speakText, 
-    stop: stopSpeaking, 
-    isTTSSpeaking,
+  const {
+    speak: speakText,
+    stop: stopSpeaking,
+    isSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
-    speed: 1.0,
+    speed: settings.speechRate,
+    volume: settings.voiceVolume / 100,
+    forceWebSpeech: settings.voiceType === "native",
     fallbackToWebSpeech: true,
     onError: (error) => {
       console.warn('[TTS] Error:', error.message);
     },
   });
 
-  const { 
-    isRecording, 
-    isSupported, 
+  const {
+    isRecording,
+    isSupported,
     isPaused: isRecordingPaused,
-    transcript, 
-    toggleRecording, 
+    transcript,
+    toggleRecording,
     stopRecording,
     togglePause: toggleRecordingPause,
   } = useVoiceInput({
     onTranscript: (text) => {
       accumulateTranscript(text);
     },
+    silenceTimeoutMs: settings.ultraFastMode ? 800 : 1200,
   });
 
   // CRITICAL FIX: Prevent TTS loop by tracking last spoken question
   // Only speak if the question has actually CHANGED since the last time we spoke
   useEffect(() => {
     if (
-      currentQuestion && 
-      ttsEnabled && 
-      !isTTSSpeaking && 
+      currentQuestion &&
+      settings.voiceEnabled &&
+      !isSpeaking &&
       !isTTSLoading &&
       currentQuestion !== lastSpokenQuestionRef.current
     ) {
       lastSpokenQuestionRef.current = currentQuestion;
       speakText(currentQuestion);
     }
-  }, [currentQuestion, ttsEnabled, isTTSSpeaking, isTTSLoading, speakText]);
+  }, [currentQuestion, settings.voiceEnabled, isSpeaking, isTTSLoading, speakText]);
 
   // Reset tracking when question is dismissed or cleared
   useEffect(() => {
@@ -544,7 +549,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       />
 
       {/* Settings Panel */}
-      <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSettingsChange={setSettings}
+      />
 
       {/* Keyboard Shortcuts Modal */}
       <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
@@ -702,16 +712,16 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setTtsEnabled(!ttsEnabled);
+                  setSettings(prev => ({ ...prev, voiceEnabled: !prev.voiceEnabled }));
                 }}
                 className="text-xs"
               >
-                {ttsEnabled ? (
+                {settings.voiceEnabled ? (
                   <Volume2 className="h-4 w-4 mr-1" />
                 ) : (
                   <VolumeX className="h-4 w-4 mr-1" />
                 )}
-                {ttsEnabled ? 'TTS On' : 'TTS Off'}
+                {settings.voiceEnabled ? 'TTS On' : 'TTS Off'}
               </Button>
             </div>
           </div>

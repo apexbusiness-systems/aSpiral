@@ -68,7 +68,7 @@ aSpiral provides a unique voice-first interface where users can speak their thou
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Real-time transcription | ✅ Production | WebSpeech API with fallback |
-| Voice activity detection | ✅ Production | Automatic start/stop |
+| Voice activity detection | ✅ Production | Automatic start/stop with configurable silence timeout (800-1200ms) |
 | Continuous listening mode | ✅ Production | Extended conversation support |
 | Multi-language support | ✅ Production | 5 languages (EN, ES, FR, DE, JA) |
 | Audio session coordination | ✅ Production | Centralized TTS/STT lifecycle to prevent feedback loops |
@@ -855,3 +855,4 @@ Comprehensive device-aware rendering optimization:
 | 1.6 | Dec 30, 2025 | aSpiral Team | Corrected tech stack: OpenAI API (not Gemini), IONOS.ca hosting |
 | 1.7 | Jan 04, 2026 | aSpiral Team | Added audio session coordination, runtime debug overlay, feature flags, and render storm diagnostics |
 | 1.8 | Jan 09, 2026 | aSpiral Team | Added translation key parity test to QA suite (155+ total tests) |
+| 1.9 | Jan 11, 2026 | aSpiral Team | Voice response delay reduction (800-1200ms configurable timeout), settings wiring for voice behavior, shared settings module, double output bug fix, speech locale validation tests |
