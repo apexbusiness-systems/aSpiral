@@ -192,7 +192,7 @@ describe('TTS Sentence Chunking', () => {
 
 // Helper function that mirrors the implementation
 function splitIntoSentences(text: string): string[] {
-  const sentences = text.match(/(?:[^.!?]+[.!?]+[\s]?)|(?:[^.!?]+$)/g);
+  const sentences = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
   if (!sentences) return [text];
   return sentences.map(s => s.trim()).filter(s => s.length > 0);
 }
