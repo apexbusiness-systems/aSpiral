@@ -43,7 +43,7 @@ function flattenKeys(obj: any, prefix = ""): string[] {
     }
   }
 
-  return keys.sort((a, b) => a.localeCompare(b));
+  return keys.sort();
 }
 
 /**
