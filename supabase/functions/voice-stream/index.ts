@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 
 const SYSTEM_PROMPT = `You are a helpful AI receptionist for APEX Business Systems.
 Your goal is to handle incoming calls, answer questions about business automation, and assist with scheduling.
