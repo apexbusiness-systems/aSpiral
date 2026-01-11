@@ -1,8 +1,7 @@
 import { useMemo } from "react";
-import { Environment, MeshTransmissionMaterial } from "@react-three/drei";
+import { Environment } from "@react-three/drei";
 import { detectDeviceCapabilities } from "@/lib/performance/optimizer";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
-import * as THREE from "three";
 
 interface SceneLightingProps {
   enableEnvironment?: boolean;
@@ -30,24 +29,6 @@ export function SceneLighting({ enableEnvironment = true, capabilities }: SceneL
           blur={0.4}
         />
       )}
-
-      {/* Premium center orb */}
-      <mesh position={[0, 0.2, 0]}>
-        <icosahedronGeometry args={[0.45, 5]} />
-        <MeshTransmissionMaterial
-          thickness={0.45}
-          roughness={0.08}
-          transmission={1}
-          ior={1.4}
-          chromaticAberration={0.03}
-          anisotropicBlur={0.1}
-          distortion={0.15}
-          distortionScale={0.2}
-          temporalDistortion={0.08}
-          attenuationColor={new THREE.Color("#8b5cf6")}
-          attenuationDistance={0.45}
-        />
-      </mesh>
     </>
   );
 }
