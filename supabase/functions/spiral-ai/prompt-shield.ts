@@ -215,8 +215,7 @@ export interface InjectionAuditLog {
 function hashInput(input: string): string {
   let hash = 5381;
   for (let i = 0; i < input.length; i++) {
-    const code = input.codePointAt(i) || 0;
-    hash = ((hash << 5) + hash) + code;
+    hash = ((hash << 5) + hash) + input.charCodeAt(i);
   }
   return `inj:${Math.abs(hash).toString(16).padStart(12, '0')}`;
 }
@@ -226,7 +225,7 @@ function generateFingerprint(input: string, headers?: Record<string, string>): s
   const components = [
     input.length.toString(),
     input.split(/\s+/).length.toString(), // Word count
-    (input.match(/[^\u0000-\u007F]/g) || []).length.toString(), // Non-ASCII count
+    (input.match(/[^\x00-\x7F]/g) || []).length.toString(), // Non-ASCII count
     (input.match(/[A-Z]/g) || []).length.toString(), // Uppercase count
   ];
   return `fp:${components.join('-')}`;
@@ -246,7 +245,7 @@ export function detectPromptInjection(
 
   // Normalize input for detection
   const normalizedInput = input.toLowerCase();
-
+  
   // Check all injection pattern categories
   for (const [categoryName, category] of Object.entries(INJECTION_PATTERNS)) {
     for (const pattern of category.patterns) {
@@ -284,7 +283,7 @@ export function detectPromptInjection(
   }
 
   // Unusual character ratio detection
-  const nonAsciiRatio = (input.match(/[^\u0000-\u007F]/g) || []).length / input.length;
+  const nonAsciiRatio = (input.match(/[^\x00-\x7F]/g) || []).length / input.length;
   if (nonAsciiRatio > 0.3) {
     riskScore += 20;
     threats.push({
@@ -341,24 +340,24 @@ function sanitizeInput(input: string): string {
 
   // Remove zero-width characters
   sanitized = sanitized.replace(/[\u200B\u200C\u200D\uFEFF\u2060]/g, "");
-
+  
   // Remove invisible separators
   sanitized = sanitized.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ");
-
+  
   // Remove directional override characters
   sanitized = sanitized.replace(/[\u202A-\u202E\u2066-\u2069]/g, "");
-
+  
   // Normalize multiple spaces/newlines
   sanitized = sanitized.replace(/\s+/g, " ");
-
+  
   // Remove potential delimiter injections
   sanitized = sanitized.replace(/```[^`]*```/g, "[CODE_BLOCK_REMOVED]");
   sanitized = sanitized.replace(/\[\[.*?\]\]/g, "[BRACKET_REMOVED]");
   sanitized = sanitized.replace(/\{\{.*?\}\}/g, "[BRACE_REMOVED]");
-
+  
   // Remove URLs (prevent exfiltration)
   sanitized = sanitized.replace(/https?:\/\/[^\s]+/gi, "[URL_REMOVED]");
-
+  
   // Limit consecutive repeated characters (anti-abuse)
   sanitized = sanitized.replace(/(.)\1{10,}/g, "$1$1$1");
 
@@ -374,14 +373,14 @@ function calculateEntropy(input: string): number {
   for (const char of input) {
     freq[char] = (freq[char] || 0) + 1;
   }
-
+  
   let entropy = 0;
   const len = input.length;
   for (const count of Object.values(freq)) {
     const p = count / len;
     entropy -= p * Math.log2(p);
   }
-
+  
   return entropy;
 }
 

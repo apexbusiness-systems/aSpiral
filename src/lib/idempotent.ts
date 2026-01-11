@@ -51,7 +51,7 @@ export async function idempotentExecute<T>(
 ): Promise<T> {
   // Check if request is already in flight
   const inFlight = inFlightRequests.get(key);
-  if (inFlight !== undefined) {
+  if (inFlight) {
     logger.debug("Returning in-flight request", { key });
     return inFlight as Promise<T>;
   }

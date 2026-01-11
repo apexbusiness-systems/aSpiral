@@ -2,7 +2,7 @@
 set -eo pipefail
 
 VERSION="$1"
-if [[ -z "$VERSION" ]]; then
+if [ -z "$VERSION" ]; then
   echo "Usage: ./scripts/bump-version.sh 1.0.1"
   exit 1
 fi
@@ -19,7 +19,7 @@ echo "Bumping to v$VERSION (code: $VERSION_CODE)"
 npm version "$VERSION" --no-git-tag-version
 
 # Update Android build.gradle
-if [[ -f "android/app/build.gradle" ]]; then
+if [ -f "android/app/build.gradle" ]; then
   sed -i.bak "s/versionCode [0-9]*/versionCode $VERSION_CODE/" android/app/build.gradle
   sed -i.bak "s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" android/app/build.gradle
   rm -f android/app/build.gradle.bak
@@ -27,7 +27,7 @@ if [[ -f "android/app/build.gradle" ]]; then
 fi
 
 # Update iOS (via agvtool if available, otherwise manual)
-if [[ -d "ios/App" ]]; then
+if [ -d "ios/App" ]; then
   cd ios/App
   if command -v agvtool &> /dev/null; then
     agvtool new-marketing-version "$VERSION"
