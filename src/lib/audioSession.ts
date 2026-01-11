@@ -223,7 +223,7 @@ function clearQueue() {
 function splitIntoSentences(text: string): string[] {
   // Match sentence endings: period, exclamation, question mark followed by space or end
   // Also handles ellipsis and keeps punctuation with the sentence
-  const sentences = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
+  const sentences = text.match(/(?:[^.!?]+[.!?]+[\s]?)|(?:[^.!?]+$)/g);
 
   if (!sentences) return [text];
 

@@ -247,6 +247,14 @@ class GlobalErrorBoundary extends Component<Props, State> {
               e.currentTarget.style.transform = 'scale(1)';
               e.currentTarget.style.boxShadow = '0 4px 20px rgba(124, 58, 237, 0.4)';
             }}
+            onFocus={(e) => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(124, 58, 237, 0.5)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 20px rgba(124, 58, 237, 0.4)';
+            }}
           >
             Reload App
           </button>
