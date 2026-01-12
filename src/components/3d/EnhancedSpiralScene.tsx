@@ -11,10 +11,6 @@ import { CameraRig } from "./CameraRig";
 import { OffscreenSpiralCanvas } from "./OffscreenSpiralCanvas";
 import { isRendererWorkerEnabled } from "@/lib/rendererFlags";
 import { useSessionStore } from "@/stores/sessionStore";
-import { AuroraPlatform } from "./aurora/AuroraPlatform";
-import { GrindingGears } from "./gears/GrindingGears";
-import { GreaseApplication } from "./GreaseApplication";
-import { BreakthroughTransformation } from "./BreakthroughTransformation";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
 
 function supportsOffscreenCanvas(): boolean {
@@ -39,60 +35,17 @@ function EnhancedSceneContent({
 }) {
   const isBreakthroughImminent = useSessionStore((state) => state.isBreakthroughImminent);
   const isBreakthroughActive = useSessionStore((state) => state.isBreakthroughActive);
-  const activeFriction = useSessionStore((state) => state.activeFriction);
-  const isApplyingGrease = useSessionStore((state) => state.isApplyingGrease);
-  const greaseIsCorrect = useSessionStore((state) => state.greaseIsCorrect);
 
   const showPremiumSpiral = isBreakthroughImminent || isBreakthroughActive;
 
   return (
     <>
-      {/* ASPIRAL Premium Visual Engine Components */}
-      <AuroraPlatform enableSparkles={!reducedMotion} />
-
       <SceneLighting capabilities={capabilities} enableEnvironment={!reducedMotion} />
-
       {showPremiumSpiral && (
         <PremiumSpiral capabilities={capabilities} reducedMotion={reducedMotion} />
       )}
-
       <SpiralEntities />
-
       <FrictionEffects />
-
-      {/* Mechanical Friction Metaphor - Show when friction is active */}
-      {activeFriction && !isApplyingGrease && (
-        <GrindingGears
-          friction={activeFriction.topLabel}
-          opposingForce={activeFriction.bottomLabel}
-          isGrinding={activeFriction.intensity > 0.5}
-          greaseApplied={false}
-          greaseType={null}
-        />
-      )}
-
-      {/* Grease Application Simulation - Show during grease application */}
-      {isApplyingGrease && (
-        <GreaseApplication
-          type={greaseIsCorrect ? 'right' : 'wrong'}
-          isActive={true}
-          onComplete={() => {
-            // This will be handled by the session store timeout
-          }}
-        />
-      )}
-
-      {/* Breakthrough Transformation - Show during active breakthrough */}
-      {isBreakthroughActive && (
-        <BreakthroughTransformation
-          isTriggered={true}
-          cinematicType="spiral_ascend" // Default cinematic type
-          onComplete={() => {
-            // This will be handled by the session store
-          }}
-        />
-      )}
-
       <CameraRig autoRotate={!reducedMotion} />
       <EffectsHandler capabilities={capabilities} reducedMotion={reducedMotion} />
     </>
