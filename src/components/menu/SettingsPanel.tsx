@@ -36,79 +36,7 @@ import {
 import { createUpdateGuard } from "@/lib/updateGuard";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
-
-export interface SettingsState {
-  // Voice settings
-  voiceEnabled: boolean;
-  voiceVolume: number;
-  speechRate: number;
-  voiceType: string;
-  autoListen: boolean;
-  
-  // Visual settings
-  theme: "dark" | "light" | "system";
-  animationsEnabled: boolean;
-  reducedMotion: boolean;
-  show3DScene: boolean;
-  particleEffects: boolean;
-  glowEffects: boolean;
-  
-  // AI behavior
-  ultraFastMode: boolean;
-  maxQuestions: number;
-  autoBreakthrough: boolean;
-  frustrationDetection: boolean;
-  verboseResponses: boolean;
-  soundEffects: boolean;
-}
-
-const defaultSettings: SettingsState = {
-  voiceEnabled: true,
-  voiceVolume: 80,
-  speechRate: 1.0,
-  voiceType: "natural",
-  autoListen: false,
-  
-  theme: "dark",
-  animationsEnabled: true,
-  reducedMotion: false,
-  show3DScene: true,
-  particleEffects: true,
-  glowEffects: true,
-  
-  ultraFastMode: false,
-  maxQuestions: 2,
-  autoBreakthrough: true,
-  frustrationDetection: true,
-  verboseResponses: false,
-  soundEffects: true,
-};
-
-const SETTINGS_STORAGE_KEY = "aspiral_settings_v1";
-
-const isSettingsState = (value: unknown): value is SettingsState => {
-  if (!value || typeof value !== "object") return false;
-  const v = value as SettingsState;
-  return (
-    typeof v.voiceEnabled === "boolean" &&
-    typeof v.voiceVolume === "number" &&
-    typeof v.speechRate === "number" &&
-    typeof v.voiceType === "string" &&
-    typeof v.autoListen === "boolean" &&
-    (v.theme === "dark" || v.theme === "light" || v.theme === "system") &&
-    typeof v.animationsEnabled === "boolean" &&
-    typeof v.reducedMotion === "boolean" &&
-    typeof v.show3DScene === "boolean" &&
-    typeof v.particleEffects === "boolean" &&
-    typeof v.glowEffects === "boolean" &&
-    typeof v.ultraFastMode === "boolean" &&
-    typeof v.maxQuestions === "number" &&
-    typeof v.autoBreakthrough === "boolean" &&
-    typeof v.frustrationDetection === "boolean" &&
-    typeof v.verboseResponses === "boolean" &&
-    typeof v.soundEffects === "boolean"
-  );
-};
+import { SettingsState, defaultSettings, loadStoredSettings, saveStoredSettings, SETTINGS_STORAGE_KEY } from "@/lib/settings";
 
 const areSettingsEqual = (a: SettingsState, b: SettingsState) =>
   a.voiceEnabled === b.voiceEnabled &&
@@ -128,17 +56,6 @@ const areSettingsEqual = (a: SettingsState, b: SettingsState) =>
   a.frustrationDetection === b.frustrationDetection &&
   a.verboseResponses === b.verboseResponses &&
   a.soundEffects === b.soundEffects;
-
-const loadStoredSettings = (): SettingsState | null => {
-  try {
-    const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as unknown;
-    return isSettingsState(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-};
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -266,7 +183,7 @@ export function SettingsPanel({
     try {
       const serialized = JSON.stringify(settings);
       if (lastSavedRef.current !== serialized) {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, serialized);
+        saveStoredSettings(settings);
         lastSavedRef.current = serialized;
       }
     } catch {

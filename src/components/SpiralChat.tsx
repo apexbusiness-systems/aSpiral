@@ -33,6 +33,8 @@ import { OmniLinkAdapter } from "@/integrations/omnilink";
 import { createUpdateGuard } from "@/lib/updateGuard";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
+import { loadStoredSettings, defaultSettings } from "@/lib/settings";
+import type { SettingsState } from "@/lib/settings";
 
 export interface SpiralChatHandle {
   toggleRecording: () => void;
@@ -189,7 +191,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     () => createUpdateGuard({ name: "SpiralChat.setLiveTranscript" }),
     []
   );
-  const [ttsEnabled, setTtsEnabled] = useState(true); // User can toggle TTS
+  const [settings, setSettings] = useState<SettingsState>(() => loadStoredSettings() ?? defaultSettings);
 
   // Text-to-Speech for AI responses
   const {
@@ -199,7 +201,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
-    speed: 1.0,
+    speed: settings.speechRate,
+    volume: settings.voiceVolume / 100,
+    forceWebSpeech: settings.voiceType === "native",
     fallbackToWebSpeech: true,
     onError: (error) => {
       console.warn('[TTS] Error:', error.message);
@@ -218,6 +222,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     onTranscript: (text) => {
       accumulateTranscript(text);
     },
+    silenceTimeoutMs: settings.ultraFastMode ? 800 : 1200,
   });
 
   // CRITICAL FIX: Prevent TTS loop by tracking last spoken question
@@ -233,7 +238,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       lastSpokenQuestionRef.current = currentQuestion;
       speakText(currentQuestion);
     }
-  }, [currentQuestion, ttsEnabled, isTTSSpeaking, isTTSLoading, speakText]);
+  }, [currentQuestion, settings.voiceEnabled, isSpeaking, isTTSLoading, speakText]);
 
   // Reset tracking when question is dismissed or cleared
   useEffect(() => {
