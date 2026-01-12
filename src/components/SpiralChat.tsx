@@ -379,7 +379,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     // Reset cinematic state
     setShowCinematic(false);
     setCinematicComplete(false);
-  }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording]);
+  }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording, setShowCinematic, setCinematicComplete]);
 
   // Wrapped handlers with analytics
   const handleSkipToBreakthrough = useCallback(() => {
