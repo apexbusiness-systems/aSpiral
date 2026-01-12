@@ -11,7 +11,7 @@ import { CameraRig } from "./CameraRig";
 import { OffscreenSpiralCanvas } from "./OffscreenSpiralCanvas";
 import { isRendererWorkerEnabled } from "@/lib/rendererFlags";
 import { useSessionStore } from "@/stores/sessionStore";
-import { AuroraPlatform } from "./aurora/AuroraPlatform";
+import { AuroraPlatform } from "./AuroraPlatform";
 import { GrindingGears } from "./gears/GrindingGears";
 import { GreaseApplication } from "./GreaseApplication";
 import { BreakthroughTransformation } from "./BreakthroughTransformation";
