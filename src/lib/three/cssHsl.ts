@@ -10,11 +10,11 @@ export function parseHsl(raw: string): { h: number; s: number; l: number } | nul
     if (parts.length !== 3) return null;
 
     const [hStr, sStr, lStr] = parts;
-    const h = parseFloat(hStr);
-    const s = parseFloat(sStr.replace('%', ''));
-    const l = parseFloat(lStr.replace('%', ''));
+    const h = Number.parseFloat(hStr);
+    const s = Number.parseFloat(sStr.replace('%', ''));
+    const l = Number.parseFloat(lStr.replace('%', ''));
 
-    if (isNaN(h) || isNaN(s) || isNaN(l)) return null;
+    if (Number.isNaN(h) || Number.isNaN(s) || Number.isNaN(l)) return null;
 
     // Normalized to 0-1 range for Three.js
     return { h, s: s / 100, l: l / 100 };

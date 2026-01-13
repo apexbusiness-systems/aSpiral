@@ -226,7 +226,7 @@ function generateFingerprint(input: string, headers?: Record<string, string>): s
   const components = [
     input.length.toString(),
     input.split(/\s+/).length.toString(), // Word count
-    (input.match(/[^\u0000-\u007F]/g) || []).length.toString(), // Non-ASCII count
+    (input.match(/[^\p{ASCII}]/gu) || []).length.toString(), // Non-ASCII count
     (input.match(/[A-Z]/g) || []).length.toString(), // Uppercase count
   ];
   return `fp:${components.join('-')}`;
@@ -284,7 +284,7 @@ export function detectPromptInjection(
   }
 
   // Unusual character ratio detection
-  const nonAsciiRatio = (input.match(/[^\u0000-\u007F]/g) || []).length / input.length;
+  const nonAsciiRatio = (input.match(/[^\p{ASCII}]/gu) || []).length / input.length;
   if (nonAsciiRatio > 0.3) {
     riskScore += 20;
     threats.push({
