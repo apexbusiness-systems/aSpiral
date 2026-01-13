@@ -38,8 +38,19 @@ export const UserMenu = () => {
     .slice(0, 2);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      // Import dynamically to avoid circular dependencies if any, though auth.ts is standalone
+      const { signOut: appSignOut } = await import('@/lib/auth');
+
+      // Use context signOut to update state immediately
+      await signOut();
+      // Also run the cleanup helper
+      await appSignOut();
+
+      navigate('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   return (
@@ -74,7 +85,7 @@ export const UserMenu = () => {
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border" />
-        <DropdownMenuItem 
+        <DropdownMenuItem
           className="cursor-pointer text-destructive hover:bg-destructive/10"
           onClick={handleSignOut}
         >

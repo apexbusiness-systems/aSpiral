@@ -3,6 +3,8 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stars, Sparkles } from "@react-three/drei";
 import { detectDeviceCapabilities } from "@/lib/performance/optimizer";
 import { SpiralEntities } from "./SpiralEntities";
+import { EntitiesScene } from "./EntitiesScene";
+import { AuroraPlatform } from "./AuroraPlatform";
 import { FrictionEffects } from "./FrictionEffects";
 import * as THREE from "three";
 
@@ -91,6 +93,7 @@ function SceneContent() {
       <fogExp2 attach="fog" args={['#0f0c29', 0.02]} />
       <pointLight position={[10, 10, 10]} intensity={1} />
       <pointLight position={[-10, -10, -10]} intensity={0.5} color={themeColors.secondary} />
+
       {/* Lighting - Dramatic "Aurora" Setup */}
       <ambientLight intensity={0.4} />
       <pointLight position={[10, 10, 10]} intensity={1.5} color="#ff00cc" distance={50} />
@@ -108,17 +111,14 @@ function SceneContent() {
         speed={0.5}
       />
 
-
       {/* Audit Fix: Additional floating particles for "Space Dust" */}
       <Sparkles count={100} scale={10} size={2} speed={0.4} opacity={0.5} color="#cfcfff" />
 
-      {/* Ground plane hint - subtle grid */}
-      <gridHelper args={[20, 20, 0x444444, 0x222222]} position={[0, -2, 0]} rotation={[0, 0, 0]}>
-        <meshBasicMaterial transparent opacity={0.1} />
-      </gridHelper>
-      
+      {/* Aurora Platform */}
+      <AuroraPlatform />
+
       {/* Entities */}
-      <SpiralEntities />
+      <EntitiesScene />
       <FrictionEffects />
 
       {/* Camera controls */}
@@ -127,8 +127,8 @@ function SceneContent() {
         minDistance={3}
         maxDistance={15}
         autoRotate
-        autoRotateSpeed={0.5} // Slightly faster for more cinematic feel
-        maxPolarAngle={Math.PI / 1.5} // Don't let user go under the floor
+        autoRotateSpeed={0.5}
+        maxPolarAngle={Math.PI / 1.5}
       />
     </>
   );
