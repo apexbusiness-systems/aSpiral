@@ -18,6 +18,7 @@ import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel, KeyboardS
 import { CinematicPlayer } from "@/components/cinematics/CinematicPlayer";
 import { FilmGrainCSS } from "@/components/effects/FilmGrainOverlay";
 import { EntityCardList } from "@/components/EntityCard";
+import { EntityCounter } from "@/components/EntityCounter";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
@@ -32,8 +33,6 @@ import { OmniLinkAdapter } from "@/integrations/omnilink";
 import { createUpdateGuard } from "@/lib/updateGuard";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
-import { loadStoredSettings, defaultSettings } from "@/lib/settings";
-import type { SettingsState } from "@/lib/settings";
 
 export interface SpiralChatHandle {
   toggleRecording: () => void;
@@ -190,19 +189,17 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     () => createUpdateGuard({ name: "SpiralChat.setLiveTranscript" }),
     []
   );
-  const [settings, setSettings] = useState<SettingsState>(() => loadStoredSettings() ?? defaultSettings);
+  const [ttsEnabled, setTtsEnabled] = useState(true); // User can toggle TTS
 
   // Text-to-Speech for AI responses
   const {
     speak: speakText,
     stop: stopSpeaking,
-    isSpeaking,
+    isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
-    speed: settings.speechRate,
-    volume: settings.voiceVolume / 100,
-    forceWebSpeech: settings.voiceType === "native",
+    speed: 1.0,
     fallbackToWebSpeech: true,
     onError: (error) => {
       console.warn('[TTS] Error:', error.message);
@@ -221,7 +218,6 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     onTranscript: (text) => {
       accumulateTranscript(text);
     },
-    silenceTimeoutMs: settings.ultraFastMode ? 800 : 1200,
   });
 
   // CRITICAL FIX: Prevent TTS loop by tracking last spoken question
@@ -229,15 +225,15 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   useEffect(() => {
     if (
       currentQuestion &&
-      settings.voiceEnabled &&
-      !isSpeaking &&
+      ttsEnabled &&
+      !isTTSSpeaking &&
       !isTTSLoading &&
       currentQuestion !== lastSpokenQuestionRef.current
     ) {
       lastSpokenQuestionRef.current = currentQuestion;
       speakText(currentQuestion);
     }
-  }, [currentQuestion, settings.voiceEnabled, isSpeaking, isTTSLoading, speakText]);
+  }, [currentQuestion, ttsEnabled, isTTSSpeaking, isTTSLoading, speakText]);
 
   // Reset tracking when question is dismissed or cleared
   useEffect(() => {
@@ -549,24 +545,20 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         />
 
         {/* Settings Panel */}
-        <SettingsPanel
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          settings={settings}
-          onSettingsChange={setSettings}
-        />
+        <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
         {/* Keyboard Shortcuts Modal */}
         <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
 
         {/* Loading State Overlay */}
         <AnimatePresence>
-          {processingStage ? <LoadingState stage={processingStage} /> : null}
+          {processingStage && <LoadingState stage={processingStage} />}
         </AnimatePresence>
 
         {/* Cinematic Player - plays before breakthrough card shows */}
-        {showCinematic && !cinematicComplete ? (
+        {showCinematic && !cinematicComplete && (
           <CinematicPlayer
+            variant={undefined} // Random variant selection
             onComplete={handleCinematicComplete}
             onSkip={handleCinematicComplete}
             allowSkip={true}
@@ -574,27 +566,25 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             enableAnalytics={true}
             className="z-[200]"
           />
-        ) : null}
+        )}
 
         {/* Breakthrough Overlay Card */}
-        {showBreakthroughCard && cinematicComplete ? (
-          <BreakthroughCard
-            data={breakthroughData}
-            isVisible={true}
-            onDismiss={() => {
-              dismissBreakthroughCard();
-              setShowCinematic(false);
-              setCinematicComplete(false);
-            }}
-            onNewSession={handleNewSession}
-          />
-        ) : null}
+        <BreakthroughCard
+          data={breakthroughData}
+          isVisible={showBreakthroughCard && cinematicComplete}
+          onDismiss={() => {
+            dismissBreakthroughCard();
+            setShowCinematic(false);
+            setCinematicComplete(false);
+          }}
+          onNewSession={handleNewSession}
+        />
 
         {/* Visual Spiral Panel (WebGL stage with safe SVG fallback) */}
         <div
           className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${is3DExpanded
-              ? "h-[60vh] lg:h-full lg:w-2/3"
-              : "h-48 lg:h-full lg:w-1/3"
+            ? "h-[60vh] lg:h-full lg:w-2/3"
+            : "h-48 lg:h-full lg:w-1/3"
             }`}
         >
           <SpiralStage />
@@ -647,10 +637,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
               onToggle={handleToggleUltraFast}
             />
 
+
             {entityCount > 0 ? (
-              <div className="glass-card rounded-xl px-3 py-1.5 text-xs text-muted-foreground">
-                {entityCount} {entityCount === 1 ? "entity" : "entities"}
-              </div>
+              <EntityCounter count={entityCount} />
             ) : (
               <Button
                 variant="ghost"
@@ -712,16 +701,16 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setSettings(prev => ({ ...prev, voiceEnabled: !prev.voiceEnabled }));
+                    setTtsEnabled(!ttsEnabled);
                   }}
                   className="text-xs"
                 >
-                  {settings.voiceEnabled ? (
+                  {ttsEnabled ? (
                     <Volume2 className="h-4 w-4 mr-1" />
                   ) : (
                     <VolumeX className="h-4 w-4 mr-1" />
                   )}
-                  {settings.voiceEnabled ? 'TTS On' : 'TTS Off'}
+                  {ttsEnabled ? 'TTS On' : 'TTS Off'}
                 </Button>
               </div>
             </div>
