@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePhysicsWorker, useFallbackLayout } from "@/hooks/usePhysicsWorker";
@@ -18,8 +18,8 @@ export function useEntities() {
     // Position refs for 60FPS updates
     const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
 
-    const entities = currentSession?.entities || [];
-    const connections = currentSession?.connections || [];
+    const entities = useMemo(() => currentSession?.entities || [], [currentSession?.entities]);
+    const connections = useMemo(() => currentSession?.connections || [], [currentSession?.connections]);
 
     // Physics integration
     const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {

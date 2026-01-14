@@ -33,7 +33,7 @@ type TTSDebugEvent = {
 // Debug buffer (shared with voice debug panel)
 const DEBUG_BUFFER_SIZE = 50;
 let ttsDebugBuffer: TTSDebugEvent[] = [];
-let ttsDebugSubscribers: Set<(events: TTSDebugEvent[]) => void> = new Set();
+const ttsDebugSubscribers: Set<(events: TTSDebugEvent[]) => void> = new Set();
 
 function emitTTSDebugEvent(event: Omit<TTSDebugEvent, 'timestamp'>) {
   const fullEvent: TTSDebugEvent = { ...event, timestamp: Date.now() };
