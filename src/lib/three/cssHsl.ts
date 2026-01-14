@@ -42,18 +42,18 @@ export function parseCssHsl(raw: string | null | undefined): HslFractions | null
     // Parse Hue
     // Hue can be just a number (deg is implied)
     const hStr = parts[0]
-    const h = parseFloat(hStr)
+    const h = Number.parseFloat(hStr)
 
     // Parse Saturation
     const sStr = parts[1]
-    const s = parseFloat(sStr.replace('%', ''))
+    const s = Number.parseFloat(sStr.replace('%', ''))
 
     // Parse Lightness
     const lStr = parts[2]
-    const l = parseFloat(lStr.replace('%', ''))
+    const l = Number.parseFloat(lStr.replace('%', ''))
 
     // Validate numbers
-    if (isNaN(h) || isNaN(s) || isNaN(l)) {
+    if (Number.isNaN(h) || Number.isNaN(s) || Number.isNaN(l)) {
         return null
     }
 

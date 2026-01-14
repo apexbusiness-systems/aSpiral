@@ -113,11 +113,12 @@ export function GrindingGears({
         if (!topGear || !bottomGear) return
 
         // Calculate rotation speed based on state
-        const speed = isGrinding
-            ? ANIMATION.grindingSpeed
-            : (greaseApplied && greaseType === 'right')
-                ? ANIMATION.smoothSpeed
-                : ANIMATION.idleSpeed
+        let speed: number = ANIMATION.idleSpeed
+        if (isGrinding) {
+            speed = ANIMATION.grindingSpeed
+        } else if (greaseApplied && greaseType === 'right') {
+            speed = ANIMATION.smoothSpeed
+        }
 
         // Counter-rotating gears with proper ratio
         topGear.rotation.z += delta * speed
