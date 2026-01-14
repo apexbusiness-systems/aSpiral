@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { configDefaults } from "vitest/config";
-import { execSync } from "child_process";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -112,26 +111,9 @@ export default defineConfig(({ mode }) => ({
       }
     })
   ].filter(Boolean),
-
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },
-  define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
-    __COMMIT_HASH__: JSON.stringify(
-      (() => {
-        try {
-          return execSync("git rev-parse --short HEAD")
-            .toString()
-            .trim();
-        } catch (e) {
-          console.warn("Could not get git hash", e);
-          return "unknown";
-        }
-      })()
-    ),
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
 }));
