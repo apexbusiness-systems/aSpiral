@@ -1,22 +1,19 @@
 import { useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
-import { GrindingGears } from "./gears";
-import { GreaseApplication } from "./GreaseApplication";
-import { BreakthroughTransformation } from "./BreakthroughTransformation";
+import { GrindingGears } from "./GrindingGears";
+import { GreaseEffect } from "./GreaseEffect";
+import { BreakthroughEffect } from "./BreakthroughEffect";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 export function FrictionEffects() {
   const {
-    frictionLabel,
-    opposingForce,
-    isGrinding,
-    greaseApplied,
-    greaseType,
-    isCinematicPlaying,
-    cinematicType,
-    resetBreakthrough,
-    setGrinding,
+    activeFriction,
+    isApplyingGrease,
+    greaseIsCorrect,
+    isBreakthroughActive,
+    clearBreakthrough,
+    hideFriction,
   } = useSessionStore();
   const invalidate = useThree((state) => state.invalidate);
 
@@ -34,76 +31,70 @@ export function FrictionEffects() {
 
   // Handle grinding sound
   useEffect(() => {
+    const isGrinding = !!activeFriction && !isApplyingGrease;
+
     if (isGrinding && !wasGrindingRef.current) {
-      startGrinding(0.7); // Default intensity
+      startGrinding(activeFriction?.intensity || 0.7);
     } else if (!isGrinding && wasGrindingRef.current) {
       stopGrinding();
     }
 
     wasGrindingRef.current = isGrinding;
     invalidate();
-  }, [isGrinding, startGrinding, stopGrinding, invalidate]);
+  }, [activeFriction, isApplyingGrease, startGrinding, stopGrinding, invalidate]);
 
   // Handle grease sound
   useEffect(() => {
-    const isApplying = greaseApplied && !wasApplyingGreaseRef.current; // Simple trigger
-    if (isApplying) {
+    if (isApplyingGrease && !wasApplyingGreaseRef.current) {
       // Play drip sounds staggered
       for (let i = 0; i < 5; i++) {
-        setTimeout(() => playGreaseDrip(greaseType === 'right'), i * 150);
+        setTimeout(() => playGreaseDrip(greaseIsCorrect), i * 150);
       }
     }
-    wasApplyingGreaseRef.current = greaseApplied;
+    wasApplyingGreaseRef.current = isApplyingGrease;
     invalidate();
-  }, [greaseApplied, greaseType, playGreaseDrip, invalidate]);
+  }, [isApplyingGrease, greaseIsCorrect, playGreaseDrip, invalidate]);
 
   // Handle breakthrough sound
   useEffect(() => {
-    if (isCinematicPlaying && !wasBreakthroughRef.current) {
+    if (isBreakthroughActive && !wasBreakthroughRef.current) {
       playBreakthrough();
     }
-    wasBreakthroughRef.current = isCinematicPlaying;
+    wasBreakthroughRef.current = isBreakthroughActive;
     invalidate();
-  }, [isCinematicPlaying, playBreakthrough, invalidate]);
+  }, [isBreakthroughActive, playBreakthrough, invalidate]);
 
   const handleGreaseComplete = () => {
-    playGreaseLand(greaseType === 'right');
-    // Logic for transition handled by store actions typically,
-    // but visual completion might trigger next step if needed.
+    playGreaseLand(greaseIsCorrect);
+    if (greaseIsCorrect) {
+      hideFriction();
+    }
     invalidate();
   };
-
-  const handleBreakthroughComplete = () => {
-    resetBreakthrough();
-  };
-
-  // Only render if we have data
-  if (!frictionLabel || !opposingForce) return null;
 
   return (
     <>
       {/* Grinding Gears */}
       <GrindingGears
-        friction={frictionLabel}
-        opposingForce={opposingForce}
-        isGrinding={isGrinding}
-        greaseApplied={greaseApplied}
-        greaseType={greaseType}
-        visible={true}
+        topLabel={activeFriction?.topLabel || ""}
+        bottomLabel={activeFriction?.bottomLabel || ""}
+        intensity={activeFriction?.intensity || 0.7}
+        isActive={!!activeFriction && !isApplyingGrease}
+        position={[0, 1, 0]}
       />
 
       {/* Grease Effect */}
-      <GreaseApplication
-        type={greaseType}
-        isActive={greaseApplied}
+      <GreaseEffect
+        isActive={isApplyingGrease}
+        isCorrect={greaseIsCorrect}
+        position={[0, 1, 0]}
         onComplete={handleGreaseComplete}
       />
 
-      {/* Breakthrough Transformation */}
-      <BreakthroughTransformation
-        isTriggered={isCinematicPlaying}
-        cinematicType={cinematicType}
-        onComplete={handleBreakthroughComplete}
+      {/* Breakthrough Explosion */}
+      <BreakthroughEffect
+        isActive={isBreakthroughActive}
+        onComplete={clearBreakthrough}
       />
     </>
   );
