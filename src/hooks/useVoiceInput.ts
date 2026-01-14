@@ -94,6 +94,7 @@ function checkVoiceSupport(): {
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
+  silenceTimeoutMs?: number;
 }
 
 // Global Set of known final transcripts to prevent cross-component duplication if multiple hooks mounted
@@ -105,6 +106,8 @@ function getActiveSpeechLocale(): string {
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}) {
+  const silenceTimeoutMs = options.silenceTimeoutMs ?? 1200;
+
   const [isSupported, setIsSupported] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -242,9 +245,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       if (newFinalText) {
         if (silenceTimer.current) clearTimeout(silenceTimer.current);
         silenceTimer.current = setTimeout(() => {
-          logger.info("Silence detected. Stopping.");
+          logger.info(`Silence detected after ${silenceTimeoutMs}ms. Stopping.`);
           stopRecording();
-        }, 2500);
+        }, silenceTimeoutMs);
       }
 
       // UPDATE TRANSCRIPTS

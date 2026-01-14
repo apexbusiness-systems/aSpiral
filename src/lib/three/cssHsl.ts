@@ -4,6 +4,7 @@
  * @sonarqube cognitive-complexity: 4
  */
 
+<<<<<<< HEAD
 /** Normalized HSL fractions for THREE.Color compatibility */
 export interface HslFractions {
     /** Hue: 0-1 (mapped from 0-360°) */
@@ -88,4 +89,17 @@ export function hslToHex(hsl: HslFractions): string {
         Math.round((n + match) * 255).toString(16).padStart(2, '0')
 
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+=======
+    if (parts.length !== 3) return null;
+
+    const [hStr, sStr, lStr] = parts;
+    const h = Number.parseFloat(hStr);
+    const s = Number.parseFloat(sStr.replace('%', ''));
+    const l = Number.parseFloat(lStr.replace('%', ''));
+
+    if (Number.isNaN(h) || Number.isNaN(s) || Number.isNaN(l)) return null;
+
+    // Normalized to 0-1 range for Three.js
+    return { h, s: s / 100, l: l / 100 };
+>>>>>>> main
 }
