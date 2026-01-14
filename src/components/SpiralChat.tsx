@@ -556,13 +556,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
         {/* Loading State Overlay */}
         <AnimatePresence>
-          {processingStage && <LoadingState stage={processingStage} />}
+          {processingStage ? <LoadingState stage={processingStage} /> : null}
         </AnimatePresence>
 
         {/* Cinematic Player - plays before breakthrough card shows */}
-        {showCinematic && !cinematicComplete && (
+        {showCinematic && !cinematicComplete ? (
           <CinematicPlayer
-            variant={undefined} // Random variant selection
             onComplete={handleCinematicComplete}
             onSkip={handleCinematicComplete}
             allowSkip={true}
@@ -570,7 +569,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             enableAnalytics={true}
             className="z-[200]"
           />
-        )}
+        ) : null}
 
         {/* Breakthrough Overlay Card */}
         <BreakthroughCard
