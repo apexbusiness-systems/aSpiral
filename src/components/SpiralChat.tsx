@@ -572,16 +572,18 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         ) : null}
 
         {/* Breakthrough Overlay Card */}
-        <BreakthroughCard
-          data={breakthroughData}
-          isVisible={showBreakthroughCard && cinematicComplete}
-          onDismiss={() => {
-            dismissBreakthroughCard();
-            setShowCinematic(false);
-            setCinematicComplete(false);
-          }}
-          onNewSession={handleNewSession}
-        />
+        {showBreakthroughCard && cinematicComplete ? (
+          <BreakthroughCard
+            data={breakthroughData}
+            isVisible={true}
+            onDismiss={() => {
+              dismissBreakthroughCard();
+              setShowCinematic(false);
+              setCinematicComplete(false);
+            }}
+            onNewSession={handleNewSession}
+          />
+        ) : null}
 
         {/* Visual Spiral Panel (WebGL stage with safe SVG fallback) */}
         <div
