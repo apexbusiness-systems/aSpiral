@@ -4,6 +4,7 @@ import { useAssistantSpeakingStore } from '@/hooks/useAssistantSpeaking';
 import { featureFlags } from '@/lib/featureFlags';
 import { audioDebug } from '@/lib/audioLogger';
 import { getDocumentLangFallback, getSpeechLocale } from '@/lib/i18n/speechLocale';
+import { i18n } from '@/lib/i18n';
 
 const logger = createLogger('AudioSession');
 
@@ -22,6 +23,8 @@ export interface SpeakOptions {
   text: string;
   voice: string;
   speed: number;
+  volume?: number;
+  forceWebSpeech?: boolean;
   fallbackToWebSpeech: boolean;
   supabaseUrl?: string;
   supabaseKey?: string;
@@ -332,6 +335,7 @@ function resumeListeningIfNeeded(requestId: number) {
 async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOptions): Promise<void> {
   const audioUrl = URL.createObjectURL(blob);
   const audio = new Audio(audioUrl);
+  audio.volume = options.volume ?? 1;
   audioElement = audio;
 
   return new Promise<void>((resolve, reject) => {
@@ -386,7 +390,9 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   }
 
   const voices = window.speechSynthesis.getVoices();
-  const desiredLang = getSpeechLocale(getDocumentLangFallback());
+  // Use the active i18n language instead of document fallback for more accurate language selection
+  const activeLang = i18n.resolvedLanguage ?? i18n.language ?? "en";
+  const desiredLang = getSpeechLocale(activeLang);
   const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
 
   const matchingVoices = voices.filter((v) => {
@@ -417,6 +423,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       const utterance = new SpeechSynthesisUtterance(sentence);
       utterance.rate = options.speed;
       utterance.pitch = 1.0;
+      utterance.volume = options.volume ?? 1;
 
       // ✅ Bind TTS language to active document/app language
       utterance.lang = preferredVoice?.lang ?? desiredLang;
@@ -492,23 +499,30 @@ async function processQueue() {
       audioDebug.log('tts_enqueue', { queueLength: ttsQueue.length, requestId });
 
       try {
-        const blob = await fetchOpenAiAudio(entry.options);
-        if (requestId !== status.requestId) {
+        if (entry.options.forceWebSpeech) {
+          // Force WebSpeech only
+          await speakWithWebSpeech(requestId, entry.options);
           entry.resolve();
-          continue;
+        } else {
+          // Try OpenAI first, fallback to WebSpeech
+          const blob = await fetchOpenAiAudio(entry.options);
+          if (requestId !== status.requestId) {
+            entry.resolve();
+            continue;
+          }
+          await playOpenAiAudio(blob, requestId, entry.options);
+          entry.resolve();
         }
-        await playOpenAiAudio(blob, requestId, entry.options);
-        entry.resolve();
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
           entry.reject(error as Error);
           continue;
         }
 
-        logger.error('OpenAI TTS failed, trying fallback', error as Error);
-        audioDebug.error('tts_error', { backend: 'openai', fallback: true });
+        logger.error('TTS failed, trying fallback', error as Error);
+        audioDebug.error('tts_error', { backend: entry.options.forceWebSpeech ? 'webSpeech' : 'openai', fallback: true });
 
-        if (entry.options.fallbackToWebSpeech) {
+        if (!entry.options.forceWebSpeech && entry.options.fallbackToWebSpeech) {
           try {
             await speakWithWebSpeech(requestId, entry.options);
             entry.resolve();

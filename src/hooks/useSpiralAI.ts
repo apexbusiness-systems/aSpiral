@@ -577,11 +577,11 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         // Store response
         if (data.response && data.question) {
           setLastResponse(data.response);
-          
+
           // Add as message in chat
           addMessage({
             role: "assistant",
-            content: data.response + `\n\n**${data.question}**`,
+            content: data.response,
           });
         }
 
