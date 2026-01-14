@@ -3,61 +3,44 @@ import { persist } from "zustand/middleware";
 import type { Session, Message, Entity, Connection, FrictionPoint, SessionStatus } from "@/lib/types";
 import { createLogger } from "@/lib/logger";
 import { generateIdempotencyKey } from "@/lib/idempotent";
+import { createBreakthroughSlice, type BreakthroughSlice } from "./breakthroughSlice";
 
 const logger = createLogger("SessionStore");
-
-interface FrictionVisualization {
-  topLabel: string;
-  bottomLabel: string;
-  intensity: number;
-  entityIds: [string, string];
-}
 
 interface SessionState {
   // Current session
   currentSession: Session | null;
   messages: Message[];
-  
-  // Visualization state
-  activeFriction: FrictionVisualization | null;
-  isApplyingGrease: boolean;
-  greaseIsCorrect: boolean;
-  isBreakthroughActive: boolean;
-  isBreakthroughImminent: boolean;
-  
+
   // UI State
   isRecording: boolean;
   isProcessing: boolean;
   isConnected: boolean;
   error: string | null;
-  
+
   // Actions
   createSession: (userId: string) => Session;
   updateSession: (updates: Partial<Session>) => void;
   endSession: () => void;
-  
+
   addMessage: (message: Omit<Message, "id" | "timestamp">) => Message;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   clearMessages: () => void;
-  
+
   addEntity: (entity: Omit<Entity, "id" | "createdAt" | "updatedAt">) => Entity;
   addConnection: (connection: Omit<Connection, "id">) => Connection;
   addFrictionPoint: (friction: Omit<FrictionPoint, "id">) => FrictionPoint;
-  
-  // Visualization actions
-  showFriction: (topLabel: string, bottomLabel: string, intensity: number, entityIds: [string, string]) => void;
-  hideFriction: () => void;
-  applyGrease: (isCorrect: boolean) => void;
-  triggerBreakthrough: () => void;
-  clearBreakthrough: () => void;
-  
+
   setRecording: (recording: boolean) => void;
   setProcessing: (processing: boolean) => void;
   setConnected: (connected: boolean) => void;
   setError: (error: string | null) => void;
-  
+
   reset: () => void;
 }
+
+// Combined Store Type
+type StoreState = SessionState & BreakthroughSlice;
 
 const generateId = () => crypto.randomUUID();
 
@@ -73,24 +56,21 @@ const initialSession = (): Session => ({
   updatedAt: new Date(),
 });
 
-export const useSessionStore = create<SessionState>()(
+export const useSessionStore = create<StoreState>()(
   persist(
-    (set, get) => ({
+    (...a) => ({
+      // Slice: Session
       currentSession: null,
       messages: [],
-      activeFriction: null,
-      isApplyingGrease: false,
-      greaseIsCorrect: false,
-      isBreakthroughActive: false,
-      isBreakthroughImminent: false,
       isRecording: false,
       isProcessing: false,
       isConnected: false,
       error: null,
 
       createSession: (userId: string) => {
+        const [set, get] = a;
         const existing = get().currentSession;
-        
+
         // Idempotent: return existing active session
         if (existing && existing.userId === userId && existing.status === "active") {
           logger.info("Returning existing active session", { sessionId: existing.id });
@@ -117,27 +97,29 @@ export const useSessionStore = create<SessionState>()(
       },
 
       updateSession: (updates) => {
+        const [set] = a;
         set((state) => {
           if (!state.currentSession) return state;
-          
+
           const updated: Session = {
             ...state.currentSession,
             ...updates,
             updatedAt: new Date(),
           };
-          
+
           logger.debug("Session updated", { sessionId: updated.id, updates });
-          
+
           return { currentSession: updated };
         });
       },
 
       endSession: () => {
+        const [set] = a;
         set((state) => {
           if (!state.currentSession) return state;
-          
+
           logger.info("Session ended", { sessionId: state.currentSession.id });
-          
+
           return {
             currentSession: {
               ...state.currentSession,
@@ -150,6 +132,7 @@ export const useSessionStore = create<SessionState>()(
       },
 
       addMessage: (message) => {
+        const [set] = a;
         const newMessage: Message = {
           ...message,
           id: generateId(),
@@ -164,6 +147,7 @@ export const useSessionStore = create<SessionState>()(
       },
 
       updateMessage: (id, updates) => {
+        const [set] = a;
         set((state) => ({
           messages: state.messages.map((m) =>
             m.id === id ? { ...m, ...updates } : m
@@ -172,10 +156,12 @@ export const useSessionStore = create<SessionState>()(
       },
 
       clearMessages: () => {
+        const [set] = a;
         set({ messages: [] });
       },
 
       addEntity: (entityInput) => {
+        const [set] = a;
         const entity: Entity = {
           ...entityInput,
           id: generateId(),
@@ -185,13 +171,13 @@ export const useSessionStore = create<SessionState>()(
 
         set((state) => {
           if (!state.currentSession) return state;
-          
+
           // Idempotent: check for existing entity with same label
           const normalized = entity.label.toLowerCase().trim();
           const existing = state.currentSession.entities.find(
             (e) => e.label.toLowerCase().trim() === normalized && e.type === entity.type
           );
-          
+
           if (existing) {
             logger.debug("Entity already exists", { label: entity.label });
             return state;
@@ -212,6 +198,7 @@ export const useSessionStore = create<SessionState>()(
       },
 
       addConnection: (connectionInput) => {
+        const [set] = a;
         const connection: Connection = {
           ...connectionInput,
           id: generateId(),
@@ -243,6 +230,7 @@ export const useSessionStore = create<SessionState>()(
       },
 
       addFrictionPoint: (frictionInput) => {
+        const [set] = a;
         const friction: FrictionPoint = {
           ...frictionInput,
           id: generateId(),
@@ -264,62 +252,25 @@ export const useSessionStore = create<SessionState>()(
         return friction;
       },
 
-      // Visualization actions
-      showFriction: (topLabel, bottomLabel, intensity, entityIds) => {
-        logger.info("Showing friction", { topLabel, bottomLabel, intensity });
-        set({
-          activeFriction: { topLabel, bottomLabel, intensity, entityIds },
-        });
+      setRecording: (recording) => {
+        const [set] = a;
+        set({ isRecording: recording });
       },
-
-      hideFriction: () => {
-        set({ activeFriction: null });
+      setProcessing: (processing) => {
+        const [set] = a;
+        set({ isProcessing: processing });
       },
-
-      applyGrease: (isCorrect) => {
-        logger.info("Applying grease", { isCorrect });
-        set({ isApplyingGrease: true, greaseIsCorrect: isCorrect });
-        
-        // Auto-hide after animation
-        setTimeout(() => {
-          set({ isApplyingGrease: false });
-          if (isCorrect) {
-            // Trigger breakthrough after successful grease
-            set({ activeFriction: null });
-          }
-        }, 2000);
+      setConnected: (connected) => {
+        const [set] = a;
+        set({ isConnected: connected });
       },
-
-      triggerBreakthrough: () => {
-        logger.info("Breakthrough triggered!");
-        set({ 
-          isBreakthroughActive: true,
-          activeFriction: null,
-        });
-        
-        // Update session status
-        set((state) => {
-          if (!state.currentSession) return state;
-          return {
-            currentSession: {
-              ...state.currentSession,
-              status: "breakthrough" as SessionStatus,
-              updatedAt: new Date(),
-            },
-          };
-        });
+      setError: (error) => {
+        const [set] = a;
+        set({ error });
       },
-
-      clearBreakthrough: () => {
-        set({ isBreakthroughActive: false });
-      },
-
-      setRecording: (recording) => set({ isRecording: recording }),
-      setProcessing: (processing) => set({ isProcessing: processing }),
-      setConnected: (connected) => set({ isConnected: connected }),
-      setError: (error) => set({ error }),
 
       reset: () => {
+        const [set] = a;
         logger.info("Store reset");
         set({
           currentSession: null,
@@ -328,13 +279,19 @@ export const useSessionStore = create<SessionState>()(
           isProcessing: false,
           error: null,
         });
+        // Also reset breakthrough state
+        a[0]((state) => ({ ...state, ...createBreakthroughSlice(...a) }));
       },
+
+      // Slice: Breakthrough
+      ...createBreakthroughSlice(...a),
     }),
     {
       name: "aspiral-session",
       partialize: (state) => ({
         currentSession: state.currentSession,
         messages: state.messages,
+        // Persist breakthrough state if desired, or leave out to reset on reload
       }),
     }
   )

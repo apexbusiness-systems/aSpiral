@@ -39,6 +39,11 @@ export interface SpiralChatHandle {
   openSettings: () => void;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SpiralChatProps { }
 
@@ -57,12 +62,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const { toast } = useToast();
 
   // Audit Fix: PWA Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   // Audit Fix: Global listener for PWA install
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Optional: Show a toast that app is ready to install
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -101,10 +106,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     addMessage,
     addEntity,
     addConnection,
-    showFriction,
+    setFriction,
     applyGrease,
     triggerBreakthrough,
-    activeFriction,
+    frictionLabel,
+    isGrinding,
   } = useSessionStore();
 
   const {
@@ -195,7 +201,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const {
     speak: speakText,
     stop: stopSpeaking,
-    isTTSSpeaking,
+    isSpeaking: isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
@@ -337,11 +343,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Demo: Trigger friction visualization
   const demoFriction = () => {
-    showFriction(
+    setFriction(
       "Fear of losing control",
-      "Need to talk to her",
-      0.8,
-      ["entity1", "entity2"]
+      "Need to talk to her"
     );
     toast({
       title: "Friction Detected",
@@ -351,7 +355,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Demo: Apply grease (correct)
   const demoGreaseCorrect = () => {
-    applyGrease(true);
+    applyGrease('right');
     toast({
       title: "Grease Applied",
       description: "The right solution is smoothing things out...",
@@ -360,7 +364,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Demo: Trigger breakthrough
   const demoBreakthrough = () => {
-    triggerBreakthrough();
+    triggerBreakthrough('spiral_ascend');
     toast({
       title: "🎉 BREAKTHROUGH!",
       description: "You've found your answer!",
@@ -653,7 +657,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             )}
 
             {/* Demo buttons for friction/grease/breakthrough */}
-            {!activeFriction ? (
+            {!isGrinding ? (
               <Button
                 variant="ghost"
                 size="sm"
