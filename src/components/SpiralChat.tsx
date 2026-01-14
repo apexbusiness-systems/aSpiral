@@ -40,6 +40,11 @@ export interface SpiralChatHandle {
   openSettings: () => void;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SpiralChatProps {}
 
@@ -58,12 +63,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const { toast } = useToast();
 
   // Audit Fix: PWA Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   // Audit Fix: Global listener for PWA install
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Optional: Show a toast that app is ready to install
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -102,10 +107,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     addMessage, 
     addEntity, 
     addConnection,
-    showFriction,
+    setFriction,
     applyGrease,
     triggerBreakthrough,
-    activeFriction,
+    frictionLabel,
+    isGrinding,
   } = useSessionStore();
 
   const { 
@@ -196,7 +202,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const {
     speak: speakText,
     stop: stopSpeaking,
-    isSpeaking,
+    isSpeaking: isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
@@ -341,11 +347,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Demo: Trigger friction visualization
   const demoFriction = () => {
-    showFriction(
+    setFriction(
       "Fear of losing control",
-      "Need to talk to her",
-      0.8,
-      ["entity1", "entity2"]
+      "Need to talk to her"
     );
     toast({
       title: "Friction Detected",
@@ -355,7 +359,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Demo: Apply grease (correct)
   const demoGreaseCorrect = () => {
-    applyGrease(true);
+    applyGrease('right');
     toast({
       title: "Grease Applied",
       description: "The right solution is smoothing things out...",
@@ -364,7 +368,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Demo: Trigger breakthrough
   const demoBreakthrough = () => {
-    triggerBreakthrough();
+    triggerBreakthrough('spiral_ascend');
     toast({
       title: "🎉 BREAKTHROUGH!",
       description: "You've found your answer!",
@@ -575,24 +579,60 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
           enableAnalytics={true}
           className="z-[200]"
         />
-      )}
 
-      {/* Breakthrough Overlay Card */}
-      <BreakthroughCard
-        data={breakthroughData}
-        isVisible={showBreakthroughCard && cinematicComplete}
-        onDismiss={() => {
-          dismissBreakthroughCard();
-          setShowCinematic(false);
-          setCinematicComplete(false);
-        }}
-        onNewSession={handleNewSession}
-      />
+        {/* Quick Actions Header Bar */}
+        <QuickActionsBar
+          sessionState={sessionState}
+          questionCount={questionCount}
+          maxQuestions={maxQuestions}
+          timeElapsed={sessionElapsed}
+          onPause={handlePause}
+          onResume={handleResume}
+          onStop={handleStop}
+          onSkip={handleSkipToBreakthrough}
+          onSave={handleSave}
+        />
 
-      {/* Visual Spiral Panel (WebGL stage with safe SVG fallback) */}
-      <div
-        className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${
-          is3DExpanded
+        {/* Settings Panel */}
+        <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+        {/* Keyboard Shortcuts Modal */}
+        <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+
+        {/* Loading State Overlay */}
+        <AnimatePresence>
+          {processingStage ? <LoadingState stage={processingStage} /> : null}
+        </AnimatePresence>
+
+        {/* Cinematic Player - plays before breakthrough card shows */}
+        {showCinematic && !cinematicComplete ? (
+          <CinematicPlayer
+            onComplete={handleCinematicComplete}
+            onSkip={handleCinematicComplete}
+            allowSkip={true}
+            autoPlay={true}
+            enableAnalytics={true}
+            className="z-[200]"
+          />
+        ) : null}
+
+        {/* Breakthrough Overlay Card */}
+        {showBreakthroughCard && cinematicComplete ? (
+          <BreakthroughCard
+            data={breakthroughData}
+            isVisible={true}
+            onDismiss={() => {
+              dismissBreakthroughCard();
+              setShowCinematic(false);
+              setCinematicComplete(false);
+            }}
+            onNewSession={handleNewSession}
+          />
+        ) : null}
+
+        {/* Visual Spiral Panel (WebGL stage with safe SVG fallback) */}
+        <div
+          className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${is3DExpanded
             ? "h-[60vh] lg:h-full lg:w-2/3"
             : "h-48 lg:h-full lg:w-1/3"
         }`}
@@ -699,15 +739,8 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         </div>
       </div>
 
-      {/* Chat Panel */}
-      <div className="flex-1 flex flex-col bg-background/50 backdrop-blur-md">
-        {/* Chat Header */}
-        {hasActiveHeader && (
-          <div className="border-b border-border/30 px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Session in progress</span>
-            </div>
-            <div className="flex items-center gap-2">
+            {/* Demo buttons for friction/grease/breakthrough */}
+            {!isGrinding ? (
               <Button
                 variant="ghost"
                 size="sm"
