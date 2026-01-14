@@ -1,43 +1,118 @@
-import { useRef, useMemo, useCallback } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useThree } from "@react-three/fiber";
 import { AdaptiveEntity } from "./AdaptiveEntity";
 import { ConnectionLine } from "./ConnectionLine";
-import { useEntities } from "@/hooks/useEntities";
+import { useSessionStore } from "@/stores/sessionStore";
+import { usePhysicsWorker, useFallbackLayout } from "@/hooks/usePhysicsWorker";
+import { getVisibleLimit, getStaggerDelay } from "@/lib/entityLimits";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Entity } from "@/lib/types";
 import * as THREE from "three";
+
+type Position3D = [number, number, number];
 
 /**
  * APEX Phase 2: Off-Main-Thread Physics Integration
  * Uses Web Worker for force-directed layout calculations
  */
 export function SpiralEntities() {
-  const {
-    entities,
-    connections,
-    visibleEntityIds,
-    getEntityPosition
-  } = useEntities();
+  const currentSession = useSessionStore((state) => state.currentSession);
+  const { profile } = useAuth();
+  const invalidate = useThree((state) => state.invalidate);
 
-  // Mesh refs for 60FPS updates (bypass React state)
+  const [visibleEntityIds, setVisibleEntityIds] = useState<Set<string>>(new Set());
+
+  // Position refs for 60FPS updates (bypass React state)
+  const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
 
-  // Reusable vector for lerping to avoid GC
-  const targetVec = useMemo(() => new THREE.Vector3(), []);
+  const entities = currentSession?.entities || [];
+  const connections = currentSession?.connections || [];
 
-  // Frame loop for smooth physics interpolation
-  useFrame(() => {
-    // We iterate over visible entities to update their positions 
-    // based on the latest physics calculation from useEntities
-    visibleEntityIds.forEach((id) => {
+  // Handle position updates from physics worker
+  const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {
+    positions.forEach((pos, id) => {
+      // Update position ref
+      let vec = positionRefs.current.get(id);
+      if (!vec) {
+        vec = new THREE.Vector3(pos[0], pos[1], pos[2]);
+        positionRefs.current.set(id, vec);
+      } else {
+        vec.set(pos[0], pos[1], pos[2]);
+      }
+
+      // Directly update mesh position for 60FPS
       const mesh = meshRefs.current.get(id);
       if (mesh) {
-        const [x, y, z] = getEntityPosition(id);
-        targetVec.set(x, y, z);
-        // Smooth interpolation to target position
-        mesh.position.lerp(targetVec, 0.15);
+        mesh.position.lerp(vec, 0.15); // Smooth interpolation
       }
     });
+
+    invalidate();
+  }, [invalidate]);
+
+  // Initialize physics worker with optimized config
+  const { state: workerState } = usePhysicsWorker(entities, connections, {
+    onPositionsUpdate: handlePositionsUpdate,
+    autoUpdate: true,
+    config: {
+      iterations: 25, // Reduced from 50 for better performance
+      repulsionStrength: 0.8,
+      attractionStrength: 0.05,
+      damping: 0.92, // Slightly higher damping = fewer updates needed
+    },
   });
+
+  // Fallback layout for initial positions or if worker fails
+  const fallbackPositions = useFallbackLayout(entities, connections);
+
+  // Get current positions (from worker or fallback)
+  const getEntityPosition = useCallback((entityId: string): Position3D => {
+    // First check position refs (from worker)
+    const workerPos = positionRefs.current.get(entityId);
+    if (workerPos) {
+      return [workerPos.x, workerPos.y, workerPos.z];
+    }
+
+    // Fall back to sync layout
+    const fallback = fallbackPositions.get(entityId);
+    if (fallback) {
+      return fallback;
+    }
+
+    // Default position
+    return [0, 0, 0];
+  }, [fallbackPositions]);
+
+  // Progressive disclosure - show entities over time
+  useEffect(() => {
+    if (entities.length === 0) {
+      setVisibleEntityIds(new Set());
+      return;
+    }
+
+    // Sort by importance
+    const sorted = [...entities].sort((a, b) =>
+      (b.metadata?.importance || 0.5) - (a.metadata?.importance || 0.5)
+    );
+
+    const userTier = profile?.tier || "free";
+    const visibleLimit = getVisibleLimit(userTier);
+
+    // Show initial entities immediately
+    const initial = new Set(sorted.slice(0, visibleLimit).map(e => e.id));
+    setVisibleEntityIds(initial);
+    invalidate();
+
+    // Stagger remaining entities
+    sorted.slice(visibleLimit).forEach((entity, index) => {
+      const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
+      setTimeout(() => {
+        setVisibleEntityIds(prev => new Set([...prev, entity.id]));
+        invalidate();
+      }, delay);
+    });
+  }, [entities, profile, invalidate]);
 
   const handleEntityClick = (entity: Entity) => {
     console.log("Entity clicked:", entity);
@@ -56,7 +131,6 @@ export function SpiralEntities() {
     <>
       {/* Render entities with adaptive visibility */}
       {entities.map((entity) => {
-        // Initial position for mounting (subsequent updates via useFrame/ref)
         const position = getEntityPosition(entity.id);
         const isVisible = visibleEntityIds.has(entity.id);
         const importance = entity.metadata?.importance || 0.5;
@@ -81,10 +155,6 @@ export function SpiralEntities() {
           visibleEntityIds.has(conn.toEntityId)
         )
         .map((connection) => {
-          // Connections still need react state updates for positions 
-          // unless we refactor ConnectionLine to use refs too. 
-          // For now, let's trust that getEntityPosition returns up-to-date values
-          // during render cycles triggered by the physics worker invokation.
           const fromPos = getEntityPosition(connection.fromEntityId);
           const toPos = getEntityPosition(connection.toEntityId);
 
@@ -97,6 +167,14 @@ export function SpiralEntities() {
             />
           );
         })}
+
+      {/* Debug: Show worker state in development */}
+      {import.meta.env.DEV && workerState.lastError && (
+        <mesh position={[0, 3, 0]}>
+          <sphereGeometry args={[0.1]} />
+          <meshBasicMaterial color="red" />
+        </mesh>
+      )}
     </>
   );
 }
