@@ -14,11 +14,9 @@ export interface HslFractions {
     readonly l: number
 }
 
-/** CSS HSL pattern: "280 85% 65%" or "280, 85%, 65%" */
-const HSL_PATTERN = /^(\d+(?:\.\d+)?)\s*,?\s*(\d+(?:\.\d+)?)%?\s*,?\s*(\d+(?:\.\d+)?)%?$/
-
 /**
  * Parses CSS HSL triplet string into THREE-compatible fractions.
+ * Uses string splitting to avoid ReDoS vulnerabilities.
  * 
  * @param raw - CSS HSL string (e.g., "280 85% 65%")
  * @returns Normalized fractions or null if invalid
@@ -32,15 +30,34 @@ export function parseCssHsl(raw: string | null | undefined): HslFractions | null
         return null
     }
 
-    const match = raw.trim().match(HSL_PATTERN)
-    if (!match) {
+    // Split by comma or whitespace, filtering out empty strings
+    const parts = raw.trim().split(/[\s,]+/).filter(Boolean)
+
+    // Must have exactly 3 parts (H, S, L)
+    // Optional alpha channel is ignored for now to maintain existing behavior
+    if (parts.length < 3) {
         return null
     }
 
-    const h = parseFloat(match[1])
-    const s = parseFloat(match[2])
-    const l = parseFloat(match[3])
+    // Parse Hue
+    // Hue can be just a number (deg is implied)
+    const hStr = parts[0]
+    const h = parseFloat(hStr)
 
+    // Parse Saturation
+    const sStr = parts[1]
+    const s = parseFloat(sStr.replace('%', ''))
+
+    // Parse Lightness
+    const lStr = parts[2]
+    const l = parseFloat(lStr.replace('%', ''))
+
+    // Validate numbers
+    if (isNaN(h) || isNaN(s) || isNaN(l)) {
+        return null
+    }
+
+    // Validate ranges
     const isValidRange = (
         h >= 0 && h <= 360 &&
         s >= 0 && s <= 100 &&

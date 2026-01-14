@@ -43,9 +43,9 @@ function createSparkPositions(): Float32Array {
 
     for (let i = 0; i < SPARK_COUNT; i++) {
         const idx = i * 3
-        positions[idx] = (Math.random() - 0.5) * 0.5
-        positions[idx + 1] = (Math.random() - 0.5) * 0.5
-        positions[idx + 2] = (Math.random() - 0.5) * 0.5
+        positions[idx] = (Math.random() - 0.5) * 0.5 // nosonar:typescript:S2245
+        positions[idx + 1] = (Math.random() - 0.5) * 0.5 // nosonar:typescript:S2245
+        positions[idx + 2] = (Math.random() - 0.5) * 0.5 // nosonar:typescript:S2245
     }
 
     return positions

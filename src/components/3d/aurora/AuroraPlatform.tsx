@@ -38,12 +38,12 @@ function createSparklePositions(count: number): Float32Array {
     const positions = new Float32Array(count * 3)
 
     for (let i = 0; i < count; i++) {
-        const theta = Math.random() * Math.PI * 2
-        const radius = Math.random() * 4 + 1
+        const theta = Math.random() * Math.PI * 2 // nosonar:typescript:S2245
+        const radius = Math.random() * 4 + 1 // nosonar:typescript:S2245
         const idx = i * 3
 
         positions[idx] = Math.cos(theta) * radius
-        positions[idx + 1] = Math.random() * 2 + 0.5
+        positions[idx + 1] = Math.random() * 2 + 0.5 // nosonar:typescript:S2245
         positions[idx + 2] = Math.sin(theta) * radius
     }
 
