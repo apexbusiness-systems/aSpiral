@@ -18,7 +18,6 @@ import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel, KeyboardS
 import { CinematicPlayer } from "@/components/cinematics/CinematicPlayer";
 import { FilmGrainCSS } from "@/components/effects/FilmGrainOverlay";
 import { EntityCardList } from "@/components/EntityCard";
-import { EntityCounter } from "@/components/EntityCounter";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useSpiralAI } from "@/hooks/useSpiralAI";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
@@ -33,6 +32,8 @@ import { OmniLinkAdapter } from "@/integrations/omnilink";
 import { createUpdateGuard } from "@/lib/updateGuard";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
+import { loadStoredSettings, defaultSettings } from "@/lib/settings";
+import type { SettingsState } from "@/lib/settings";
 
 export interface SpiralChatHandle {
   toggleRecording: () => void;
@@ -45,7 +46,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface SpiralChatProps { }
+interface SpiralChatProps {}
 
 export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref) => {
   const navigate = useNavigate();
@@ -85,26 +86,26 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   useRenderStormDetector('SpiralChat');
 
   // Session persistence
-  const {
-    save: saveSession,
+  const { 
+    save: saveSession, 
     saveBreakthrough,
-    isSaving,
-    lastSaved
+    isSaving, 
+    lastSaved 
   } = useSessionPersistence();
 
   // Analytics tracking
-  const {
-    trackFeature,
-    trackEntity,
-    trackBreakthrough: trackBreakthroughEvent
+  const { 
+    trackFeature, 
+    trackEntity, 
+    trackBreakthrough: trackBreakthroughEvent 
   } = useAnalytics();
 
   const {
-    createSession,
-    currentSession,
-    messages,
-    addMessage,
-    addEntity,
+    createSession, 
+    currentSession, 
+    messages, 
+    addMessage, 
+    addEntity, 
     addConnection,
     setFriction,
     applyGrease,
@@ -113,7 +114,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     isGrinding,
   } = useSessionStore();
 
-  const {
+  const { 
     isProcessing: isAIProcessing,
     processingStage,
     currentQuestion,
@@ -147,7 +148,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
           'ai_extracted'
         );
       });
-
+      
       toast({
         title: "Entities Discovered",
         description: `Found ${entities.length} new ${entities.length === 1 ? 'element' : 'elements'} in your story`,
@@ -175,7 +176,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
           ultraFastMode
         );
       }
-
+      
       toast({
         title: "✨ BREAKTHROUGH",
         description: data?.insight || "You've reached clarity!",
@@ -195,7 +196,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     () => createUpdateGuard({ name: "SpiralChat.setLiveTranscript" }),
     []
   );
-  const [ttsEnabled, setTtsEnabled] = useState(true); // User can toggle TTS
+  const [settings, setSettings] = useState<SettingsState>(() => loadStoredSettings() ?? defaultSettings);
 
   // Text-to-Speech for AI responses
   const {
@@ -205,7 +206,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
-    speed: 1.0,
+    speed: settings.speechRate,
+    volume: settings.voiceVolume / 100,
+    forceWebSpeech: settings.voiceType === "native",
     fallbackToWebSpeech: true,
     onError: (error) => {
       console.warn('[TTS] Error:', error.message);
@@ -224,6 +227,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     onTranscript: (text) => {
       accumulateTranscript(text);
     },
+    silenceTimeoutMs: settings.ultraFastMode ? 800 : 1200,
   });
 
   // CRITICAL FIX: Prevent TTS loop by tracking last spoken question
@@ -231,15 +235,15 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   useEffect(() => {
     if (
       currentQuestion &&
-      ttsEnabled &&
-      !isTTSSpeaking &&
+      settings.voiceEnabled &&
+      !isSpeaking &&
       !isTTSLoading &&
       currentQuestion !== lastSpokenQuestionRef.current
     ) {
       lastSpokenQuestionRef.current = currentQuestion;
       speakText(currentQuestion);
     }
-  }, [currentQuestion, ttsEnabled, isTTSSpeaking, isTTSLoading, speakText]);
+  }, [currentQuestion, settings.voiceEnabled, isSpeaking, isTTSLoading, speakText]);
 
   // Reset tracking when question is dismissed or cleared
   useEffect(() => {
@@ -324,7 +328,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     ];
 
     const createdEntities: string[] = [];
-
+    
     testEntities.forEach((e) => {
       const entity = addEntity({ type: e.type, label: e.label });
       createdEntities.push(entity.id);
@@ -383,7 +387,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     // Reset cinematic state
     setShowCinematic(false);
     setCinematicComplete(false);
-  }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording, setShowCinematic, setCinematicComplete]);
+  }, [resetSession, dismissBreakthroughCard, isRecording, stopRecording]);
 
   // Wrapped handlers with analytics
   const handleSkipToBreakthrough = useCallback(() => {
@@ -410,10 +414,10 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const sessionState = !currentSession
     ? "idle"
     : currentStage === "breakthrough" || showBreakthroughCard
-      ? "breakthrough"
-      : isRecordingPaused
-        ? "paused"
-        : "active";
+    ? "breakthrough"
+    : isRecordingPaused
+    ? "paused"
+    : "active";
 
   // Menu handlers - now tied to recording pause
   const handlePause = useCallback(() => {
@@ -421,13 +425,13 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       toggleRecordingPause();
     }
   }, [isRecording, isRecordingPaused, toggleRecordingPause]);
-
+  
   const handleResume = useCallback(() => {
     if (isRecordingPaused) {
       toggleRecordingPause();
     }
   }, [isRecordingPaused, toggleRecordingPause]);
-
+  
   const handleStop = useCallback(() => {
     handleNewSession();
     toast({ title: "Session Stopped", description: "Your session has been ended." });
@@ -436,9 +440,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const handleSave = useCallback(async () => {
     trackFeature('session_saved');
     await saveSession();
-    toast({
-      title: "Progress Saved",
-      description: isSaving ? "Saving..." : "Your session has been saved."
+    toast({ 
+      title: "Progress Saved", 
+      description: isSaving ? "Saving..." : "Your session has been saved." 
     });
   }, [saveSession, isSaving, toast, trackFeature]);
 
@@ -499,40 +503,81 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   return (
     <LayoutGroup>
-      <div className={cn("flex flex-col lg:flex-row relative", hasActiveHeader ? "h-[calc(100vh-73px-52px)] mt-[52px]" : "h-[calc(100vh-73px)]")}>
-        {/* Phase 4: Film Grain Overlay for Cinematic Polish */}
-        <FilmGrainCSS intensity={0.08} />
-        {/* Floating Menu Button */}
-        <FloatingMenuButton
-          sessionState={sessionState}
-          onMenuOpen={() => setIsMenuOpen(true)}
-        />
+    <div className={cn("flex flex-col lg:flex-row relative", hasActiveHeader ? "h-[calc(100vh-73px-52px)] mt-[52px]" : "h-[calc(100vh-73px)]")}>
+      {/* Phase 4: Film Grain Overlay for Cinematic Polish */}
+      <FilmGrainCSS intensity={0.08} />
+      {/* Floating Menu Button */}
+      <FloatingMenuButton
+        sessionState={sessionState}
+        onMenuOpen={() => setIsMenuOpen(true)}
+      />
 
-        {/* Main Menu Panel */}
-        <MainMenu
-          isOpen={isMenuOpen}
-          onClose={() => setIsMenuOpen(false)}
-          sessionState={sessionState}
-          onPause={handlePause}
-          onResume={handleResume}
-          onStop={handleStop}
-          onRestart={handleNewSession}
-          onSkipToBreakthrough={handleSkipToBreakthrough}
-          onSave={handleSave}
-          onExport={handleExport}
-          onViewHistory={handleViewHistory}
-          onSettings={handleSettings}
-          onHelp={handleHelp}
-          installPwa={deferredPrompt ? handleInstallPwa : undefined}
-          sessionProgress={
-            sessionState !== "idle"
-              ? {
+      {/* Main Menu Panel */}
+      <MainMenu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        sessionState={sessionState}
+        onPause={handlePause}
+        onResume={handleResume}
+        onStop={handleStop}
+        onRestart={handleNewSession}
+        onSkipToBreakthrough={handleSkipToBreakthrough}
+        onSave={handleSave}
+        onExport={handleExport}
+        onViewHistory={handleViewHistory}
+        onSettings={handleSettings}
+        onHelp={handleHelp}
+        installPwa={deferredPrompt ? handleInstallPwa : undefined}
+        sessionProgress={
+          sessionState !== "idle"
+            ? {
                 questionCount,
                 entityCount,
                 timeElapsed: sessionElapsed,
               }
-              : undefined
-          }
+            : undefined
+        }
+      />
+
+      {/* Quick Actions Header Bar */}
+      <QuickActionsBar
+        sessionState={sessionState}
+        questionCount={questionCount}
+        maxQuestions={maxQuestions}
+        timeElapsed={sessionElapsed}
+        onPause={handlePause}
+        onResume={handleResume}
+        onStop={handleStop}
+        onSkip={handleSkipToBreakthrough}
+        onSave={handleSave}
+      />
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSettingsChange={setSettings}
+      />
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+
+      {/* Loading State Overlay */}
+      <AnimatePresence>
+        {processingStage && <LoadingState stage={processingStage} />}
+      </AnimatePresence>
+
+      {/* Cinematic Player - plays before breakthrough card shows */}
+      {showCinematic && !cinematicComplete && (
+        <CinematicPlayer
+          variant={undefined} // Random variant selection
+          onComplete={handleCinematicComplete}
+          onSkip={handleCinematicComplete}
+          allowSkip={true}
+          autoPlay={true}
+          enableAnalytics={true}
+          className="z-[200]"
         />
 
         {/* Quick Actions Header Bar */}
@@ -588,191 +633,185 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
           className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${is3DExpanded
             ? "h-[60vh] lg:h-full lg:w-2/3"
             : "h-48 lg:h-full lg:w-1/3"
-            }`}
+        }`}
+      >
+        <SpiralStage />
+        
+        {/* Question Bubble - positioned in 3D area */}
+        <QuestionBubble
+          question={currentQuestion || ""}
+          isVisible={!!currentQuestion && !isRecording}
+          onAnswer={() => dismissQuestion()}
+          questionNumber={questionCount + 1}
+          totalQuestions={maxQuestions}
+        />
+        
+        {/* Skip to Breakthrough Button - shows when there's a question */}
+        {/* Positioned above QuestionBubble, safe from input overlap on mobile */}
+        {currentQuestion && !isRecording && currentStage !== "breakthrough" && (
+          <div className="absolute bottom-24 sm:bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSkipToBreakthrough}
+              aria-label={`Skip to breakthrough, currently on question ${questionCount + 1} of ${maxQuestions}`}
+              className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2 touch-manipulation"
+            >
+              <SkipForward className="h-3 w-3 mr-1.5" aria-hidden="true" />
+              Skip to breakthrough ({questionCount + 1}/{maxQuestions})
+            </Button>
+          </div>
+        )}
+        
+        {/* Expand/Collapse Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-3 right-3 z-10 glass-card rounded-xl"
+          onClick={() => setIs3DExpanded(!is3DExpanded)}
         >
-          <SpiralStage />
-
-          {/* Question Bubble - positioned in 3D area */}
-          <QuestionBubble
-            question={currentQuestion || ""}
-            isVisible={!!currentQuestion && !isRecording}
-            onAnswer={() => dismissQuestion()}
-            questionNumber={questionCount + 1}
-            totalQuestions={maxQuestions}
-          />
-
-          {/* Skip to Breakthrough Button - shows when there's a question */}
-          {/* Positioned above QuestionBubble, safe from input overlap on mobile */}
-          {currentQuestion && !isRecording && currentStage !== "breakthrough" && (
-            <div className="absolute bottom-24 sm:bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSkipToBreakthrough}
-                aria-label={`Skip to breakthrough, currently on question ${questionCount + 1} of ${maxQuestions}`}
-                className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2 touch-manipulation"
-              >
-                <SkipForward className="h-3 w-3 mr-1.5" aria-hidden="true" />
-                Skip to breakthrough ({questionCount + 1}/{maxQuestions})
-              </Button>
-            </div>
+          {is3DExpanded ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
           )}
-
-          {/* Expand/Collapse Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-3 right-3 z-10 glass-card rounded-xl"
-            onClick={() => setIs3DExpanded(!is3DExpanded)}
-          >
-            {is3DExpanded ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </Button>
-
-          {/* Entity Counter & Demo Controls */}
-          <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
-            {/* Ultra-fast mode toggle */}
-            <UltraFastToggle
-              isEnabled={ultraFastMode}
-              onToggle={handleToggleUltraFast}
-            />
-
-
-            {entityCount > 0 ? (
-              <EntityCounter count={entityCount} />
-            ) : (
+        </Button>
+        
+        {/* Entity Counter & Demo Controls */}
+        <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
+          {/* Ultra-fast mode toggle */}
+          <UltraFastToggle
+            isEnabled={ultraFastMode}
+            onToggle={handleToggleUltraFast}
+          />
+          
+          {entityCount > 0 ? (
+            <div className="glass-card rounded-xl px-3 py-1.5 text-xs text-muted-foreground">
+              {entityCount} {entityCount === 1 ? "entity" : "entities"}
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={addTestEntities}
+              className="glass-card rounded-xl text-xs hover:bg-glass-hover"
+            >
+              <Sparkles className="h-3 w-3 mr-1.5" />
+              Add Entities
+            </Button>
+          )}
+          
+          {/* Demo buttons for friction/grease/breakthrough */}
+          {!activeFriction ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={demoFriction}
+              className="glass-card rounded-xl text-xs text-warning hover:text-warning"
+            >
+              <Cog className="h-3 w-3 mr-1.5" />
+              Friction
+            </Button>
+          ) : (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={addTestEntities}
-                className="glass-card rounded-xl text-xs hover:bg-glass-hover"
+                onClick={demoGreaseCorrect}
+                className="glass-card rounded-xl text-xs text-accent hover:text-accent"
               >
-                <Sparkles className="h-3 w-3 mr-1.5" />
-                Add Entities
+                <Droplets className="h-3 w-3 mr-1.5" />
+                Grease
               </Button>
-            )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={demoBreakthrough}
+                className="glass-card rounded-xl text-xs text-secondary hover:text-secondary"
+              >
+                <Zap className="h-3 w-3 mr-1.5" />
+                Breakthrough
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
             {/* Demo buttons for friction/grease/breakthrough */}
             {!isGrinding ? (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={demoFriction}
-                className="glass-card rounded-xl text-xs text-warning hover:text-warning"
+                onClick={() => {
+                  setSettings(prev => ({ ...prev, voiceEnabled: !prev.voiceEnabled }));
+                }}
+                className="text-xs"
               >
-                <Cog className="h-3 w-3 mr-1.5" />
-                Friction
+                {settings.voiceEnabled ? (
+                  <Volume2 className="h-4 w-4 mr-1" />
+                ) : (
+                  <VolumeX className="h-4 w-4 mr-1" />
+                )}
+                {settings.voiceEnabled ? 'TTS On' : 'TTS Off'}
               </Button>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={demoGreaseCorrect}
-                  className="glass-card rounded-xl text-xs text-accent hover:text-accent"
-                >
-                  <Droplets className="h-3 w-3 mr-1.5" />
-                  Grease
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={demoBreakthrough}
-                  className="glass-card rounded-xl text-xs text-secondary hover:text-secondary"
-                >
-                  <Zap className="h-3 w-3 mr-1.5" />
-                  Breakthrough
-                </Button>
-              </>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Chat Panel */}
-        <div className="flex-1 flex flex-col bg-background/50 backdrop-blur-md">
-          {/* Chat Header */}
-          {hasActiveHeader && (
-            <div className="border-b border-border/30 px-4 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Session in progress</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setTtsEnabled(!ttsEnabled);
-                  }}
-                  className="text-xs"
-                >
-                  {ttsEnabled ? (
-                    <Volume2 className="h-4 w-4 mr-1" />
-                  ) : (
-                    <VolumeX className="h-4 w-4 mr-1" />
-                  )}
-                  {ttsEnabled ? 'TTS On' : 'TTS Off'}
-                </Button>
-              </div>
-            </div>
-          )}
+        {/* Messages */}
+        <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+          </div>
+        </ScrollArea>
 
-          {/* Messages */}
-          <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
-            </div>
-          </ScrollArea>
+        {/* Live Transcript */}
+        {isRecording && (
+          <LiveTranscript transcript={liveTranscript} isRecording={isRecording} isProcessing={isAIProcessing} />
+        )}
 
-          {/* Live Transcript */}
-          {isRecording && (
-            <LiveTranscript transcript={liveTranscript} isRecording={isRecording} isProcessing={isAIProcessing} />
-          )}
-
-          {/* Input Area */}
-          <form onSubmit={handleSubmit} className="p-4 border-t border-border/30">
-            <div className="flex gap-2 items-center">
-              <MicButton
-                isRecording={isRecording}
-                isPaused={isRecordingPaused}
-                isProcessing={isAIProcessing}
-                isSupported={isSupported}
-                onClick={handleMicToggle}
-                onPause={isRecording ? toggleRecordingPause : undefined}
-                onStop={isRecording ? stopRecording : undefined}
-              />
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your thoughts..."
-                className="flex-1"
-                disabled={isAIProcessing}
-              />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={!input.trim() || isAIProcessing}
-                className="bg-primary text-primary-foreground"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </form>
-
-          {/* Entity Cards */}
-          {currentSession?.entities?.length ? (
-            <EntityCardList
-              entities={currentSession.entities}
-              selectedId={selectedEntityId}
-              onEntityClick={handleEntityClick}
+        {/* Input Area */}
+        <form onSubmit={handleSubmit} className="p-4 border-t border-border/30">
+          <div className="flex gap-2 items-center">
+            <MicButton
+              isRecording={isRecording}
+              isPaused={isRecordingPaused}
+              isProcessing={isAIProcessing}
+              isSupported={isSupported}
+              onClick={handleMicToggle}
+              onPause={isRecording ? toggleRecordingPause : undefined}
+              onStop={isRecording ? stopRecording : undefined}
             />
-          ) : null}
-        </div>
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your thoughts..."
+              className="flex-1"
+              disabled={isAIProcessing}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!input.trim() || isAIProcessing}
+              className="bg-primary text-primary-foreground"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </form>
+
+        {/* Entity Cards */}
+        {currentSession?.entities?.length ? (
+          <EntityCardList
+            entities={currentSession.entities}
+            selectedId={selectedEntityId}
+            onEntityClick={handleEntityClick}
+          />
+        ) : null}
       </div>
+    </div>
     </LayoutGroup>
   );
 });
