@@ -9,15 +9,37 @@ import * as THREE from 'three'
 /** Texture cache for reuse across instances */
 const textureCache: Map<string, THREE.Texture> = new Map()
 
+/** Gradient stop configuration */
+interface GradientStop {
+    position: number
+    alpha: number
+}
+
+/** Preset gradient configurations */
+const GRADIENT_PRESETS = {
+    glow: [
+        { position: 0, alpha: 1 },
+        { position: 0.4, alpha: 0.8 },
+        { position: 0.7, alpha: 0.3 },
+        { position: 1, alpha: 0 }
+    ],
+    sparkle: [
+        { position: 0, alpha: 1 },
+        { position: 0.2, alpha: 0.9 },
+        { position: 0.5, alpha: 0.4 },
+        { position: 1, alpha: 0 }
+    ]
+} as const
+
 /**
- * Creates a radial glow alpha texture for the aurora haze effect.
- * Uses canvas 2D for generation, then converts to THREE.Texture.
- *
- * @param size - Texture resolution (default 256)
- * @returns THREE.Texture with radial gradient alpha
+ * Creates a radial gradient texture with configurable stops.
+ * Shared implementation for all gradient-based textures.
  */
-export function createGlowTexture(size = 256): THREE.Texture {
-    const cacheKey = `glow_${size}`
+function createRadialGradientTexture(
+    cacheKey: string,
+    size: number,
+    stops: readonly GradientStop[]
+): THREE.Texture {
     const cached = textureCache.get(cacheKey)
     if (cached) return cached
 
@@ -27,21 +49,19 @@ export function createGlowTexture(size = 256): THREE.Texture {
     const ctx = canvas.getContext('2d')
 
     if (!ctx) {
-        // Fallback: return a simple white texture
         const fallback = new THREE.Texture()
         fallback.needsUpdate = true
         return fallback
     }
 
-    // Create radial gradient: white center fading to transparent edges
     const gradient = ctx.createRadialGradient(
-        size / 2, size / 2, 0,           // Inner circle center
-        size / 2, size / 2, size / 2     // Outer circle radius
+        size / 2, size / 2, 0,
+        size / 2, size / 2, size / 2
     )
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
-    gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.8)')
-    gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.3)')
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+
+    for (const stop of stops) {
+        gradient.addColorStop(stop.position, `rgba(255, 255, 255, ${stop.alpha})`)
+    }
 
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, size, size)
@@ -55,46 +75,19 @@ export function createGlowTexture(size = 256): THREE.Texture {
 }
 
 /**
+ * Creates a radial glow alpha texture for the aurora haze effect.
+ * @param size - Texture resolution (default 256)
+ */
+export function createGlowTexture(size = 256): THREE.Texture {
+    return createRadialGradientTexture(`glow_${size}`, size, GRADIENT_PRESETS.glow)
+}
+
+/**
  * Creates a sparkle/noise texture for particle effects.
- *
  * @param size - Texture resolution (default 64)
- * @returns THREE.Texture with soft circular sparkle
  */
 export function createSparkleTexture(size = 64): THREE.Texture {
-    const cacheKey = `sparkle_${size}`
-    const cached = textureCache.get(cacheKey)
-    if (cached) return cached
-
-    const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-        const fallback = new THREE.Texture()
-        fallback.needsUpdate = true
-        return fallback
-    }
-
-    // Create soft circular gradient for sparkle
-    const gradient = ctx.createRadialGradient(
-        size / 2, size / 2, 0,
-        size / 2, size / 2, size / 2
-    )
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
-    gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.9)')
-    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.4)')
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
-
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, size, size)
-
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.needsUpdate = true
-    texture.colorSpace = THREE.SRGBColorSpace
-
-    textureCache.set(cacheKey, texture)
-    return texture
+    return createRadialGradientTexture(`sparkle_${size}`, size, GRADIENT_PRESETS.sparkle)
 }
 
 /**
