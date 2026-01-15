@@ -9,6 +9,7 @@ import { PremiumSpiral } from "./PremiumSpiral";
 import { EffectsHandler } from "./EffectsHandler";
 import { CameraRig } from "./CameraRig";
 import { OffscreenSpiralCanvas } from "./OffscreenSpiralCanvas";
+import { AuroraPlatform } from "./aurora/AuroraPlatform";
 import { isRendererWorkerEnabled } from "@/lib/rendererFlags";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
@@ -38,9 +39,16 @@ function EnhancedSceneContent({
 
   const showPremiumSpiral = isBreakthroughImminent || isBreakthroughActive;
 
+  // Enable sparkles only on higher-tier devices and when motion is allowed
+  const enableSparkles = capabilities.gpuTier >= 2 && !reducedMotion;
+
   return (
     <>
       <SceneLighting capabilities={capabilities} enableEnvironment={!reducedMotion} />
+
+      {/* Aurora Platform - premium visual foundation with glows */}
+      <AuroraPlatform enableSparkles={enableSparkles} />
+
       {showPremiumSpiral && (
         <PremiumSpiral capabilities={capabilities} reducedMotion={reducedMotion} />
       )}
