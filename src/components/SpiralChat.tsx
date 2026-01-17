@@ -599,18 +599,18 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
           />
 
           {/* Skip to Breakthrough Button - shows when there's a question */}
-          {/* Positioned above QuestionBubble, safe from input overlap on mobile */}
+          {/* Positioned at top-left of 3D area to avoid overlapping QuestionBubble */}
           {currentQuestion && !isRecording && currentStage !== "breakthrough" && (
-            <div className="absolute bottom-24 sm:bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <div className="absolute top-3 left-3 z-20 pointer-events-auto">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleSkipToBreakthrough}
                 aria-label={`Skip to breakthrough, currently on question ${questionCount + 1} of ${maxQuestions}`}
-                className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-bottom-2 touch-manipulation"
+                className="glass-card rounded-xl text-xs text-secondary hover:text-secondary hover:bg-secondary/10 animate-in fade-in-0 slide-in-from-top-2 touch-manipulation"
               >
                 <SkipForward className="h-3 w-3 mr-1.5" aria-hidden="true" />
-                Skip to breakthrough ({questionCount + 1}/{maxQuestions})
+                Skip ({questionCount + 1}/{maxQuestions})
               </Button>
             </div>
           )}
@@ -629,60 +629,68 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             )}
           </Button>
 
-          {/* Entity Counter & Demo Controls */}
-          <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
+          {/* Entity Counter & Controls - hide when question is active to prevent obstruction */}
+          <div className={cn(
+            "absolute bottom-3 left-3 flex flex-wrap gap-2 z-10 transition-opacity duration-300",
+            currentQuestion && "opacity-0 pointer-events-none"
+          )}>
             {/* Ultra-fast mode toggle */}
             <UltraFastToggle
               isEnabled={ultraFastMode}
               onToggle={handleToggleUltraFast}
             />
 
-
-            {entityCount > 0 ? (
+            {entityCount > 0 && (
               <EntityCounter count={entityCount} />
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={addTestEntities}
-                className="glass-card rounded-xl text-xs hover:bg-glass-hover"
-              >
-                <Sparkles className="h-3 w-3 mr-1.5" />
-                Add Entities
-              </Button>
             )}
 
-            {/* Demo buttons for friction/grease/breakthrough */}
-            {!activeFriction ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={demoFriction}
-                className="glass-card rounded-xl text-xs text-warning hover:text-warning"
-              >
-                <Cog className="h-3 w-3 mr-1.5" />
-                Friction
-              </Button>
-            ) : (
+            {/* Demo buttons - only in development */}
+            {import.meta.env.DEV && (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={demoGreaseCorrect}
-                  className="glass-card rounded-xl text-xs text-accent hover:text-accent"
-                >
-                  <Droplets className="h-3 w-3 mr-1.5" />
-                  Grease
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={demoBreakthrough}
-                  className="glass-card rounded-xl text-xs text-secondary hover:text-secondary"
-                >
-                  <Zap className="h-3 w-3 mr-1.5" />
-                  Breakthrough
-                </Button>
+                {entityCount === 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={addTestEntities}
+                    className="glass-card rounded-xl text-xs hover:bg-glass-hover"
+                  >
+                    <Sparkles className="h-3 w-3 mr-1.5" />
+                    Add Entities
+                  </Button>
+                )}
+
+                {!activeFriction ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={demoFriction}
+                    className="glass-card rounded-xl text-xs text-warning hover:text-warning"
+                  >
+                    <Cog className="h-3 w-3 mr-1.5" />
+                    Friction
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={demoGreaseCorrect}
+                      className="glass-card rounded-xl text-xs text-accent hover:text-accent"
+                    >
+                      <Droplets className="h-3 w-3 mr-1.5" />
+                      Grease
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={demoBreakthrough}
+                      className="glass-card rounded-xl text-xs text-secondary hover:text-secondary"
+                    >
+                      <Zap className="h-3 w-3 mr-1.5" />
+                      Breakthrough
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>
