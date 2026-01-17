@@ -9,7 +9,32 @@
  * - iOS Safari detection
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// ============================================================================
+// Shared Helper Functions (moved to outer scope per SonarQube)
+// ============================================================================
+
+/**
+ * Splits text into sentences by punctuation (period, question mark, exclamation)
+ * Uses a safe regex pattern to avoid catastrophic backtracking
+ */
+function splitIntoSentences(text: string): string[] {
+    if (!text) return [text];
+    // Safe regex: non-greedy matching with explicit character classes
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    return sentences.map(s => s.trim()).filter(s => s.length > 0);
+}
+
+/**
+ * Checks if the current browser is iOS Safari
+ */
+function checkIOSSafari(userAgent: string, platform: string, maxTouchPoints: number): boolean {
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) ||
+        (platform === 'MacIntel' && maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+    return isIOS && isSafari;
+}
 
 // ============================================================================
 // Test: Transcript Deduplication
@@ -21,8 +46,8 @@ describe('Transcript Deduplication', () => {
      * Simulates the global final history deduplication logic
      */
     class TranscriptDeduplicator {
-        private history = new Set<string>();
-        private timestamps = new Map<string, number>();
+        private readonly history = new Set<string>();
+        private readonly timestamps = new Map<string, number>();
 
         addAndCheck(transcript: string): boolean {
             const now = Date.now();
@@ -95,12 +120,6 @@ describe('Transcript Deduplication', () => {
 // Test: TTS Sentence Chunking
 // ============================================================================
 describe('TTS Sentence Chunking', () => {
-    function splitIntoSentences(text: string): string[] {
-        const sentences = text.match(/(?:[^.!?]+[.!?]+[\s]?)|(?:[^.!?]+$)/g);
-        if (!sentences) return [text];
-        return sentences.map(s => s.trim()).filter(s => s.length > 0);
-    }
-
     it('splits by period', () => {
         expect(splitIntoSentences('First. Second. Third.')).toEqual(['First.', 'Second.', 'Third.']);
     });
@@ -219,13 +238,6 @@ describe('Reverb Gate Logic', () => {
 // Test: iOS Safari Detection
 // ============================================================================
 describe('iOS Safari Detection', () => {
-    function checkIOSSafari(userAgent: string, platform: string, maxTouchPoints: number): boolean {
-        const isIOS = /iPad|iPhone|iPod/.test(userAgent) ||
-            (platform === 'MacIntel' && maxTouchPoints > 1);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
-        return isIOS && isSafari;
-    }
-
     it('detects iOS Safari on iPhone', () => {
         const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
         expect(checkIOSSafari(ua, 'iPhone', 5)).toBe(true);
@@ -388,7 +400,6 @@ describe('Voice Stop Keywords', () => {
 describe('Silence Timeout Configuration', () => {
     const MIN_SILENCE_TIMEOUT = 800;
     const MAX_SILENCE_TIMEOUT = 1200;
-    const DEFAULT_SILENCE_TIMEOUT = 1000;
 
     function validateSilenceTimeout(ms: number): number {
         if (ms < MIN_SILENCE_TIMEOUT) return MIN_SILENCE_TIMEOUT;

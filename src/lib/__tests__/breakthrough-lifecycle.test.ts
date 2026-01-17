@@ -12,7 +12,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BreakthroughDirector } from '../breakthrough/director';
-import type { DirectorPhase, MutatedVariant, MutationKnobs, QualityTier } from '../breakthrough/types';
+import type { MutatedVariant, MutationKnobs, QualityTier } from '../breakthrough/types';
+
+// Counter for deterministic test IDs
+let testIdCounter = 0;
 
 // ============================================================================
 // Test Fixtures
@@ -26,54 +29,57 @@ const mockMutation: MutationKnobs = {
     paletteSeed: 0.5,
     audioIntensity: 0.7,
     audioTimingOffset: 0,
-    speedMultiplier: 1.0,
-    scaleMultiplier: 1.0,
+    speedMultiplier: 1,
+    scaleMultiplier: 1,
     extraVisualsCount: 0,
 };
 
-const createMockVariant = (overrides: Partial<MutatedVariant> = {}): MutatedVariant => ({
-    id: 'test-variant-' + Math.random().toString(36).slice(2),
-    name: 'Test Variant',
-    description: 'Test variant for lifecycle testing',
-    class: 'clarity',
-    intensity: 'medium',
-    colorMood: 'cosmic',
-    audioMood: 'ethereal',
-    baseDuration: 5000,
-    baseParticleCount: 1000,
-    particlePattern: 'vortex',
-    cameraArchetype: 'drift',
-    curveProfile: 'ease',
-    tags: ['test'],
-    lowTierSafe: true,
-    isFallback: false,
-    mutationBounds: {
-        durationRange: [3000, 8000],
-        particleCountRange: [500, 2000],
-        speedRange: [0.5, 2.0],
-        scaleRange: [0.5, 2.0],
-    },
-    baseColors: ['hsl(220, 90%, 60%)'],
-    cameraPath: {
-        from: [0, 0, 10],
-        to: [0, 0, 5],
-        fovFrom: 60,
-        fovTo: 75,
-        lookAt: 'center',
-    },
-    effects: {
-        bloom: true,
-        chromaticAberration: false,
-        motionBlur: false,
-        vignette: true,
-    },
-    mutation: mockMutation,
-    seed: Math.floor(Math.random() * 100000),
-    finalDuration: 5000,
-    finalParticleCount: 1000,
-    finalColors: ['#60a5fa'],
-    ...overrides,
-});
+const createMockVariant = (overrides: Partial<MutatedVariant> = {}): MutatedVariant => {
+    testIdCounter += 1;
+    return {
+        id: `test-variant-${testIdCounter}`,
+        name: 'Test Variant',
+        description: 'Test variant for lifecycle testing',
+        class: 'clarity',
+        intensity: 'medium',
+        colorMood: 'cosmic',
+        audioMood: 'ethereal',
+        baseDuration: 5000,
+        baseParticleCount: 1000,
+        particlePattern: 'vortex',
+        cameraArchetype: 'drift',
+        curveProfile: 'ease',
+        tags: ['test'],
+        lowTierSafe: true,
+        isFallback: false,
+        mutationBounds: {
+            durationRange: [3000, 8000],
+            particleCountRange: [500, 2000],
+            speedRange: [0.5, 2],
+            scaleRange: [0.5, 2],
+        },
+        baseColors: ['hsl(220, 90%, 60%)'],
+        cameraPath: {
+            from: [0, 0, 10],
+            to: [0, 0, 5],
+            fovFrom: 60,
+            fovTo: 75,
+            lookAt: 'center',
+        },
+        effects: {
+            bloom: true,
+            chromaticAberration: false,
+            motionBlur: false,
+            vignette: true,
+        },
+        mutation: mockMutation,
+        seed: testIdCounter * 1000,
+        finalDuration: 5000,
+        finalParticleCount: 1000,
+        finalColors: ['#60a5fa'],
+        ...overrides,
+    };
+};
 
 // ============================================================================
 // Director Lifecycle Tests
