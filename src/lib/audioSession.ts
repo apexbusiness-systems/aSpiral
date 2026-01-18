@@ -5,6 +5,7 @@ import { featureFlags } from '@/lib/featureFlags';
 import { audioDebug } from '@/lib/audioLogger';
 import { getDocumentLangFallback, getSpeechLocale } from '@/lib/i18n/speechLocale';
 import { i18n } from '@/lib/i18n';
+import { toast } from 'sonner';
 
 const logger = createLogger('AudioSession');
 
@@ -20,16 +21,27 @@ export interface AudioSessionStatus {
 }
 
 export interface SpeakOptions {
+  /** The text to speak */
   text: string;
+  /** The voice to use */
   voice: string;
+  /** Speech speed multiplier */
   speed: number;
+  /** Volume level (0-1) */
   volume?: number;
+  /** Force use of Web Speech API only */
   forceWebSpeech?: boolean;
+  /** Whether to fallback to Web Speech if OpenAI fails. Defaults to true. */
   fallbackToWebSpeech: boolean;
+  /** Supabase URL for OpenAI TTS */
   supabaseUrl?: string;
+  /** Supabase key for OpenAI TTS */
   supabaseKey?: string;
+  /** Callback when speech starts */
   onStart?: () => void;
+  /** Callback when speech ends */
   onEnd?: () => void;
+  /** Callback when speech errors */
   onError?: (error: Error) => void;
 }
 
@@ -263,10 +275,8 @@ function cancelActive(reason: string, resumeListening: boolean) {
 
   useAssistantSpeakingStore.getState().stopSpeaking();
 
-  if (resumeListening && resumeListeningRequestId === status.requestId && sttController) {
-    sttController.resumeListening();
-    updateStatus({ isListening: sttController.isListening() });
-    resumeListeningRequestId = null;
+  if (resumeListening && resumeListeningRequestId === status.requestId) {
+    resumeListeningIfNeeded(status.requestId);
   }
 
   audioDebug.log('tts_end', { reason });
@@ -364,7 +374,9 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().stopSpeaking();
       audioDebug.error('tts_error', { backend: 'openai' });
+      resumeListeningIfNeeded(requestId);
       options.onError?.(error);
+      toast.error("TTS Error", { description: error.message });
       reject(error);
     };
 
@@ -467,7 +479,9 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
         updateStatus({ isSpeaking: false, isLoading: false, backend: 'webSpeech' });
         useAssistantSpeakingStore.getState().stopSpeaking();
         audioDebug.error('tts_error', { backend: 'webSpeech', error: event.error });
+        resumeListeningIfNeeded(requestId);
         options.onError?.(error);
+        toast.error("TTS Error", { description: error.message });
         reject(error);
       };
 
@@ -564,9 +578,10 @@ export async function speak(options: SpeakOptions): Promise<void> {
 
   return new Promise<void>((resolve, reject) => {
     ttsRequestCounter += 1;
+    const { fallbackToWebSpeech = true, ...rest } = options;
     const entry = {
       id: ttsRequestCounter,
-      options: { ...options, text: trimmed },
+      options: { ...rest, fallbackToWebSpeech, text: trimmed },
       resolve,
       reject,
     };

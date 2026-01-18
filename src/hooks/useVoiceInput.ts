@@ -95,6 +95,7 @@ interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
   silenceTimeoutMs?: number;
+  watchdogIntervalMs?: number;
 }
 
 // Global Set of known final transcripts to prevent cross-component duplication if multiple hooks mounted
@@ -106,7 +107,8 @@ function getActiveSpeechLocale(): string {
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}) {
-  const silenceTimeoutMs = options.silenceTimeoutMs ?? 1200;
+  const silenceTimeoutMs = Math.max(800, Math.min(10000, options.silenceTimeoutMs ?? 5000));
+  const watchdogIntervalMs = Math.max(15000, Math.min(60000, options.watchdogIntervalMs ?? 25000));
 
   const [isSupported, setIsSupported] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -123,6 +125,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const isStartedRef = useRef(false);
   const isIntentionalStop = useRef(false);
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
+  const watchdogTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Dedupe tracking
   const lastFinalCommitTime = useRef<number>(0);
@@ -164,6 +167,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     }
     isStartedRef.current = false;
     if (silenceTimer.current) clearTimeout(silenceTimer.current);
+    if (watchdogTimer.current) {
+      clearInterval(watchdogTimer.current);
+      watchdogTimer.current = null;
+    }
   }, []);
 
   const stopRecording = useCallback(() => {
@@ -293,8 +300,26 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           });
         }
       }
+
+      // Reset watchdog on any results
+      if (newFinalText || newInterimText) {
+        if (watchdogTimer.current) {
+          clearInterval(watchdogTimer.current);
+        }
+        watchdogTimer.current = setInterval(() => {
+          if (isStartedRef.current) {
+            try {
+              recognitionRef.current?.stop();
+              recognitionRef.current?.start();
+              audioDebug.log("watchdog_restart", { interval: watchdogIntervalMs });
+            } catch (e) {
+              audioDebug.error("watchdog_restart_failed", { error: (e as Error).message });
+            }
+          }
+        }, watchdogIntervalMs);
+      }
     },
-    [options, setInterimTranscript, setFinalTranscript, stopRecording]
+    [options, setInterimTranscript, setFinalTranscript, stopRecording, watchdogIntervalMs]
   );
 
   const handleRecognitionError = useCallback(
@@ -407,6 +432,19 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
       recognitionRef.current = recognition;
       recognition.start();
+
+      // Start watchdog timer
+      watchdogTimer.current = setInterval(() => {
+        if (isStartedRef.current) {
+          try {
+            recognitionRef.current?.stop();
+            recognitionRef.current?.start();
+            audioDebug.log("watchdog_restart", { interval: watchdogIntervalMs });
+          } catch (e) {
+            audioDebug.error("watchdog_restart_failed", { error: (e as Error).message });
+          }
+        }
+      }, watchdogIntervalMs);
     } catch (e) {
       audioDebug.error("session_start", { error: (e as Error).message });
       setError("Failed to start");
