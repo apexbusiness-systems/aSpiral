@@ -90,12 +90,12 @@ function recordLatencySample(latencyMs: number): void {
     }
 
     // Update exponential moving average
-    if (!state.isCalibrated) {
+    if (state.isCalibrated) {
+        state.emaLatency = EMA_WEIGHT * clampedLatency + (1 - EMA_WEIGHT) * state.emaLatency
+    } else {
         // First sample - use it directly
         state.emaLatency = clampedLatency
         state.isCalibrated = true
-    } else {
-        state.emaLatency = EMA_WEIGHT * clampedLatency + (1 - EMA_WEIGHT) * state.emaLatency
     }
 
     logger.debug('Latency sample recorded', {
