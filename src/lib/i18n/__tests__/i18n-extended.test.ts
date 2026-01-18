@@ -34,9 +34,14 @@ function flattenObject(obj: Record<string, unknown>, prefix = ''): Record<string
 
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
             Object.assign(result, flattenObject(value as Record<string, unknown>, fullKey));
-        } else {
-            result[fullKey] = String(value);
+        } else if (typeof value === 'string') {
+            // Only include actual string values, skip numbers/booleans/arrays
+            result[fullKey] = value;
+        } else if (typeof value === 'number' || typeof value === 'boolean') {
+            // Safely convert primitives to strings
+            result[fullKey] = value.toString();
         }
+        // Skip arrays and other non-primitive values
     }
 
     return result;
