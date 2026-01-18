@@ -1,150 +1,185 @@
 /**
- * @fileoverview React hook for CSS-to-THREE color synchronization
+ * @fileoverview CSS theme color bridge for THREE.js
  * @module lib/three/useCssThemeColors
- * @sonarqube cognitive-complexity: 8
+ * @sonarqube cognitive-complexity: 5
  */
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import * as THREE from 'three'
 import { parseCssHsl, hslToHex } from './cssHsl'
 
-/** Theme color palette synchronized with CSS custom properties */
+/** CSS variable names for theme colors */
+const CSS_VAR_KEYS = Object.freeze([
+    'primary',
+    'secondary',
+    'accent',
+    'spiral-glow',
+    'spiral-accent',
+    'friction-color',
+    'grease-color',
+    'entity-color',
+    'connection-color',
+    'success',
+    'warning',
+    'destructive'
+] as const)
+
+type CssVarKey = typeof CSS_VAR_KEYS[number]
+
+/** THREE.Color instances mapped from CSS variables */
 export interface ThemeColors {
-  readonly primary: THREE.Color
-  readonly spiralGlow: THREE.Color
-  readonly spiralAccent: THREE.Color
-  readonly secondary: THREE.Color
-  readonly bgStart: THREE.Color
-  readonly bgMid: THREE.Color
-  readonly bgEnd: THREE.Color
+    readonly primary: THREE.Color
+    readonly secondary: THREE.Color
+    readonly accent: THREE.Color
+    readonly spiralGlow: THREE.Color
+    readonly spiralAccent: THREE.Color
+    readonly friction: THREE.Color
+    readonly grease: THREE.Color
+    readonly entity: THREE.Color
+    readonly connection: THREE.Color
+    readonly success: THREE.Color
+    readonly warning: THREE.Color
+    readonly destructive: THREE.Color
 }
 
-/** Hook return type with version for change detection */
-export interface ThemeColorsResult {
-  readonly colors: ThemeColors
-  readonly version: number
-}
+/** Default fallback colors (brand palette) */
+const FALLBACK_COLORS = Object.freeze({
+    primary: '#c084fc',      // Purple 400
+    secondary: '#facc15',    // Yellow 400
+    accent: '#fde047',       // Yellow 300
+    spiralGlow: '#e879f9',   // Fuchsia 400
+    spiralAccent: '#a78bfa', // Violet 400
+    friction: '#ef4444',     // Red 500
+    grease: '#22c55e',       // Green 500
+    entity: '#8b5cf6',       // Violet 500
+    connection: '#3b82f6',   // Blue 500
+    success: '#22c55e',      // Green 500
+    warning: '#eab308',      // Yellow 500
+    destructive: '#ef4444'   // Red 500
+})
 
-/** Brand-safe fallback palette (Apple-inspired purple) */
-const FALLBACKS = Object.freeze({
-  primary: '#8b5cf6',      // Vibrant purple
-  spiralGlow: '#a78bfa',   // Soft violet
-  spiralAccent: '#7c3aed', // Deep purple
-  secondary: '#6366f1',    // Indigo
-  bgStart: '#0f0a1e',      // Deep space
-  bgMid: '#1a1333',        // Nebula core
-  bgEnd: '#2d1f4e'         // Cosmic dust
-} as const)
-
-/** CSS custom property names */
-const CSS_VARS = Object.freeze({
-  primary: '--primary',
-  spiralGlow: '--spiral-glow',
-  spiralAccent: '--spiral-accent',
-  secondary: '--secondary',
-  bgStart: '--spiral-bg-start',
-  bgMid: '--spiral-bg-mid',
-  bgEnd: '--spiral-bg-end'
-} as const)
+/** Cache for parsed colors to avoid recalculation */
+let cachedColors: ThemeColors | null = null
+let cachedVersion = 0
 
 /**
- * Safely reads CSS custom property from document root.
- * Returns null if SSR or property undefined.
+ * Reads a CSS custom property value from :root
  */
-function getCssVar(name: string): string | null {
-  if (typeof document === 'undefined') return null
-
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim()
-
-  return value.length > 0 ? value : null
+function getCssVar(name: CssVarKey): string | null {
+    if (typeof document === 'undefined') return null
+    const style = getComputedStyle(document.documentElement)
+    return style.getPropertyValue(`--${name}`).trim() || null
 }
 
 /**
- * Resolves CSS variable to THREE.Color with fallback.
- * Never throws - always returns valid color.
+ * Creates a THREE.Color from CSS HSL variable or fallback
  */
-function resolveColor(cssVar: string, fallback: string): THREE.Color {
-  const raw = getCssVar(cssVar)
-  const hsl = parseCssHsl(raw)
-  const hex = hsl !== null ? hslToHex(hsl) : fallback
-  return new THREE.Color(hex)
+function createThreeColor(varName: CssVarKey, fallback: string): THREE.Color {
+    const cssValue = getCssVar(varName)
+    const hsl = parseCssHsl(cssValue)
+
+    if (hsl) {
+        const hex = hslToHex(hsl)
+        return new THREE.Color(hex)
+    }
+
+    return new THREE.Color(fallback)
 }
 
 /**
- * Creates initial color palette from CSS or fallbacks.
+ * Builds the full theme colors object
  */
-function createColorPalette(): ThemeColors {
-  return {
-    primary: resolveColor(CSS_VARS.primary, FALLBACKS.primary),
-    spiralGlow: resolveColor(CSS_VARS.spiralGlow, FALLBACKS.spiralGlow),
-    spiralAccent: resolveColor(CSS_VARS.spiralAccent, FALLBACKS.spiralAccent),
-    secondary: resolveColor(CSS_VARS.secondary, FALLBACKS.secondary),
-    bgStart: resolveColor(CSS_VARS.bgStart, FALLBACKS.bgStart),
-    bgMid: resolveColor(CSS_VARS.bgMid, FALLBACKS.bgMid),
-    bgEnd: resolveColor(CSS_VARS.bgEnd, FALLBACKS.bgEnd)
-  }
+function buildThemeColors(): ThemeColors {
+    return Object.freeze({
+        primary: createThreeColor('primary', FALLBACK_COLORS.primary),
+        secondary: createThreeColor('secondary', FALLBACK_COLORS.secondary),
+        accent: createThreeColor('accent', FALLBACK_COLORS.accent),
+        spiralGlow: createThreeColor('spiral-glow', FALLBACK_COLORS.spiralGlow),
+        spiralAccent: createThreeColor('spiral-accent', FALLBACK_COLORS.spiralAccent),
+        friction: createThreeColor('friction-color', FALLBACK_COLORS.friction),
+        grease: createThreeColor('grease-color', FALLBACK_COLORS.grease),
+        entity: createThreeColor('entity-color', FALLBACK_COLORS.entity),
+        connection: createThreeColor('connection-color', FALLBACK_COLORS.connection),
+        success: createThreeColor('success', FALLBACK_COLORS.success),
+        warning: createThreeColor('warning', FALLBACK_COLORS.warning),
+        destructive: createThreeColor('destructive', FALLBACK_COLORS.destructive)
+    })
+}
+
+// External store for theme version tracking
+let themeVersion = 0
+const themeListeners = new Set<() => void>()
+
+function subscribeToTheme(callback: () => void): () => void {
+    themeListeners.add(callback)
+    return () => themeListeners.delete(callback)
+}
+
+function getThemeSnapshot(): number {
+    return themeVersion
+}
+
+// Listen for theme changes via MutationObserver
+if (typeof document !== 'undefined') {
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (
+                mutation.type === 'attributes' &&
+                (mutation.attributeName === 'class' || mutation.attributeName === 'style')
+            ) {
+                themeVersion++
+                cachedColors = null
+                themeListeners.forEach(cb => cb())
+                break
+            }
+        }
+    })
+
+    // Start observing when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class', 'style']
+            })
+        })
+    } else {
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class', 'style']
+        })
+    }
 }
 
 /**
- * Hook that synchronizes CSS custom properties with THREE.Color objects.
- * Automatically updates when theme changes (class/style mutations or system preference).
+ * React hook for accessing CSS theme colors as THREE.js Color instances.
+ * Automatically updates when theme changes (light/dark mode, etc.)
  *
- * @returns Theme colors and version number for change detection
+ * @returns Object containing themed THREE.Color instances and version number
  *
  * @example
- * const { colors, version } = useCssThemeColors()
- * // colors.primary is a THREE.Color synced with --primary CSS var
+ * ```tsx
+ * function MyMesh() {
+ *   const { colors } = useCssThemeColors()
+ *   return (
+ *     <mesh>
+ *       <meshStandardMaterial color={colors.primary} />
+ *     </mesh>
+ *   )
+ * }
+ * ```
  */
-export function useCssThemeColors(): ThemeColorsResult {
-  const colorsRef = useRef(createColorPalette())
-  const [version, setVersion] = useState(0)
+export function useCssThemeColors(): { colors: ThemeColors; version: number } {
+    const version = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getThemeSnapshot)
 
-  const updateColors = useCallback(() => {
-    const current = colorsRef.current
+    const colors = useMemo(() => {
+        if (cachedColors && cachedVersion === version) {
+            return cachedColors
+        }
+        cachedColors = buildThemeColors()
+        cachedVersion = version
+        return cachedColors
+    }, [version])
 
-    // Update in-place to preserve object references
-    current.primary.copy(resolveColor(CSS_VARS.primary, FALLBACKS.primary))
-    current.spiralGlow.copy(resolveColor(CSS_VARS.spiralGlow, FALLBACKS.spiralGlow))
-    current.spiralAccent.copy(resolveColor(CSS_VARS.spiralAccent, FALLBACKS.spiralAccent))
-    current.secondary.copy(resolveColor(CSS_VARS.secondary, FALLBACKS.secondary))
-    current.bgStart.copy(resolveColor(CSS_VARS.bgStart, FALLBACKS.bgStart))
-    current.bgMid.copy(resolveColor(CSS_VARS.bgMid, FALLBACKS.bgMid))
-    current.bgEnd.copy(resolveColor(CSS_VARS.bgEnd, FALLBACKS.bgEnd))
-
-    setVersion(v => v + 1)
-  }, [])
-
-  useEffect(() => {
-    // Initial update
-    updateColors()
-
-    // Watch for theme class/style changes
-    const observer = new MutationObserver((mutations) => {
-      const shouldUpdate = mutations.some(
-        m => m.attributeName === 'class' || m.attributeName === 'style'
-      )
-      if (shouldUpdate) {
-        updateColors()
-      }
-    })
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'style']
-    })
-
-    // Watch for system theme preference changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    mediaQuery.addEventListener('change', updateColors)
-
-    // Cleanup (idempotent)
-    return () => {
-      observer.disconnect()
-      mediaQuery.removeEventListener('change', updateColors)
-    }
-  }, [updateColors])
-
-  return { colors: colorsRef.current, version }
+    return { colors, version }
 }

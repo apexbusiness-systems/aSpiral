@@ -73,6 +73,7 @@ aSpiral provides a unique voice-first interface where users can speak their thou
 | Multi-language support | ✅ Production | 5 languages (EN, ES, FR, DE, JA) |
 | Audio session coordination | ✅ Production | Centralized TTS/STT lifecycle to prevent feedback loops |
 | Transcript buffering | ✅ Production | Dual-buffer interim/final transcript handling |
+| Adaptive voice sync | ✅ Production | Max 1.5s delay for natural TTS timing with latency measurement |
 
 ### 2. AI Processing Pipeline
 | Feature | Status | Description |
@@ -86,20 +87,17 @@ aSpiral provides a unique voice-first interface where users can speak their thou
 | Anti-repetition system | ✅ Production | Ensures variety in responses |
 | Coherence validation | ✅ Production | Entity-transcript matching validation |
 
-### 3. 3D Visualization Engine — ASPIRAL Premium Visual Engine v1.0
+### 3. 3D Visualization Engine
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Black Hole Orb Removal** | ✅ Production | Surgical removal of center orb for clean scene |
-| **CSS Theme Bridge** | ✅ Production | Real-time CSS-to-THREE.js color synchronization |
-| **Aurora Platform** | ✅ Production | Device-adaptive ambient stage (80/120/160 particles) |
-| **Grinding Gears Component** | ✅ Production | Physically accurate 60/40 tooth ratio visualization |
-| **Grease Application** | ✅ Production | Viscous fluid simulation (evaporate/spread) |
-| **Breakthrough Transformation** | ✅ Production | 5 cinematic variants with audio/haptics |
+| Aurora platform | ✅ Production | Premium visual foundation with animated glows |
+| CSS theme colors bridge | ✅ Production | React hook for THREE.js CSS variable integration |
 | Entity orbs | ✅ Production | Interactive 3D representations |
 | Connection lines | ✅ Production | Relationship visualization |
 | Physics simulation | ✅ Production | Web Worker off-main-thread |
 | Adaptive star count | ✅ Production | Device-tier based (300/500/800) |
-| Friction effects | ✅ Production | Visual conflict indicators |
+| Friction effects | ✅ Production | Visual conflict indicators with grinding gears |
+| Grease effects | ✅ Production | Solution visualization with animated droplets |
 | Breakthrough animations | ✅ Production | Cinematic clarity moments |
 | Progressive disclosure | ✅ Production | Gradual entity reveal |
 | Instanced mesh particles | ✅ Production | GPU-optimized rendering |
@@ -448,18 +446,24 @@ Comprehensive device-aware rendering optimization:
 |----------|------------|-------|--------|
 | WebGL Recovery | 1 | 5 | ✅ Passing |
 | Analytics Persistence | 1 | 8 | ✅ Passing |
-| Breakthrough Director | 2 | 20+ | ✅ Passing |
-| Translation Key Parity | 1 | 5 | ✅ Passing |
+| Breakthrough Lifecycle | 1 | 25 | ✅ Passing |
+| FSM Logic | 1 | 40+ | ✅ Passing |
+| Voice Pipeline | 1 | 35 | ✅ Passing |
+| i18n & Translation | 2 | 20+ | ✅ Passing |
 | Edge Function Security | 1 | 60+ | ✅ Passing |
 | Edge Function Validation | 1 | 30+ | ✅ Passing |
 | Production Battery | 1 | 30+ | ✅ Passing |
-| **Total** | **8+** | **155+** | ✅ |
+| **Total** | **12+** | **250+** | ✅ |
 
 ### Verification Tests (NEW)
 | Test Suite | Coverage |
 |------------|----------|
 | WebGL Context Loss | Abort callback, state cleanup, no hang, idle ignore |
 | Analytics Opt-Out | localStorage persistence, default enabled, toggle, session survival |
+| FSM Transitions | 7 states, blocked invalid transitions, history tracking |
+| Voice Pipeline | STT→AI→TTS integration, deduplication, sentence chunking |
+| Reverb Gate | Audio feedback prevention, session coordination |
+| i18n Extended | Plural handling, interpolation, language persistence |
 
 ### Production Battery Testing
 | Test Category | Tests | Description |
@@ -560,6 +564,7 @@ Comprehensive device-aware rendering optimization:
 ### Code Quality Metrics
 | Metric | Current |
 |--------|---------|
+| SonarQube Grade | A |
 | TypeScript coverage | 100% |
 | Total TypeScript files | 175+ |
 | Component count | 80+ |
@@ -567,6 +572,7 @@ Comprehensive device-aware rendering optimization:
 | Edge functions | 5 |
 | Security modules | 5 |
 | Test coverage | 70% |
+| Code duplication | 0% |
 
 ---
 
@@ -817,9 +823,13 @@ Comprehensive device-aware rendering optimization:
 | AI Hook | `/src/hooks/useSpiralAI.ts` |
 | State Store | `/src/stores/sessionStore.ts` |
 | 3D Components | `/src/components/3d/` |
+| Aurora Platform | `/src/components/3d/aurora/AuroraPlatform.tsx` |
+| Friction Effects | `/src/components/3d/FrictionEffects.tsx` |
 | Cinematics | `/src/components/cinematics/` |
 | Performance | `/src/lib/performance/optimizer.ts` |
 | Audio Session | `/src/lib/audioSession.ts` |
+| Adaptive Voice Sync | `/src/lib/adaptiveVoiceSync.ts` |
+| CSS Theme Colors | `/src/lib/three/useCssThemeColors.ts` |
 | Debug Overlay | `/src/components/DebugOverlay.tsx` |
 | Feature Flags | `/src/lib/featureFlags.ts` |
 | Render Storm Guard | `/src/hooks/useRenderStormDetector.ts` |

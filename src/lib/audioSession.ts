@@ -351,9 +351,11 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
   return new Promise<void>((resolve, reject) => {
     audio.onplay = () => {
       if (requestId !== status.requestId) return;
+      // Mark playback start for adaptive sync latency measurement
+      markAudioPlaybackStart();
       updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().startSpeaking();
-      audioDebug.log('tts_start', { backend: 'openai' });
+      audioDebug.log('tts_start', { backend: 'openai', syncStats: getSyncStats() });
       options.onStart?.();
     };
 
@@ -447,9 +449,11 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       utterance.onstart = () => {
         if (requestId !== status.requestId) return;
         if (isFirstSentence) {
+          // Mark playback start for adaptive sync latency measurement
+          markAudioPlaybackStart();
           updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
           useAssistantSpeakingStore.getState().startSpeaking();
-          audioDebug.log('tts_start', { backend: 'webSpeech', chunked: useChunking });
+          audioDebug.log('tts_start', { backend: 'webSpeech', chunked: useChunking, syncStats: getSyncStats() });
           options.onStart?.();
           isFirstSentence = false;
         }
@@ -508,9 +512,19 @@ async function processQueue() {
       const requestId = entry.id;
       updateStatus({ requestId });
       cancelActive('superseded', false);
+
+      // Apply adaptive sync delay before starting TTS (max 1.5s)
+      // This makes agent responses feel more natural and conversational
+      const textLength = entry.options.text.length;
+      await waitForSyncDelay(textLength);
+
       updateStatus({ isLoading: true, backend: 'none' });
       pauseListeningForRequest(requestId);
-      audioDebug.log('tts_enqueue', { queueLength: ttsQueue.length, requestId });
+
+      // Mark request start for latency measurement
+      markSpeakRequestStart();
+
+      audioDebug.log('tts_enqueue', { queueLength: ttsQueue.length, requestId, textLength });
 
       try {
         if (entry.options.forceWebSpeech) {

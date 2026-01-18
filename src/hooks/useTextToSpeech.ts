@@ -33,7 +33,7 @@ type TTSDebugEvent = {
 // Debug buffer (shared with voice debug panel)
 const DEBUG_BUFFER_SIZE = 50;
 let ttsDebugBuffer: TTSDebugEvent[] = [];
-let ttsDebugSubscribers: Set<(events: TTSDebugEvent[]) => void> = new Set();
+const ttsDebugSubscribers: Set<(events: TTSDebugEvent[]) => void> = new Set();
 
 function emitTTSDebugEvent(event: Omit<TTSDebugEvent, 'timestamp'>) {
   const fullEvent: TTSDebugEvent = { ...event, timestamp: Date.now() };
@@ -50,8 +50,8 @@ export function subscribeToTTSDebug(callback: (events: TTSDebugEvent[]) => void)
 
 interface UseTextToSpeechOptions {
   voice?: string; // OpenAI voices: alloy, ash, ballot, coral, echo, sage, shimmer, verse, nova
-  speed?: number; // 0.25 to 4.0
-  volume?: number; // 0.0 to 1.0
+  speed?: number; // 0.25 to 4
+  volume?: number; // 0 to 1
   forceWebSpeech?: boolean;
   fallbackToWebSpeech?: boolean;
   onStart?: () => void;
@@ -69,8 +69,8 @@ interface TextToSpeechState {
 export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const {
     voice = 'nova',
-    speed = 1.0,
-    volume = 1.0,
+    speed = 1,
+    volume = 1,
     forceWebSpeech = false,
     fallbackToWebSpeech = true,
     onStart,

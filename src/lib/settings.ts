@@ -26,7 +26,7 @@ export interface SettingsState {
 export const defaultSettings: SettingsState = {
   voiceEnabled: true,
   voiceVolume: 80,
-  speechRate: 1.0,
+  speechRate: 1,
   voiceType: "natural",
   autoListen: false,
 
