@@ -22,10 +22,10 @@ type LocaleCode = keyof typeof locales;
 const supportedLanguages: LocaleCode[] = ['en', 'es', 'fr', 'de', 'ja'];
 
 // ============================================================================
-// Utility Functions
+// Utility Functions (moved to outer scope per SonarQube)
 // ============================================================================
 
-function flattenObject(obj: any, prefix = ''): Record<string, string> {
+function flattenObject(obj: Record<string, unknown>, prefix = ''): Record<string, string> {
     const result: Record<string, string> = {};
 
     for (const key in obj) {
@@ -33,7 +33,7 @@ function flattenObject(obj: any, prefix = ''): Record<string, string> {
         const value = obj[key];
 
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-            Object.assign(result, flattenObject(value, fullKey));
+            Object.assign(result, flattenObject(value as Record<string, unknown>, fullKey));
         } else {
             result[fullKey] = String(value);
         }
@@ -42,16 +42,27 @@ function flattenObject(obj: any, prefix = ''): Record<string, string> {
     return result;
 }
 
-function getValueByPath(obj: any, path: string): string | undefined {
-    const parts = path.split('.');
-    let current = obj;
+/**
+ * Extracts interpolation variables like {{count}} from a translation string
+ */
+function extractInterpolationVars(text: string): string[] {
+    const matches = text.match(/\{\{(\w+)\}\}/g) || [];
+    return matches.map(m => m.replaceAll('{{', '').replaceAll('}}', ''));
+}
 
-    for (const part of parts) {
-        if (current === undefined || current === null) return undefined;
-        current = current[part];
-    }
+/**
+ * Synchronizes the HTML lang attribute with the current language
+ */
+function syncHtmlLang(lng: string): void {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = lng;
+}
 
-    return typeof current === 'string' ? current : undefined;
+/**
+ * Sorts strings using locale-aware comparison
+ */
+function sortLocaleCompare(arr: string[]): string[] {
+    return [...arr].sort((a, b) => a.localeCompare(b));
 }
 
 // ============================================================================
@@ -65,7 +76,7 @@ describe('i18n Plural Form Handling', () => {
     ];
 
     it('English has both singular and plural forms for time keys', () => {
-        const flattened = flattenObject(en);
+        const flattened = flattenObject(en as unknown as Record<string, unknown>);
 
         pluralKeys.forEach(baseKey => {
             expect(flattened[baseKey]).toBeDefined();
@@ -75,7 +86,7 @@ describe('i18n Plural Form Handling', () => {
 
     it('all locales have plural forms for time keys', () => {
         supportedLanguages.forEach(lang => {
-            const flattened = flattenObject(locales[lang]);
+            const flattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
 
             pluralKeys.forEach(baseKey => {
                 expect(flattened[baseKey], `Missing ${baseKey} in ${lang}`).toBeDefined();
@@ -86,7 +97,7 @@ describe('i18n Plural Form Handling', () => {
 
     it('singular and plural forms are different', () => {
         supportedLanguages.forEach(lang => {
-            const flattened = flattenObject(locales[lang]);
+            const flattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
 
             pluralKeys.forEach(baseKey => {
                 const singular = flattened[baseKey];
@@ -106,16 +117,11 @@ describe('i18n Plural Form Handling', () => {
 // Interpolation Variable Tests
 // ============================================================================
 describe('i18n Interpolation Variables', () => {
-    function extractInterpolationVars(text: string): string[] {
-        const matches = text.match(/\{\{(\w+)\}\}/g) || [];
-        return matches.map(m => m.replace(/\{\{|\}\}/g, ''));
-    }
-
     it('time keys contain {{count}} variable', () => {
         const timeKeys = ['time.minutesAgo', 'time.hoursAgo', 'time.daysAgo'];
 
         supportedLanguages.forEach(lang => {
-            const flattened = flattenObject(locales[lang]);
+            const flattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
 
             timeKeys.forEach(key => {
                 const value = flattened[key];
@@ -126,7 +132,7 @@ describe('i18n Interpolation Variables', () => {
     });
 
     it('interpolation variables are consistent across locales', () => {
-        const enFlattened = flattenObject(en);
+        const enFlattened = flattenObject(en as unknown as Record<string, unknown>);
 
         for (const [key, enValue] of Object.entries(enFlattened)) {
             const enVars = extractInterpolationVars(enValue);
@@ -136,17 +142,18 @@ describe('i18n Interpolation Variables', () => {
             supportedLanguages.forEach(lang => {
                 if (lang === 'en') return;
 
-                const langFlattened = flattenObject(locales[lang]);
+                const langFlattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
                 const langValue = langFlattened[key];
 
                 if (!langValue) return; // Key parity tested elsewhere
 
                 const langVars = extractInterpolationVars(langValue);
 
+                // Use toSorted with localeCompare for reliable comparison
                 expect(
-                    langVars.sort(),
+                    sortLocaleCompare(langVars),
                     `Interpolation vars for "${key}" should match in ${lang}`
-                ).toEqual(enVars.sort());
+                ).toEqual(sortLocaleCompare(enVars));
             });
         }
     });
@@ -202,11 +209,6 @@ describe('Language Persistence', () => {
 // HTML Lang Attribute Tests
 // ============================================================================
 describe('HTML Lang Attribute Synchronization', () => {
-    function syncHtmlLang(lng: string): void {
-        if (typeof document === 'undefined') return;
-        document.documentElement.lang = lng;
-    }
-
     beforeEach(() => {
         // Mock document for Node environment
         vi.stubGlobal('document', {
@@ -276,7 +278,7 @@ describe('Translation Value Quality', () => {
         ];
 
         supportedLanguages.forEach(lang => {
-            const flattened = flattenObject(locales[lang]);
+            const flattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
 
             for (const [key, value] of Object.entries(flattened)) {
                 placeholderPatterns.forEach(pattern => {
@@ -293,7 +295,7 @@ describe('Translation Value Quality', () => {
         const MAX_LENGTH = 500;
 
         supportedLanguages.forEach(lang => {
-            const flattened = flattenObject(locales[lang]);
+            const flattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
 
             for (const [key, value] of Object.entries(flattened)) {
                 expect(
@@ -315,7 +317,7 @@ describe('Translation Value Quality', () => {
         ];
 
         supportedLanguages.forEach(lang => {
-            const flattened = flattenObject(locales[lang]);
+            const flattened = flattenObject(locales[lang] as unknown as Record<string, unknown>);
 
             criticalKeys.forEach(key => {
                 expect(flattened[key], `Critical key "${key}" missing in ${lang}`).toBeDefined();

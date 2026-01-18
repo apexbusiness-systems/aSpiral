@@ -17,8 +17,6 @@ import {
     canTriggerCinematic,
     getStateDebugInfo,
     type SpiralContext,
-    type SpiralEvent,
-    type SpiralState,
 } from '../spiralMachine';
 
 describe('SpiralMachine FSM', () => {
