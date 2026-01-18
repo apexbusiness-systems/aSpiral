@@ -446,19 +446,24 @@ Comprehensive device-aware rendering optimization:
 |----------|------------|-------|--------|
 | WebGL Recovery | 1 | 5 | ✅ Passing |
 | Analytics Persistence | 1 | 8 | ✅ Passing |
-| Breakthrough Director | 2 | 20+ | ✅ Passing |
-| Translation Key Parity | 1 | 5 | ✅ Passing |
+| Breakthrough Lifecycle | 1 | 25 | ✅ Passing |
+| FSM Logic | 1 | 40+ | ✅ Passing |
+| Voice Pipeline | 1 | 35 | ✅ Passing |
+| i18n & Translation | 2 | 20+ | ✅ Passing |
 | Edge Function Security | 1 | 60+ | ✅ Passing |
 | Edge Function Validation | 1 | 30+ | ✅ Passing |
 | Production Battery | 1 | 30+ | ✅ Passing |
-| Cross-Platform Voice | 1 | 25 | ✅ Passing |
-| **Total** | **9+** | **180+** | ✅ |
+| **Total** | **12+** | **250+** | ✅ |
 
 ### Verification Tests (NEW)
 | Test Suite | Coverage |
 |------------|----------|
 | WebGL Context Loss | Abort callback, state cleanup, no hang, idle ignore |
 | Analytics Opt-Out | localStorage persistence, default enabled, toggle, session survival |
+| FSM Transitions | 7 states, blocked invalid transitions, history tracking |
+| Voice Pipeline | STT→AI→TTS integration, deduplication, sentence chunking |
+| Reverb Gate | Audio feedback prevention, session coordination |
+| i18n Extended | Plural handling, interpolation, language persistence |
 
 ### Production Battery Testing
 | Test Category | Tests | Description |
