@@ -28,14 +28,14 @@ export const EntityMesh: React.FC<EntityMeshProps> = ({ entity, index, position 
                     geometry: <boxGeometry args={[0.8, 0.8, 0.8]} />,
                     color: '#ff4444',
                     emissive: '#ff2222',
-                    scale: 1.0,
+                    scale: 1,
                 };
             case 'grease':
                 return {
                     geometry: <coneGeometry args={[0.6, 1.2, 4]} />,
                     color: '#ffcc00',
                     emissive: '#ffaa00',
-                    scale: 1.0,
+                    scale: 1,
                 };
             case 'insight':
             case 'value': // Fallback for similar types 
@@ -44,7 +44,7 @@ export const EntityMesh: React.FC<EntityMeshProps> = ({ entity, index, position 
                     geometry: <sphereGeometry args={[0.5, 32, 32]} />,
                     color: '#4488ff',
                     emissive: '#2266ff',
-                    scale: 1.0,
+                    scale: 1,
                 };
             default: // emotion, problem, etc
                 return {

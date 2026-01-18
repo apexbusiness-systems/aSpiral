@@ -18,6 +18,72 @@ const PARTICLE_COUNTS = Object.freeze({
 let cachedTier: DeviceTier | null = null
 
 /**
+ * Attempts to detect GPU tier from WebGL renderer info.
+ * @returns GPU score (0-2)
+ */
+function detectGpuScore(): number {
+    try {
+        const canvas = document.createElement('canvas')
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+        if (!gl) return 0
+
+        const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info')
+        if (!debugInfo) return 0
+
+        const renderer = (gl as WebGLRenderingContext).getParameter(
+            debugInfo.UNMASKED_RENDERER_WEBGL
+        ) as string
+
+        // Known high-performance GPUs
+        if (/RTX|GTX|Radeon RX|Apple M[1-9]/i.test(renderer)) {
+            return 2
+        }
+        if (/Intel|AMD|NVIDIA/i.test(renderer)) {
+            return 1
+        }
+        return 0
+    } catch {
+        return 0
+    }
+}
+
+/**
+ * Calculates device performance score based on hardware signals.
+ * @returns Performance score (0-6)
+ */
+function calculateDeviceScore(cores: number, memory: number): number {
+    let score = 0
+
+    // CPU cores scoring
+    if (cores >= 8) {
+        score += 2
+    } else if (cores >= 4) {
+        score += 1
+    }
+
+    // Memory scoring
+    if (memory >= 8) {
+        score += 2
+    } else if (memory >= 4) {
+        score += 1
+    }
+
+    // GPU scoring
+    score += detectGpuScore()
+
+    return score
+}
+
+/**
+ * Classifies device tier based on performance score.
+ */
+function classifyTierFromScore(score: number): DeviceTier {
+    if (score >= 5) return 'high'
+    if (score >= 2) return 'medium'
+    return 'low'
+}
+
+/**
  * Detects device tier based on available signals.
  * Uses hardware concurrency, device memory, and device type.
  *
@@ -41,55 +107,13 @@ export function detectDeviceTier(): DeviceTier {
     // Mobile devices default to lower tier for battery/thermal
     if (isMobile) {
         // High-end mobile: 8+ cores, 4+ GB RAM
-        if (cores >= 8 && memory >= 4) {
-            cachedTier = 'medium'
-        } else {
-            cachedTier = 'low'
-        }
+        cachedTier = (cores >= 8 && memory >= 4) ? 'medium' : 'low'
         return cachedTier
     }
 
-    // Desktop scoring
-    let score = 0
-
-    // CPU cores scoring
-    if (cores >= 8) score += 2
-    else if (cores >= 4) score += 1
-
-    // Memory scoring
-    if (memory >= 8) score += 2
-    else if (memory >= 4) score += 1
-
-    // GPU hint from WebGL (if available)
-    try {
-        const canvas = document.createElement('canvas')
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-        if (gl) {
-            const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info')
-            if (debugInfo) {
-                const renderer = (gl as WebGLRenderingContext).getParameter(
-                    debugInfo.UNMASKED_RENDERER_WEBGL
-                ) as string
-                // Known high-performance GPUs
-                if (/RTX|GTX|Radeon RX|Apple M[1-9]/i.test(renderer)) {
-                    score += 2
-                } else if (/Intel|AMD|NVIDIA/i.test(renderer)) {
-                    score += 1
-                }
-            }
-        }
-    } catch {
-        // WebGL detection failed, continue with other signals
-    }
-
-    // Classify tier based on score
-    if (score >= 5) {
-        cachedTier = 'high'
-    } else if (score >= 2) {
-        cachedTier = 'medium'
-    } else {
-        cachedTier = 'low'
-    }
+    // Desktop scoring and classification
+    const score = calculateDeviceScore(cores, memory)
+    cachedTier = classifyTierFromScore(score)
 
     return cachedTier
 }
@@ -115,8 +139,8 @@ export function getOptimalParticleCount(explicitCount?: number): number {
  * Respects prefers-reduced-motion media query.
  */
 export function prefersReducedMotion(): boolean {
-    if (typeof window === 'undefined') return false
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (typeof globalThis.window === 'undefined') return false
+    return globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**

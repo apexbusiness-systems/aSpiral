@@ -25,11 +25,11 @@ export function useEntities() {
     const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {
         positions.forEach((pos, id) => {
             let vec = positionRefs.current.get(id);
-            if (!vec) {
+            if (vec) {
+                vec.set(pos[0], pos[1], pos[2]);
+            } else {
                 vec = new THREE.Vector3(pos[0], pos[1], pos[2]);
                 positionRefs.current.set(id, vec);
-            } else {
-                vec.set(pos[0], pos[1], pos[2]);
             }
         });
         invalidate();

@@ -11,10 +11,10 @@
  */
 
 import sharp from 'sharp';
-import { mkdir, rm, copyFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,7 +87,7 @@ async function generateIcon(source, output, size, options = {}) {
   if (round) {
     // Create circular mask for round icons
     const roundedCorners = Buffer.from(
-      `<svg><circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="white"/></svg>`
+      `<svg><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="white"/></svg>`
     );
 
     image = image.composite([{
@@ -101,8 +101,7 @@ async function generateIcon(source, output, size, options = {}) {
 }
 
 async function generateFavicon(source, output) {
-  // Generate ICO file with multiple sizes
-  const sizes = [16, 32, 48];
+  // Generate ICO file with multiple sizes (browsers accept PNG as ICO)
 
   // For ICO, we'll just use the 32x32 PNG and rename it for simplicity
   // (Full ICO generation requires additional libraries)
@@ -206,7 +205,4 @@ async function main() {
   console.log('\n✅ Icon generation complete!\n');
 }
 
-main().catch(err => {
-  console.error('Error:', err);
-  process.exit(1);
-});
+await main();
