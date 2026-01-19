@@ -36,7 +36,7 @@ import {
 import { createUpdateGuard } from "@/lib/updateGuard";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { useRenderStormDetector } from "@/hooks/useRenderStormDetector";
-import { SettingsState, defaultSettings, loadStoredSettings, saveStoredSettings, SETTINGS_STORAGE_KEY } from "@/lib/settings";
+import { SettingsState, defaultSettings, loadStoredSettings, saveStoredSettings } from "@/lib/settings";
 
 const areSettingsEqual = (a: SettingsState, b: SettingsState) =>
   a.voiceEnabled === b.voiceEnabled &&

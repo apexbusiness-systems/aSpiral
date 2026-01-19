@@ -1,0 +1,653 @@
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Denial of Service (DoS)
+Assignee:
+Not assigned
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/lib/__tests__/voice-pipeline-integration.test.ts
+
+
+
+
+*
+
+
+Show 93 more lines
+New code
+// ============================================================================
+// Test: TTS Sentence Chunking
+// ============================================================================
+describe('TTS Sentence Chunking', () => {
+    function splitIntoSentences(text: string): string[] {
+        const sentences = text.match(/(?:[^.!?]+[.!?]+[\s]?)|(?:[^.!?]+$)/g);
+Make sure the regex used here, which is vulnerable to super-linear runtime due to backtracking, cannot lead to denial of service.
+
+        if (!sentences) return [text];
+        return sentences.map(s => s.trim()).filter(s => s.length > 0);
+    }
+    it('splits by period', () => {
+
+
+Show 307 more lines
+
+
+
+
+============================================================================================================================================================================================
+
+
+
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Not assigned
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/lib/__tests__/breakthrough-lifecycle.test.ts
+
+
+
+
+*
+
+
+Show 29 more lines
+New code
+    scaleMultiplier: 1.0,
+    extraVisualsCount: 0,
+};
+const createMockVariant = (overrides: Partial<MutatedVariant> = {}): MutatedVariant => ({
+    id: 'test-variant-' + Math.random().toString(36).slice(2),
+Make sure that using this pseudorandom number generator is safe here.
+
+    name: 'Test Variant',
+    description: 'Test variant for lifecycle testing',
+    class: 'clarity',
+    intensity: 'medium',
+    colorMood: 'cosmic',
+
+
+Show 351 more lines
+
+
+
+============================================================================================================================================================================================
+
+
+
+
+Duplicated Lines (%) on New Code
+16.7%
+Duplicated Lines (%) on New Code
+Duplicated Lines on New Code
+
+src/lib/__tests__/fsm-transitions.test.ts
+47.3%
+196
+
+src/lib/__tests__/breakthrough-lifecycle.test.ts
+9.0%
+35
+
+src/lib/__tests__/voice-pipeline-integration.test.ts
+6.6%
+27
+
+
+
+============================================================================================================================================================================================
+
+
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Not assigned
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/lib/__tests__/breakthrough-lifecycle.test.ts
+
+
+
+
+*
+
+
+Show 65 more lines
+        chromaticAberration: false,
+        motionBlur: false,
+        vignette: true,
+    },
+    mutation: mockMutation,
+    seed: Math.floor(Math.random() * 100000),
+Make sure that using this pseudorandom number generator is safe here.
+
+    finalDuration: 5000,
+    finalParticleCount: 1000,
+    finalColors: ['#60a5fa'],
+    ...overrides,
+});
+
+
+Show 315 more lines
+
+
+
+
+
+============================================================================================================================================================================================
+
+
+
+
+
+src/lib/i18n/__tests__/i18n-extended.test.ts
+
+
+Provide a compare function that depends on "String.localeCompare", to reliably sort elements alphabetically.
+
+Intentionality
+Reliability
+
+
+4
+High
+bad-practice
+type-dependent
++
+Open
+Not assigned
+L147
+10min effort
+8 hours ago
+Bug
+Critical
+
+
+Provide a compare function that depends on "String.localeCompare", to reliably sort elements alphabetically.
+
+Intentionality
+Reliability
+
+
+4
+High
+bad-practice
+type-dependent
++
+Open
+Not assigned
+L149
+10min effort
+8 hours ago
+Bug
+Critical
+
+
+
+
+===========================================================================================================================================================================================
+
+
+
+src/lib/__tests__/breakthrough-lifecycle.test.ts
+
+
+Remove this unused import of 'DirectorPhase'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L15
+1min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Don't use a zero fraction in the number.
+
+Consistency
+Maintainability
+
+
+3
+Low
+consistency
+formatting
++
+Open
+Not assigned
+L29
+1min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Don't use a zero fraction in the number.
+
+Consistency
+Maintainability
+
+
+3
+Low
+consistency
+formatting
++
+Open
+Not assigned
+L30
+1min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Don't use a zero fraction in the number.
+
+Consistency
+Maintainability
+
+
+3
+Low
+consistency
+formatting
++
+Open
+Not assigned
+L53
+1min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Don't use a zero fraction in the number.
+
+Consistency
+Maintainability
+
+
+3
+Low
+consistency
+formatting
++
+Open
+Not assigned
+L54
+1min effort
+8 hours ago
+Code Smell
+Minor
+src/lib/__tests__/fsm-transitions.test.ts
+
+
+Remove this unused import of 'SpiralEvent'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L20
+1min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Remove this unused import of 'SpiralState'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L21
+1min effort
+8 hours ago
+Code Smell
+Minor
+src/lib/__tests__/voice-pipeline-integration.test.ts
+
+
+Remove this unused import of 'afterEach'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L12
+1min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Member 'history' is never reassigned; mark it as `readonly`.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+confusing
+type-dependent
++
+Open
+Not assigned
+L24
+2min effort
+8 hours ago
+Code Smell
+Major
+
+
+Member 'timestamps' is never reassigned; mark it as `readonly`.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+confusing
+type-dependent
++
+Open
+Not assigned
+L25
+2min effort
+8 hours ago
+Code Smell
+Major
+
+
+Move function 'splitIntoSentences' to the outer scope.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+javascript
+optimization
+...
++
+Open
+Not assigned
+L98
+5min effort
+8 hours ago
+Code Smell
+Major
+
+
+Replace this character class by the character itself.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+regex
+type-dependent
++
+Open
+Not assigned
+L99
+5min effort
+8 hours ago
+Code Smell
+Major
+
+
+Move function 'checkIOSSafari' to the outer scope.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+javascript
+optimization
+...
++
+Open
+Not assigned
+L222
+5min effort
+8 hours ago
+Code Smell
+Major
+
+
+Remove this useless assignment to variable "DEFAULT_SILENCE_TIMEOUT".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+cwe
+unused
++
+Open
+Not assigned
+L391
+1min effort
+8 hours ago
+Code Smell
+Major
+src/lib/i18n/__tests__/i18n-extended.test.ts
+
+
+Move function 'extractInterpolationVars' to the outer scope.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+javascript
+optimization
+...
++
+Open
+Not assigned
+L109
+5min effort
+8 hours ago
+Code Smell
+Major
+
+
+Prefer `String#replaceAll()` over `String#replace()`.
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+3
+Low
+es2021
+readability
++
+Open
+Not assigned
+L111
+5min effort
+8 hours ago
+Code Smell
+Minor
+
+
+Provide a compare function that depends on "String.localeCompare", to reliably sort elements alphabetically.
+
+Intentionality
+Reliability
+
+
+4
+High
+bad-practice
+type-dependent
++
+Open
+Not assigned
+L147
+10min effort
+8 hours ago
+Bug
+Critical
+
+
+Move this array "sort" operation to a separate statement or replace it with "toSorted".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+type-dependent
++
+Open
+Not assigned
+L147
+5min effort
+8 hours ago
+Code Smell
+Major
+
+
+Provide a compare function that depends on "String.localeCompare", to reliably sort elements alphabetically.
+
+Intentionality
+Reliability
+
+
+4
+High
+bad-practice
+type-dependent
++
+Open
+Not assigned
+L149
+10min effort
+8 hours ago
+Bug
+Critical
+
+
+Move this array "sort" operation to a separate statement or replace it with "toSorted".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+type-dependent
++
+Open
+Not assigned
+L149
+5min effort
+8 hours ago
+Code Smell
+Major
+
+
+Move function 'syncHtmlLang' to the outer scope.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+javascript
+optimization
+...
++
+Open
+Not assigned
+L205
+5min effort
+8 hours ago
+Code Smell
+Major
