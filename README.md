@@ -1,18 +1,50 @@
-# aSpiral - Transform Confusion into Clarity
+# aSpiral - Decision Intelligence Platform
 
-**aSpiral** is a voice-first AI coaching platform that visualizes your thoughts and guides you to breakthrough clarity through immersive 3D cinematic experiences.
+<p align="center">
+  <img src="src/assets/app_icon.png" alt="aSpiral Logo" width="180" height="180" style="border-radius: 20px;" />
+</p>
 
-## 🚀 Quick Start
+<p align="center">
+  <strong>Transform complex decisions into clear breakthroughs</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#deployment">Deployment</a>
+</p>
+
+---
+
+## Overview
+
+aSpiral is a decision intelligence platform that uses voice-powered AI to help users navigate complex decisions. Through an intuitive spiral visualization and guided questioning, users discover breakthrough insights that transform friction into clarity.
+
+## Features
+
+- **Voice-Powered Input** - Speak your thoughts naturally with real-time transcription
+- **AI-Guided Questions** - Intelligent questions guide you through decision clarity
+- **3D Spiral Visualization** - Beautiful WebGL-powered visualization of your decision journey
+- **Breakthrough Insights** - AI-generated insights combining friction points and solutions
+- **Cross-Platform** - Works on web, iOS, and Android as a PWA
+- **Offline Support** - Continue working even without internet connection
+
+## Getting Started
 
 ### Prerequisites
-- Node.js 22.x or later ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+
+- Node.js 18+ (recommended: use [nvm](https://github.com/nvm-sh/nvm))
 - npm or yarn
 
 ### Installation
 
-```sh
+```bash
 # Clone the repository
 git clone https://github.com/apexbusiness-systems/aSpiral.git
+
+# Navigate to project directory
 cd aSpiral
 
 # Install dependencies
@@ -22,142 +54,100 @@ npm install
 npm run dev
 ```
 
-### Build & Test
+The app will be available at `http://localhost:5173`
 
-```sh
-# Run tests (Level 6 Armageddon Test Suite)
-npm test
+### Environment Setup
 
-# Run full validation pipeline
-npm run validate
+Copy the example config and configure your environment:
 
-# Build for production
-npm run build:production
+```bash
+cp public/config.example.js public/config.js
 ```
 
-## 🏗️ Architecture
+See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for backend configuration.
 
-### Core Technologies
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + shadcn/ui components
-- **3D Rendering**: Three.js + React Three Fiber
-- **State Management**: Zustand
-- **API**: Supabase (Backend-as-a-Service)
-- **Testing**: Vitest + Testing Library
-- **Deployment**: Capacitor (iOS/Android) + PWA
+## Tech Stack
 
-### Key Features
-- **Voice-First Interface**: Speech-to-text and text-to-speech integration
-- **Cinematic Breakthroughs**: 35+ procedural 3D visual experiences
-- **Multi-Language Support**: i18n with 5 languages (EN, ES, FR, DE, JA)
-- **Progressive Web App**: Installable on mobile and desktop
-- **Real-time Analytics**: Comprehensive user interaction tracking
+| Category | Technologies |
+|----------|-------------|
+| **Frontend** | React 18, TypeScript, Vite |
+| **Styling** | Tailwind CSS, shadcn/ui |
+| **3D Graphics** | Three.js, React Three Fiber |
+| **Animation** | Framer Motion |
+| **Backend** | Supabase (Auth, Database, Edge Functions) |
+| **AI** | OpenAI GPT-4, Whisper |
+| **Mobile** | Capacitor (iOS/Android) |
 
-## 🧪 Testing & Quality
+## Documentation
 
-### Test Suite Status
-- **Coverage**: 20 test files, 303 individual tests
-- **Pass Rate**: 100% (All tests passing)
-- **Quality Grade**: SonarQube Grade A (Maintainability)
+| Document | Description |
+|----------|-------------|
+| [RENDERER_V2.md](docs/RENDERER_V2.md) | Cinematic rendering pipeline documentation |
+| [PRODUCTION_STATUS.md](docs/PRODUCTION_STATUS.md) | Current production status and metrics |
+| [SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) | Security audit and compliance |
+| [DEPLOYMENT_INSTRUCTIONS.md](DEPLOYMENT_INSTRUCTIONS.md) | Deployment guide |
+| [SUPABASE_SETUP.md](SUPABASE_SETUP.md) | Backend setup instructions |
 
-### Validation Pipeline
-```sh
-# Run comprehensive validation
-npm run validate
-# Includes: TypeScript → ESLint → Tests → Build
+## Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint         # Run ESLint
+npm run type-check   # Run TypeScript type checking
 ```
 
-### Build Integrity
-The project includes hardened build processes with:
-- Pre-commit hooks for code quality
-- Automated validation scripts
-- Production build verification
-- Zero-failure test suite
+### Icon Generation
 
-## 📚 Documentation
+Generate app icons for all platforms:
 
-### Core Documentation
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Technical roadmap and architecture
-- [Production Status](docs/PRODUCTION_STATUS.md) - Current deployment status
-- [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
-- [Security Review](docs/SECURITY_REVIEW.md) - Security audit results
-- [Code Review](docs/CODE_REVIEW.md) - Code quality guidelines
-
-### Setup Guides
-- [Supabase Setup](SUPABASE_SETUP.md) - Backend configuration
-- [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md) - Production deployment
-
-## 🔧 Development
-
-### Available Scripts
-```json
-{
-  "dev": "Start development server",
-  "build": "Build for production",
-  "build:production": "Full validation + production build",
-  "test": "Run test suite",
-  "test:watch": "Run tests in watch mode",
-  "lint": "Run ESLint",
-  "lint:fix": "Auto-fix ESLint issues",
-  "typecheck": "Run TypeScript compiler check",
-  "validate": "Run full validation pipeline",
-  "precommit": "Pre-commit validation",
-  "prepush": "Pre-push validation + build"
-}
+```bash
+# Ensure src/assets/app_icon.png exists (1024x1024 recommended)
+node scripts/generate-icons.mjs
 ```
 
-### Code Quality Standards
-- **TypeScript**: Strict mode enabled
-- **ESLint**: Zero warnings/errors
-- **SonarQube**: Grade A maintainability
-- **Testing**: 100% pass rate required
-- **Build**: Zero failures in CI/CD
+This generates icons for:
+- PWA (192x192, 512x512, maskable)
+- iOS (1024x1024)
+- Android (all mipmap densities)
+- Web favicons (16x16, 32x32, ico)
 
-## 🚀 Deployment
+## Deployment
 
-### Production Build
-```sh
-npm run build:production
-```
+### Web (Vercel/Netlify)
 
-### Mobile Deployment
-```sh
-# iOS
+```bash
 npm run build
-npx cap add ios
+# Deploy the 'dist' folder
+```
+
+### Mobile (Capacitor)
+
+```bash
+# iOS
+npx cap sync ios
 npx cap open ios
 
 # Android
-npm run build
-npx cap add android
+npx cap sync android
 npx cap open android
 ```
 
-### PWA Deployment
-The app is automatically configured as a Progressive Web App and can be installed from any modern browser.
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Run validation: `npm run validate`
-4. Commit changes: `git commit -m "Add your feature"`
-5. Push to branch: `git push origin feature/your-feature`
-6. Create a Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Code Standards
-- All commits must pass `npm run validate`
-- Tests must maintain 100% pass rate
-- Code must maintain SonarQube Grade A
-- Documentation must be updated for API changes
+## License
 
-## 📄 License
+Proprietary - All rights reserved by Apex Business Systems
 
-Copyright © 2024 Apex Business Systems. All rights reserved.
+---
 
-## 🆘 Support
-
-For technical support or questions:
-- Create an issue in this repository
-- Contact the development team
-- Check the [documentation](docs/) for common solutions
+<p align="center">
+  Made with ❤️ by <a href="https://apexbusiness.systems">Apex Business Systems</a>
+</p>
