@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => ({
     target: "es2020",
   },
   test: {
-    exclude: [...configDefaults.exclude, "**/supabase/functions/spiral-ai/**/*.test.ts", "temp_repo/**/*.test.ts"],
+    exclude: [...configDefaults.exclude, "supabase/functions/spiral-ai/**/*.test.ts"],
   },
   plugins: [
     react(),
