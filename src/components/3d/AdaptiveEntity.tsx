@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unknown-property */
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Text, Float, Html } from "@react-three/drei";
@@ -15,11 +16,11 @@ interface AdaptiveEntityProps {
   onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-function EntityGeometry({ 
-  type, 
-  size 
-}: { 
-  type: "sphere" | "cube" | "octahedron" | "torus" | "cone"; 
+function EntityGeometry({
+  type,
+  size
+}: {
+  type: "sphere" | "cube" | "octahedron" | "torus" | "cone";
   size: number;
 }) {
   switch (type) {
@@ -37,9 +38,9 @@ function EntityGeometry({
   }
 }
 
-export function AdaptiveEntity({ 
-  entity, 
-  position, 
+export function AdaptiveEntity({
+  entity,
+  position,
   isVisible,
   onClick,
   showLabel = "hover",
@@ -50,7 +51,7 @@ export function AdaptiveEntity({
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
   const [appeared, setAppeared] = useState(false);
-  
+
   // Register mesh ref for direct position updates from physics worker
   useEffect(() => {
     if (groupRef.current) {
@@ -58,7 +59,7 @@ export function AdaptiveEntity({
     }
     return () => onMeshRef?.(null);
   }, [onMeshRef]);
-  
+
   // Animate appearance
   useEffect(() => {
     if (isVisible && !appeared) {
@@ -66,21 +67,21 @@ export function AdaptiveEntity({
       return () => clearTimeout(timer);
     }
   }, [isVisible, appeared]);
-  
-  const visualConfig = useMemo(() => 
+
+  const visualConfig = useMemo(() =>
     getEntityVisualConfig(entity.type, entity.metadata?.role),
     [entity.type, entity.metadata?.role]
   );
-  
-  const color = useMemo(() => 
+
+  const color = useMemo(() =>
     getColorByValence(entity.metadata?.valence || 0, entity.type),
     [entity.metadata?.valence, entity.type]
   );
-  
+
   // Size based on importance
   const importance = entity.metadata?.importance || 0.5;
   const baseSize = 0.25 + importance * 0.25;
-  
+
   // Determine if label should show
   const shouldShowLabel = useMemo(() => {
     if (showLabel === "always") return true;
@@ -88,21 +89,21 @@ export function AdaptiveEntity({
     if (showLabel === "important") return importance > 0.7 || hovered || selected;
     return false;
   }, [showLabel, hovered, selected, importance]);
-  
+
   useFrame((state) => {
     if (!meshRef.current || !isVisible) return;
-    
+
     const time = state.clock.elapsedTime;
-    
+
     // Simplified scale animation
     const targetScale = appeared ? 1 : 0;
     const currentScale = meshRef.current.scale.x;
     const newScale = currentScale + (targetScale - currentScale) * 0.15;
-    
+
     // Simplified hover/pulse - reduced calculations
     const pulseAmount = hovered ? Math.sin(time * 3) * 0.05 : 0;
     const hoverScale = hovered ? 1.1 : 1;
-    
+
     meshRef.current.scale.setScalar(newScale * hoverScale * (1 + pulseAmount));
     // Removed rotation for performance
   });
@@ -135,7 +136,7 @@ export function AdaptiveEntity({
             opacity={hovered ? 1 : 0.85}
           />
         </mesh>
-        
+
         {/* Simplified glow - only on hover */}
         {hovered && (
           <mesh scale={1.3}>
@@ -147,7 +148,7 @@ export function AdaptiveEntity({
             />
           </mesh>
         )}
-        
+
         {/* Ground indicator - simplified */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -baseSize - 0.1, 0]}>
           <ringGeometry args={[baseSize * 0.8, baseSize * 1, 16]} />
@@ -157,7 +158,7 @@ export function AdaptiveEntity({
             opacity={hovered ? 0.3 : 0.1}
           />
         </mesh>
-        
+
         {/* Adaptive label using Html for better rendering */}
         {shouldShowLabel && (
           <Html

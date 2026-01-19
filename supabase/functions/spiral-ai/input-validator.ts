@@ -27,42 +27,42 @@ export const TranscriptSchema = z.object({
       (val) => !isEncodedPayload(val),
       "Encoded payloads not allowed"
     ),
-  
+
   userTier: z.enum(["free", "pro", "enterprise"]).default("free"),
-  
+
   userId: z.string()
     .max(128, "User ID too long")
     .regex(/^[a-zA-Z0-9_-]+$/, "Invalid user ID format")
     .optional()
     .default("anonymous"),
-  
+
   sessionId: z.string()
     .max(128, "Session ID too long")
     .regex(/^[a-zA-Z0-9_-]+$/, "Invalid session ID format")
     .optional()
     .default("default"),
-  
+
   ultraFast: z.boolean().optional().default(false),
   forceBreakthrough: z.boolean().optional().default(false),
-  
+
   stagePrompt: z.string()
     .max(500, "Stage prompt too long")
     .optional(),
-  
+
   sessionContext: z.object({
     entities: z.array(z.object({
       type: z.string().max(50),
       label: z.string().max(200),
     })).max(20).optional(),
-    
+
     conversationHistory: z.array(
       z.string().max(2000)
     ).max(20).optional(),
-    
+
     questionsAsked: z.number().int().min(0).max(100).optional(),
-    
+
     stage: z.enum(["friction", "desire", "blocker", "breakthrough"]).optional(),
-    
+
     detectedPatterns: z.array(z.object({
       name: z.string().max(100),
       confidence: z.number().min(0).max(1),
@@ -101,7 +101,7 @@ function isEncodedPayload(value: string): boolean {
 
   // Check for hex encoded content
   const hexPattern = /^(0x)?[0-9a-fA-F]{40,}$/;
-  const stripped = value.replace(/\s/g, '');
+  const stripped = value.replaceAll(/\s/g, '');
   if (hexPattern.test(stripped)) {
     // Same diversity check for hex
     const uniqueChars = new Set(stripped).size;
@@ -146,14 +146,14 @@ export function validateInput(rawInput: unknown): ValidationResult {
 
     // Validate against schema
     const result = TranscriptSchema.safeParse(rawInput);
-    
+
     if (!result.success) {
       const errors: ValidationError[] = result.error.errors.map((err) => ({
         field: err.path.join('.') || 'root',
         message: err.message,
         code: err.code,
       }));
-      
+
       return { success: false, errors };
     }
 
@@ -192,7 +192,7 @@ function performSemanticValidation(data: ValidatedInput): ValidationError[] {
   if (data.sessionContext?.entities) {
     for (let i = 0; i < data.sessionContext.entities.length; i++) {
       const entity = data.sessionContext.entities[i];
-      
+
       // Check for injection attempts in entity labels
       if (containsInjectionAttempt(entity.label)) {
         errors.push({
@@ -208,7 +208,7 @@ function performSemanticValidation(data: ValidatedInput): ValidationError[] {
   if (data.sessionContext?.conversationHistory) {
     for (let i = 0; i < data.sessionContext.conversationHistory.length; i++) {
       const message = data.sessionContext.conversationHistory[i];
-      
+
       if (containsInjectionAttempt(message)) {
         errors.push({
           field: `sessionContext.conversationHistory[${i}]`,
@@ -251,21 +251,21 @@ function sanitizeTranscript(transcript: string): string {
   let sanitized = transcript;
 
   // Normalize whitespace
-  sanitized = sanitized.replace(/\s+/g, ' ').trim();
+  sanitized = sanitized.replaceAll(/\s+/g, ' ').trim();
 
   // Remove control characters (except newline and tab)
-  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  sanitized = sanitized.replaceAll(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
 
   // Limit consecutive newlines
-  sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
+  sanitized = sanitized.replaceAll(/\n{3,}/g, '\n\n');
 
   // Remove zero-width characters
-  sanitized = sanitized.replace(/[\u200B-\u200D\uFEFF\u2060]/g, '');
+  sanitized = sanitized.replaceAll(/[\u200B-\u200D\uFEFF\u2060]/g, '');
 
   // Normalize quotes
   sanitized = sanitized
-    .replace(/[""]/g, '"')
-    .replace(/['']/g, "'");
+    .replaceAll(/[""]/g, '"')
+    .replaceAll(/['']/g, "'");
 
   return sanitized;
 }
@@ -281,7 +281,7 @@ export async function parseRequestBody(
   try {
     // Check content length header
     const contentLength = request.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > maxSizeBytes) {
+    if (contentLength && Number.parseInt(contentLength) > maxSizeBytes) {
       return { success: false, error: "Request body too large" };
     }
 
@@ -302,11 +302,11 @@ export async function parseRequestBody(
       return { success: true, data };
     } catch (parseError) {
       clearTimeout(timeout);
-      
+
       if (parseError instanceof SyntaxError) {
         return { success: false, error: "Invalid JSON" };
       }
-      
+
       return { success: false, error: "Failed to parse request" };
     }
   } catch (error) {
@@ -330,7 +330,7 @@ export interface HeaderValidation {
 
 export function validateHeaders(request: Request): HeaderValidation {
   const warnings: string[] = [];
-  
+
   const contentType = request.headers.get('content-type') || '';
   const userAgent = request.headers.get('user-agent') || 'unknown';
   const origin = request.headers.get('origin') || '';
@@ -349,7 +349,7 @@ export function validateHeaders(request: Request): HeaderValidation {
     /postman/i,
     /insomnia/i,
   ];
-  
+
   if (suspiciousAgents.some(pattern => pattern.test(userAgent))) {
     warnings.push("Suspicious user agent detected");
   }

@@ -1,187 +1,79 @@
-/**
- * PremiumSplash - Sleek loading screen for aSpiral
- *
- * Features:
- * - Dark violet/indigo gradient background
- * - Pulsing logo animation
- * - Smooth fade-out transition
- * - Accessibility: respects prefers-reduced-motion
- */
-
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 interface PremiumSplashProps {
   isVisible: boolean;
-  onComplete?: () => void;
-  /** Minimum display time in ms (default: 1500) */
-  minDisplayTime?: number;
 }
 
-export function PremiumSplash({
-  isVisible,
-  onComplete,
-  minDisplayTime = 1500
-}: PremiumSplashProps) {
+export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
+  // Use local state to handle the exit animation delay
+  const [shouldRender, setShouldRender] = useState(true);
+
+  useEffect(() => {
+    if (!isVisible) {
+      const timer = setTimeout(() => setShouldRender(false), 1000); // Wait for fade out
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible]);
+
+  if (!shouldRender) return null;
+
   return (
-    <AnimatePresence onExitComplete={onComplete}>
+    <AnimatePresence>
       {isVisible && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className={cn(
-            "fixed inset-0 z-[9999] flex flex-col items-center justify-center",
-            "bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#1e1b4b]"
-          )}
-          role="status"
-          aria-label="Loading aSpiral"
+          exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#4a1a6b] overflow-hidden"
         >
-          {/* Background ambient glow */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <motion.div
-              className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.5, 0.3],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-            <motion.div
-              className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-violet-500/20 blur-3xl"
-              animate={{
-                scale: [1.2, 1, 1.2],
-                opacity: [0.4, 0.2, 0.4],
-              }}
-              transition={{
-                duration: 5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
+          {/* Aurora Background Effect */}
+          <div className="absolute inset-0 z-0">
+             <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] animate-spin-slow bg-[conic-gradient(from_0deg,transparent_0deg,#ff00cc_90deg,transparent_180deg,#00dbde_270deg,transparent_360deg)] opacity-20 blur-[100px]" />
+             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#2d1b4e]/80 to-[#0f0c29]" />
           </div>
 
-          {/* Logo container */}
-          <motion.div
-            className="relative z-10 flex flex-col items-center gap-6"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            {/* Spiral logo mark */}
+          <div className="relative z-10 flex flex-col items-center gap-6 p-6 text-center">
+            {/* Logo Mark - Spinning/Pulsing */}
             <motion.div
-              className="relative w-24 h-24 flex items-center justify-center"
-              animate={{
-                rotate: 360,
-              }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "linear",
-              }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+              className="relative w-32 h-32 md:w-40 md:h-40"
             >
-              {/* Outer ring */}
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-indigo-400/30"
-                animate={{
-                  scale: [1, 1.1, 1],
-                  opacity: [0.3, 0.6, 0.3],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-
-              {/* Middle ring */}
-              <motion.div
-                className="absolute inset-3 rounded-full border-2 border-violet-400/40"
-                animate={{
-                  scale: [1.1, 1, 1.1],
-                  opacity: [0.4, 0.7, 0.4],
-                }}
-                transition={{
-                  duration: 2.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-
-              {/* Inner glow */}
-              <motion.div
-                className="absolute inset-6 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500"
-                animate={{
-                  scale: [1, 1.15, 1],
-                  opacity: [0.8, 1, 0.8],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-
-              {/* Center dot */}
-              <div className="absolute inset-9 rounded-full bg-white/90" />
+               {/* Glowing Orb Behind */}
+               <div className="absolute inset-0 rounded-full bg-purple-500 blur-2xl opacity-40 animate-pulse" />
+               <img
+                 src="/src/assets/aspiral-logo.png"
+                 alt="aSpiral Logo"
+                 className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                 onError={(e) => {
+                    // Fallback if image fails
+                    e.currentTarget.style.display = 'none';
+                 }}
+               />
+               {/* Fallback Text if Image Missing */}
+               <div className="absolute inset-0 flex items-center justify-center text-6xl text-white font-cinzel opacity-0">A</div>
             </motion.div>
 
-            {/* Brand name */}
-            <motion.h1
-              className="text-3xl font-light tracking-[0.3em] text-white/90 uppercase"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              aSpiral
-            </motion.h1>
-
-            {/* Tagline */}
-            <motion.p
-              className="text-sm text-indigo-200/60 tracking-wide"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-            >
-              Finding clarity in chaos
-            </motion.p>
-
-            {/* Loading indicator */}
+            {/* Loading Indicator */}
             <motion.div
-              className="mt-8 flex gap-1.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8, duration: 0.3 }}
+              transition={{ delay: 0.8 }}
+              className="mt-8 flex gap-2"
             >
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-2 h-2 rounded-full bg-indigo-400/70"
-                  animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [0.5, 1, 0.5],
-                  }}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: i * 0.15,
-                    ease: "easeInOut",
-                  }}
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                  className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]"
                 />
               ))}
             </motion.div>
-          </motion.div>
-
-          {/* Screen reader announcement */}
-          <span className="sr-only">Loading aSpiral application</span>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
-
-export default PremiumSplash;

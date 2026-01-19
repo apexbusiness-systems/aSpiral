@@ -47,10 +47,10 @@ export function QuestionBubble({
   if (!isVisible || !question) return null;
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 max-w-lg w-full px-4">
+    <div className="absolute bottom-14 sm:bottom-10 left-1/2 -translate-x-1/2 z-20 max-w-md sm:max-w-lg w-[calc(100%-2rem)] sm:w-full px-2 sm:px-4">
       <div
         className={cn(
-          "glass-card p-6",
+          "glass-card p-4 sm:p-6",
           "shadow-glow",
           "animate-in fade-in-0 slide-in-from-bottom-6 duration-700"
         )}
