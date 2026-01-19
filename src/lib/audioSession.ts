@@ -2,6 +2,7 @@ import { createLogger } from '@/lib/logger';
 import { addBreadcrumb } from '@/lib/debugOverlay';
 import { useAssistantSpeakingStore } from '@/hooks/useAssistantSpeaking';
 import { featureFlags } from '@/lib/featureFlags';
+import { supabase } from '@/integrations/supabase/client';
 
 const logger = createLogger('AudioSession');
 
@@ -121,7 +122,7 @@ async function ensureAudioContext(): Promise<void> {
     try {
       await audioContext.resume();
     } catch (error) {
-      logger.warn('AudioContext resume failed', error as Error);
+      logger.warn('AudioContext resume failed', { error: (error as Error).message });
     }
   }
 }
@@ -214,13 +215,17 @@ async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
     throw new Error('Supabase not configured');
   }
 
+  // Get current session for access token
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+
   abortController = new AbortController();
   const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
+      'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${supabaseKey}`,
     },
     body: JSON.stringify({ text, voice, speed }),
     signal: abortController.signal,
@@ -287,6 +292,7 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       updateStatus({ isSpeaking: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().stopSpeaking();
       URL.revokeObjectURL(audioUrl);
+      clearGateAfterDelay(); // Ensure gate is cleared on successful end
       resumeListeningIfNeeded(requestId);
       addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'openai' } });
       options.onEnd?.();
@@ -298,13 +304,32 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       const error = new Error('Audio playback failed');
       updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().stopSpeaking();
+      URL.revokeObjectURL(audioUrl);
+      clearGateAfterDelay(); // Ensure gate is cleared on error
+      resumeListeningIfNeeded(requestId);
       addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'openai' } });
       options.onError?.(error);
       reject(error);
     };
 
     audio.play().catch((error) => {
-      reject(error as Error);
+      // TTS PLAY REJECTION FIX: Handle play() rejection gracefully
+      if (requestId !== status.requestId) return;
+      const playError = new Error(`Audio play blocked: ${(error as Error).message}`);
+      updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      URL.revokeObjectURL(audioUrl);
+      clearGateAfterDelay(); // Clear gate even on play rejection
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({ type: 'audio', message: 'tts_play_rejected', data: { error: playError.message } });
+
+      // Show toast for user feedback
+      logger.warn('Audio play rejected, showing fallback toast');
+      // Note: toast import would be needed, but using logger for now
+      console.warn('[TTS] Audio blocked—tap once to enable sound');
+
+      options.onError?.(playError);
+      reject(playError);
     });
   });
 }
