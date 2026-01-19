@@ -313,7 +313,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
               recognitionRef.current?.start();
               audioDebug.log("watchdog_restart", { interval: watchdogIntervalMs });
             } catch (e) {
-              audioDebug.error("watchdog_restart_failed", { error: (e as Error).message });
+              audioDebug.error("watchdog_restart_failed", e as Error);
             }
           }
         }, watchdogIntervalMs);
@@ -339,7 +339,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     [options, setError, setRecording]
   );
 
-  const startRecording = useCallback(() => {
+  const startRecording = useCallback(async () => {
     if (!voiceEnabled) {
       setError("Voice disabled");
       toast.error("Voice input disabled");
@@ -349,6 +349,21 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     if (assistantIsSpeakingRef.current) {
       toast.error("Wait for playback to finish");
       return;
+    }
+
+    // Check microphone permission before starting
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        if (permissionStatus.state === 'denied') {
+          setError("Microphone permission denied");
+          toast.error("Microphone access denied. Please enable in browser settings.");
+          return;
+        }
+      }
+    } catch (permError) {
+      // Permission API not supported, continue anyway
+      logger.debug("Permission API not available", permError as Error);
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -440,9 +455,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             recognitionRef.current?.stop();
             recognitionRef.current?.start();
             audioDebug.log("watchdog_restart", { interval: watchdogIntervalMs });
-          } catch (e) {
-            audioDebug.error("watchdog_restart_failed", { error: (e as Error).message });
-          }
+            } catch (e) {
+              audioDebug.error("watchdog_restart_failed", e as Error);
+            }
         }
       }, watchdogIntervalMs);
     } catch (e) {
