@@ -15,6 +15,8 @@ export interface AudioDebugEvent {
     | 'stt_interim'
     | 'stt_final'
     | 'stt_dedupe'
+    | 'watchdog_restart'
+    | 'watchdog_restart_failed'
     | 'tts_enqueue'
     | 'tts_start'
     | 'tts_end'
