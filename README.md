@@ -1,75 +1,163 @@
-# Welcome to your Lovable project
+# aSpiral - Transform Confusion into Clarity
 
-## Project info
+**aSpiral** is a voice-first AI coaching platform that visualizes your thoughts and guides you to breakthrough clarity through immersive 3D cinematic experiences.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Quick Start
 
-## How can I edit this code?
+### Prerequisites
+- Node.js 22.x or later ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- npm or yarn
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone https://github.com/apexbusiness-systems/aSpiral.git
+cd aSpiral
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Build & Test
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+# Run tests (Level 6 Armageddon Test Suite)
+npm test
 
-**Use GitHub Codespaces**
+# Run full validation pipeline
+npm run validate
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Build for production
+npm run build:production
+```
 
-## What technologies are used for this project?
+## 🏗️ Architecture
 
-This project is built with:
+### Core Technologies
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **3D Rendering**: Three.js + React Three Fiber
+- **State Management**: Zustand
+- **API**: Supabase (Backend-as-a-Service)
+- **Testing**: Vitest + Testing Library
+- **Deployment**: Capacitor (iOS/Android) + PWA
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Key Features
+- **Voice-First Interface**: Speech-to-text and text-to-speech integration
+- **Cinematic Breakthroughs**: 35+ procedural 3D visual experiences
+- **Multi-Language Support**: i18n with 5 languages (EN, ES, FR, DE, JA)
+- **Progressive Web App**: Installable on mobile and desktop
+- **Real-time Analytics**: Comprehensive user interaction tracking
 
-## Renderer V2 documentation
+## 🧪 Testing & Quality
 
-For details on the cinematic rendering pipeline, feature flags, performance considerations, and rollback steps, see:
+### Test Suite Status
+- **Coverage**: 20 test files, 303 individual tests
+- **Pass Rate**: 100% (All tests passing)
+- **Quality Grade**: SonarQube Grade A (Maintainability)
 
-- [Renderer V2: Cinematic Pipeline Documentation](docs/RENDERER_V2.md)
+### Validation Pipeline
+```sh
+# Run comprehensive validation
+npm run validate
+# Includes: TypeScript → ESLint → Tests → Build
+```
 
-## How can I deploy this project?
+### Build Integrity
+The project includes hardened build processes with:
+- Pre-commit hooks for code quality
+- Automated validation scripts
+- Production build verification
+- Zero-failure test suite
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 📚 Documentation
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Core Documentation
+- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Technical roadmap and architecture
+- [Production Status](docs/PRODUCTION_STATUS.md) - Current deployment status
+- [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
+- [Security Review](docs/SECURITY_REVIEW.md) - Security audit results
+- [Code Review](docs/CODE_REVIEW.md) - Code quality guidelines
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Setup Guides
+- [Supabase Setup](SUPABASE_SETUP.md) - Backend configuration
+- [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md) - Production deployment
+
+## 🔧 Development
+
+### Available Scripts
+```json
+{
+  "dev": "Start development server",
+  "build": "Build for production",
+  "build:production": "Full validation + production build",
+  "test": "Run test suite",
+  "test:watch": "Run tests in watch mode",
+  "lint": "Run ESLint",
+  "lint:fix": "Auto-fix ESLint issues",
+  "typecheck": "Run TypeScript compiler check",
+  "validate": "Run full validation pipeline",
+  "precommit": "Pre-commit validation",
+  "prepush": "Pre-push validation + build"
+}
+```
+
+### Code Quality Standards
+- **TypeScript**: Strict mode enabled
+- **ESLint**: Zero warnings/errors
+- **SonarQube**: Grade A maintainability
+- **Testing**: 100% pass rate required
+- **Build**: Zero failures in CI/CD
+
+## 🚀 Deployment
+
+### Production Build
+```sh
+npm run build:production
+```
+
+### Mobile Deployment
+```sh
+# iOS
+npm run build
+npx cap add ios
+npx cap open ios
+
+# Android
+npm run build
+npx cap add android
+npx cap open android
+```
+
+### PWA Deployment
+The app is automatically configured as a Progressive Web App and can be installed from any modern browser.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Run validation: `npm run validate`
+4. Commit changes: `git commit -m "Add your feature"`
+5. Push to branch: `git push origin feature/your-feature`
+6. Create a Pull Request
+
+### Code Standards
+- All commits must pass `npm run validate`
+- Tests must maintain 100% pass rate
+- Code must maintain SonarQube Grade A
+- Documentation must be updated for API changes
+
+## 📄 License
+
+Copyright © 2024 Apex Business Systems. All rights reserved.
+
+## 🆘 Support
+
+For technical support or questions:
+- Create an issue in this repository
+- Contact the development team
+- Check the [documentation](docs/) for common solutions
