@@ -156,7 +156,8 @@ function clearSpeechUtterance() {
 function splitIntoSentences(text: string): string[] {
   // Match sentence endings: period, exclamation, question mark followed by space or end
   // Also handles ellipsis and keeps punctuation with the sentence
-  const sentences = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
+  // Fixed for security: avoid catastrophic backtracking with atomic groups
+  const sentences = text.match(/(?:[^.!?]+[.!?]+(?:\s|$))|(?:[^.!?]+$)/g);
 
   if (!sentences) return [text];
 

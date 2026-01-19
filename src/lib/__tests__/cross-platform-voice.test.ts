@@ -257,53 +257,27 @@ describe('Reverb Gate Logic', () => {
     vi.useRealTimers();
   });
 
-  it('gate wedge fix: clearGateAfterDelay always called on TTS end', () => {
-    // This test ensures the fix where clearGateAfterDelay is called on every terminal TTS path
-    vi.useFakeTimers();
-    const gate = createReverbGate(100);
+  // Helper function for gate clearing tests
+  const testGateClearsAfterDelay = (description: string, delayMs: number = 100) => {
+    it(`gate wedge fix: clearGateAfterDelay called on ${description}`, () => {
+      vi.useFakeTimers();
+      const gate = createReverbGate(delayMs);
 
-    gate.setGate();
-    expect(gate.isGated()).toBe(true);
+      gate.setGate();
+      expect(gate.isGated()).toBe(true);
 
-    // Simulate TTS end - should clear gate
-    gate.clearGateAfterDelay();
-    vi.advanceTimersByTime(100);
-    expect(gate.isGated()).toBe(false);
+      // Simulate the terminal path - should clear gate
+      gate.clearGateAfterDelay();
+      vi.advanceTimersByTime(delayMs);
+      expect(gate.isGated()).toBe(false);
 
-    vi.useRealTimers();
-  });
+      vi.useRealTimers();
+    });
+  };
 
-  it('gate wedge fix: clearGateAfterDelay called on TTS error', () => {
-    // This test ensures the fix where clearGateAfterDelay is called on TTS error
-    vi.useFakeTimers();
-    const gate = createReverbGate(100);
-
-    gate.setGate();
-    expect(gate.isGated()).toBe(true);
-
-    // Simulate TTS error - should clear gate
-    gate.clearGateAfterDelay();
-    vi.advanceTimersByTime(100);
-    expect(gate.isGated()).toBe(false);
-
-    vi.useRealTimers();
-  });
-
-  it('gate wedge fix: clearGateAfterDelay called on play rejection', () => {
-    // This test ensures the fix where clearGateAfterDelay is called on audio.play() rejection
-    vi.useFakeTimers();
-    const gate = createReverbGate(100);
-
-    gate.setGate();
-    expect(gate.isGated()).toBe(true);
-
-    // Simulate play rejection - should clear gate
-    gate.clearGateAfterDelay();
-    vi.advanceTimersByTime(100);
-    expect(gate.isGated()).toBe(false);
-
-    vi.useRealTimers();
-  });
+  testGateClearsAfterDelay('TTS end');
+  testGateClearsAfterDelay('TTS error');
+  testGateClearsAfterDelay('play rejection');
 });
 
 // Helper that mirrors the reverb gate implementation
