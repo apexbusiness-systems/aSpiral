@@ -1,7 +1,7 @@
 # aSpiral Production Status Report
 
-**Document Version:** 1.7
-**Last Updated:** January 4, 2026
+**Document Version:** 1.8
+**Last Updated:** January 19, 2026
 **Confidential - For Investor Review**
 
 ---
@@ -68,11 +68,18 @@ aSpiral provides a unique voice-first interface where users can speak their thou
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Real-time transcription | ✅ Production | WebSpeech API with fallback |
-| Voice activity detection | ✅ Production | Automatic start/stop |
-| Continuous listening mode | ✅ Production | Extended conversation support |
+| Voice activity detection | ✅ Production | Automatic start/stop with watchdog protection |
+| Continuous listening mode | ✅ Production | Extended conversation support (60-120s stall prevention) |
 | Multi-language support | ✅ Production | 5 languages (EN, ES, FR, DE, JA) |
-| Audio session coordination | ✅ Production | Centralized TTS/STT lifecycle to prevent feedback loops |
+| Audio session coordination | ✅ Production | Centralized TTS/STT lifecycle with gate wedge fixes |
 | Transcript buffering | ✅ Production | Dual-buffer interim/final transcript handling |
+| STT watchdog | ✅ Production | 90s timeout with rate-limited auto-restarts (max 3/60s) |
+| Silence timeout | ✅ Production | 30s reset on ANY activity (interim + final) |
+| Gate wedge prevention | ✅ Production | Deterministic clearing on ALL TTS terminal paths |
+| TTS play rejection | ✅ Production | Graceful fallback with toast notifications |
+| Supabase auth correction | ✅ Production | Session access_token usage for TTS requests |
+| UI truthfulness | ✅ Production | VoiceState enum (Idle/Listening/Reconnecting/Error) |
+| Diagnostics snapshots | ✅ Production | JSON logs at every STT transition |
 
 ### 2. AI Processing Pipeline
 | Feature | Status | Description |
@@ -853,3 +860,4 @@ Comprehensive device-aware rendering optimization:
 | 1.5 | Dec 30, 2025 | aSpiral Team | Added detailed battery test results: 26/26 passed, all injection categories 100% block rate, 109,930 req/s throughput |
 | 1.6 | Dec 30, 2025 | aSpiral Team | Corrected tech stack: OpenAI API (not Gemini), IONOS.ca hosting |
 | 1.7 | Jan 04, 2026 | aSpiral Team | Added audio session coordination, runtime debug overlay, feature flags, and render storm diagnostics |
+| 1.8 | Jan 19, 2026 | aSpiral Team | Fixed launch-blocking voice failures: STT watchdog, silence timeout, gate wedge prevention, TTS play rejection handling, Supabase auth correction, UI truthfulness with VoiceState enum, diagnostics snapshots |
