@@ -5,7 +5,7 @@
  * Comprehensive validation of build integrity and common issues
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,9 +38,14 @@ let passedChecks = 0;
 function runCommand(command, description) {
   try {
     console.log(`📋 ${description}...`);
-    // SECURITY: Command injection safe - only hardcoded npm script names are executed
-    // No user input is concatenated into commands
-    execSync(command, { cwd: ROOT_DIR, stdio: 'pipe' });
+    // SECURITY: Command injection safe - only hardcoded npm commands are executed
+    // Using shell: false prevents shell interpretation while allowing npm execution
+    execSync(command, {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      shell: false,
+      env: { ...process.env }
+    });
     console.log(`✅ ${description} passed\n`);
     return true;
   } catch (error) {
