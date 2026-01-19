@@ -1,64 +1,110 @@
 /**
- * @fileoverview Procedural texture generation for Aurora platform
+ * @fileoverview Aurora platform texture generation utilities
  * @module components/3d/aurora/textures
+ * @sonarqube cognitive-complexity: 3
  */
 
 import * as THREE from 'three'
 
-/** Texture cache for singleton pattern */
-let glowTextureCache: THREE.Texture | null = null
+/** Texture cache for reuse across instances */
+const textureCache: Map<string, THREE.Texture> = new Map()
+
+/** Gradient stop configuration */
+interface GradientStop {
+    position: number
+    alpha: number
+}
+
+/** Preset gradient configurations */
+const GRADIENT_PRESETS = {
+    glow: [
+        { position: 0, alpha: 1 },
+        { position: 0.4, alpha: 0.8 },
+        { position: 0.7, alpha: 0.3 },
+        { position: 1, alpha: 0 }
+    ],
+    sparkle: [
+        { position: 0, alpha: 1 },
+        { position: 0.2, alpha: 0.9 },
+        { position: 0.5, alpha: 0.4 },
+        { position: 1, alpha: 0 }
+    ]
+} as const
 
 /**
- * Creates radial gradient glow texture.
- * Uses canvas for GPU-efficient procedural generation.
- *
- * @param size - Texture resolution (power of 2 recommended)
- * @returns THREE.Texture with radial alpha gradient
+ * Creates a radial gradient texture with configurable stops.
+ * Shared implementation for all gradient-based textures.
  */
-export function createGlowTexture(size = 256): THREE.Texture {
-  if (glowTextureCache !== null) {
-    return glowTextureCache
-  }
+function createRadialGradientTexture(
+    cacheKey: string,
+    size: number,
+    stops: readonly GradientStop[]
+): THREE.Texture {
+    const cached = textureCache.get(cacheKey)
+    if (cached) return cached
 
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
 
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    // Fallback: return empty texture
-    return new THREE.Texture()
-  }
+    if (!ctx) {
+        const fallback = new THREE.Texture()
+        fallback.needsUpdate = true
+        return fallback
+    }
 
-  const centerX = size / 2
-  const centerY = size / 2
-  const radius = size / 2
+    const gradient = ctx.createRadialGradient(
+        size / 2, size / 2, 0,
+        size / 2, size / 2, size / 2
+    )
 
-  const gradient = ctx.createRadialGradient(
-    centerX, centerY, 0,
-    centerX, centerY, radius
-  )
+    for (const stop of stops) {
+        gradient.addColorStop(stop.position, `rgba(255, 255, 255, ${stop.alpha})`)
+    }
 
-  // Apple-style soft falloff
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)')
-  gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.5)')
-  gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.2)')
-  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, size, size)
 
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, size, size)
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    texture.colorSpace = THREE.SRGBColorSpace
 
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-
-  glowTextureCache = texture
-  return texture
+    textureCache.set(cacheKey, texture)
+    return texture
 }
 
 /**
- * Disposes cached textures for cleanup.
+ * Creates a radial glow alpha texture for the aurora haze effect.
+ * @param size - Texture resolution (default 256)
+ */
+export function createGlowTexture(size = 256): THREE.Texture {
+    return createRadialGradientTexture(`glow_${size}`, size, GRADIENT_PRESETS.glow)
+}
+
+/**
+ * Creates a sparkle/noise texture for particle effects.
+ * @param size - Texture resolution (default 64)
+ */
+export function createSparkleTexture(size = 64): THREE.Texture {
+    return createRadialGradientTexture(`sparkle_${size}`, size, GRADIENT_PRESETS.sparkle)
+}
+
+/**
+ * Disposes all cached textures.
+ * Call this when component unmounts to free GPU memory.
  */
 export function disposeTextures(): void {
-  glowTextureCache?.dispose()
-  glowTextureCache = null
+    textureCache.forEach(texture => {
+        texture.dispose()
+    })
+    textureCache.clear()
+}
+
+/**
+ * Gets the number of textures currently cached.
+ * Useful for debugging memory usage.
+ */
+export function getTextureCacheSize(): number {
+    return textureCache.size
 }
