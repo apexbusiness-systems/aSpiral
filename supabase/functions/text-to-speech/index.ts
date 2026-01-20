@@ -83,16 +83,14 @@ serve(async (req) => {
       );
     }
 
-    // Return audio as binary
-    const audioBuffer = await response.arrayBuffer();
-    
-    console.log(`[TTS] Generated ${audioBuffer.byteLength} bytes of audio`);
+    // Stream audio directly without buffering
+    console.log(`[TTS] Streaming audio response`);
 
-    return new Response(audioBuffer, {
+    return new Response(response.body, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'audio/mpeg',
-        'Content-Length': audioBuffer.byteLength.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
 
