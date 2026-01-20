@@ -96,15 +96,13 @@ function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
 
   // Diagnostics snapshot at every transition
   if (event.type.startsWith('stt.')) {
+    // Note: Hook-scoped variables not available in global function scope
     console.log(`[VOICE_SNAPSHOT] ${JSON.stringify({
       voiceState: fullEvent.type,
-      isRecording,
       isGated: isGated(),
-      lastActivityAt: lastActivityAtRef.current,
-      restartCount60s: restartCount60sRef.current,
-      audioContextState: 'unknown', // Would need access to audioContext
-      ttsBackend: 'unknown', // Would need access to audioSession status
-      recognitionState: recognitionRef.current ? 'active' : 'inactive'
+      // Hook variables would need to be passed to this global function if needed
+      audioContextState: 'unknown',
+      ttsBackend: 'unknown'
     })}`);
   }
 }
@@ -363,6 +361,39 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     if (event.error === 'aborted') {
       logger.debug(`Recognition aborted (${context})`);
       return;
+    }
+
+    // AGGRESSIVE RESTART: For network, aborted, or no-speech errors, restart immediately
+    // Keep UI alive, don't set isRecording to false
+    const restartableErrors = ['network', 'aborted', 'no-speech'];
+    if (restartableErrors.includes(event.error)) {
+      restartCount60sRef.current++;
+      if (restartCount60sRef.current < 5) {
+        logger.warn(`Aggressive restart for ${event.error} (${restartCount60sRef.current}/5)`);
+        emitDebugEvent({ type: 'stt.error', data: {
+          error: event.error,
+          context,
+          aggressiveRestart: true,
+          restartCount: restartCount60sRef.current
+        } });
+
+        // DON'T set isRecording to false - keep UI alive
+        // DON'T call options.onError - don't show user error for recoverable issues
+
+        setTimeout(() => {
+          if (recognitionRef.current && isStartedRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (restartError) {
+              logger.error("Failed to restart recognition", restartError as Error);
+            }
+          }
+        }, 100);
+        return;
+      } else {
+        // Too many restarts, give up
+        logger.error(`Too many restarts (${restartCount60sRef.current}), giving up`);
+      }
     }
 
     logger.error(`Recognition error (${context})`, new Error(event.error));
