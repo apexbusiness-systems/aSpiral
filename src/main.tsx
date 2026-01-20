@@ -1,13 +1,10 @@
 import React, { Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./index.css";
 import GlobalErrorBoundary from "@/components/GlobalErrorBoundary";
 
-registerSW({
-  immediate: true,
-});
+// PWA registration handled in vite.config.ts with auto-update mode
 
 // CRITICAL: Wrap root render in try-catch to catch immediate boot failures
 try {
@@ -17,9 +14,7 @@ try {
   createRoot(rootElement).render(
     <React.StrictMode>
       <GlobalErrorBoundary>
-        <Suspense fallback={<div style={{ background: "#4a1a6b", height: "100vh", width: "100vw" }} />}>
-          <App />
-        </Suspense>
+        <App />
       </GlobalErrorBoundary>
     </React.StrictMode>
   );

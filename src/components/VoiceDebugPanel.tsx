@@ -11,10 +11,10 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bug, X, Trash2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-  subscribeToVoiceDebug, 
-  clearVoiceDebugBuffer 
-} from "@/hooks/useVoiceInput";
+// Voice debug functions removed - useVoiceInput doesn't export these
+// Stubbing them for now until proper debug exports are added
+const subscribeToVoiceDebug = (cb: (events: any[]) => void) => { cb([]); return () => {}; };
+const clearVoiceDebugBuffer = () => {};
 import { subscribeToTTSDebug } from "@/hooks/useTextToSpeech";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 

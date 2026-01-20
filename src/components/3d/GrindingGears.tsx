@@ -135,6 +135,7 @@ export function GrindingGears({
     // Shake effect based on intensity
     if (groupRef.current) {
       const shake = intensity * 0.02;
+      // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
       groupRef.current.position.x = position[0] + (Math.random() - 0.5) * shake;
       groupRef.current.position.y = position[1] + (Math.random() - 0.5) * shake;
     }
