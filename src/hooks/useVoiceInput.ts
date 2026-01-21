@@ -45,7 +45,7 @@ const parseStoredSettings = (value: string | null): StoredSettings | null => {
 };
 
 const shouldPlayFeedback = (): boolean => {
-  if (typeof window === "undefined") return false;
+  if (typeof globalThis === "undefined") return false;
   const stored = parseStoredSettings(localStorage.getItem(SETTINGS_STORAGE_KEY));
   if (stored?.soundEffects === false) return false;
   if (stored?.reducedMotion === true) return false;
@@ -197,7 +197,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         triggerHaptic([8, 20, 8]);
       }
     } catch {
-      // Ignore
+      // Ignore audio context errors during stop
     }
 
     isIntentionalStop.current = true;
@@ -363,7 +363,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       }
     } catch (permError) {
       // Permission API not supported, continue anyway
-      logger.debug("Permission API not available", permError as Error);
+      logger.debug("Permission API not available", { error: permError });
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -455,9 +455,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             recognitionRef.current?.stop();
             recognitionRef.current?.start();
             audioDebug.log("watchdog_restart", { interval: watchdogIntervalMs });
-            } catch (e) {
-              audioDebug.error("watchdog_restart_failed", e as Error);
-            }
+          } catch (e) {
+            audioDebug.error("watchdog_restart_failed", e as Error);
+          }
         }
       }, watchdogIntervalMs);
     } catch (e) {
