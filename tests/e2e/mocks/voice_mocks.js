@@ -1,16 +1,17 @@
 
 // Mock SpeechRecognition
-window.SpeechRecognition = class MockSpeechRecognition {
+globalThis.SpeechRecognition = class MockSpeechRecognition {
+    continuous = false;
+    interimResults = false;
+    lang = 'en-US';
+    onresult = null;
+    onerror = null;
+    onstart = null;
+    onend = null;
+    started = false;
+
     constructor() {
-        this.continuous = false;
-        this.interimResults = false;
-        this.lang = 'en-US';
-        this.onresult = null;
-        this.onerror = null;
-        this.onstart = null;
-        this.onend = null;
-        this.started = false;
-        window.lastRecognition = this; // Expose instance for testing
+        globalThis.lastRecognition = this; // Expose instance for testing
     }
 
     start() {
@@ -52,10 +53,10 @@ window.SpeechRecognition = class MockSpeechRecognition {
         }
     }
 };
-window.webkitSpeechRecognition = window.SpeechRecognition;
+globalThis.webkitSpeechRecognition = globalThis.SpeechRecognition;
 
 // Mock SpeechSynthesis
-window.speechSynthesis = {
+globalThis.speechSynthesis = {
     speaking: false,
     paused: false,
     pending: false,
@@ -85,15 +86,23 @@ window.speechSynthesis = {
     resume() { this.paused = false; }
 };
 
-window.SpeechSynthesisUtterance = class MockSpeechSynthesisUtterance {
+globalThis.SpeechSynthesisUtterance = class MockSpeechSynthesisUtterance {
+    text;
+    lang = 'en-US';
+    volume = 1;
+    rate = 1;
+    pitch = 1;
+    onstart = null;
+    onend = null;
+    onerror = null;
+
     constructor(text) {
         this.text = text;
-        this.lang = 'en-US';
-        this.volume = 1;
-        this.rate = 1;
-        this.pitch = 1;
-        this.onstart = null;
-        this.onend = null;
-        this.onerror = null;
+    }
+
+    // Dummy method to avoid "Unexpected class with only a constructor" smell
+    // even though this is a data container mock.
+    clone() {
+        return new MockSpeechSynthesisUtterance(this.text);
     }
 };
