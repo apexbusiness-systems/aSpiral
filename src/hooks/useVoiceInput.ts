@@ -18,15 +18,17 @@ import {
   isGated,
 } from "@/lib/audioSession";
 import { featureFlags } from "@/lib/featureFlags";
-import { audioDebug } from "@/lib/audioLogger";
 import { toast } from "sonner";
+import { audioDebug } from "@/lib/audioLogger";
 import { i18n } from "@/lib/i18n";
 import { getSpeechLocale } from "@/lib/i18n/speechLocale";
+import { addBreadcrumb } from "@/lib/debugOverlay";
 
 const logger = createLogger("useVoiceInput");
 const VOICE_STOP_KEYWORDS = ["stop", "pause", "end session", "shut up", "hold on"];
 const DEDUPE_WINDOW_MS = 2000; // Time window to ignore duplicate final commits
 const SETTINGS_STORAGE_KEY = "aspiral_settings_v1";
+const INTERIM_UPDATE_INTERVAL = 100;
 
 type StoredSettings = {
   soundEffects?: boolean;
@@ -91,6 +93,63 @@ function checkVoiceSupport(): {
   return { supported: true, requiresFallback: false };
 }
 
+// Debug event emitter for optional debug panel
+type VoiceDebugEvent = {
+  type: 'stt.start' | 'stt.stop' | 'stt.partial' | 'stt.final' | 'stt.error' | 'listener.attach' | 'listener.detach';
+  timestamp: number;
+  data?: Record<string, unknown>;
+};
+
+// Global debug event buffer (circular, max 50 events)
+const DEBUG_BUFFER_SIZE = 50;
+let debugBuffer: VoiceDebugEvent[] = [];
+let debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
+
+function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
+  const fullEvent: VoiceDebugEvent = { ...event, timestamp: Date.now() };
+  debugBuffer = [...debugBuffer.slice(-(DEBUG_BUFFER_SIZE - 1)), fullEvent];
+  debugSubscribers.forEach(cb => cb(debugBuffer));
+
+  if (event.type === 'stt.start' || event.type === 'stt.stop' || event.type === 'stt.error') {
+    addBreadcrumb({
+      type: 'voice',
+      message: event.type,
+      data: event.data,
+    });
+  }
+
+  // Also log to console for debugging
+  logger.debug(`[${event.type}]`, event.data);
+
+  // Diagnostics snapshot at every transition
+  if (event.type.startsWith('stt.')) {
+    // Note: Hook-scoped variables not available in global function scope
+    console.log(`[VOICE_SNAPSHOT] ${JSON.stringify({
+      voiceState: fullEvent.type,
+      isGated: isGated(),
+      // Hook variables would need to be passed to this global function if needed
+      audioContextState: 'unknown',
+      ttsBackend: 'unknown'
+    })}`);
+  }
+}
+
+// Export for debug panel
+export function subscribeToVoiceDebug(callback: (events: VoiceDebugEvent[]) => void) {
+  debugSubscribers.add(callback);
+  callback(debugBuffer); // Send current buffer immediately
+  return () => debugSubscribers.delete(callback);
+}
+
+export function getVoiceDebugBuffer() {
+  return debugBuffer;
+}
+
+export function clearVoiceDebugBuffer() {
+  debugBuffer = [];
+  debugSubscribers.forEach(cb => cb(debugBuffer));
+}
+
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
@@ -112,12 +171,13 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   const [isSupported, setIsSupported] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [voiceState, setVoiceState] = useState<'Idle' | 'Listening' | 'Reconnecting' | 'Error'>('Idle');
 
-  // Buffers
+  // Two-buffer transcript model: final (append-only) + interim (replace on each update)
   const [finalTranscript, setFinalTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
 
-  // Display
+  // Combined display transcript
   const transcript = (finalTranscript + " " + interimTranscript).trim();
 
   // Refs
@@ -132,6 +192,27 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const lastFinalText = useRef<string>("");
   const interimCountRef = useRef<number>(0);
   const finalCountRef = useRef<number>(0);
+
+  // Watchdog and activity tracking
+  const lastActivityAtRef = useRef(Date.now());
+  const watchdogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restartRequestedRef = useRef(false);
+  const restartCount60sRef = useRef(0);
+  const lastRestartTimeRef = useRef(0);
+  const WATCHDOG_INTERVAL_MS = 90000; // 90s to catch 60-120s stalls
+  const MAX_RESTARTS_60S = 3;
+  const RESTART_BACKOFF_MS = 250;
+
+  // Silence timeout
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SILENCE_TIMEOUT_MS = 30000; // 30s
+
+  // Ref for stopRecording to avoid circular dependency
+  const stopRecordingRef = useRef<() => void>(() => { });
+
+  // Interim update throttling
+  const lastInterimEmitRef = useRef<number>(0);
+  const interimTranscriptRef = useRef<string>("");
 
   const { isRecording, setRecording, setError } = useSessionStore();
   const voiceEnabled = featureFlags.voiceEnabled;
@@ -166,64 +247,116 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       recognitionRef.current = null;
     }
     isStartedRef.current = false;
-    if (silenceTimer.current) clearTimeout(silenceTimer.current);
-    if (watchdogTimer.current) {
-      clearInterval(watchdogTimer.current);
-      watchdogTimer.current = null;
+    interimTranscriptRef.current = "";
+    clearWatchdog();
+    clearSilenceTimer();
+    emitDebugEvent({ type: 'listener.detach', data: { reason: 'cleanup' } });
+  }, []);
+
+  // Watchdog functions
+  const clearWatchdog = useCallback(() => {
+    if (watchdogTimeoutRef.current) {
+      clearTimeout(watchdogTimeoutRef.current);
+      watchdogTimeoutRef.current = null;
     }
   }, []);
 
-  const stopRecording = useCallback(() => {
-    // Sound Effect: Stop Recording (Subtle 'dunk')
-    try {
-      if (shouldPlayFeedback()) {
-        const AudioContext =
-          window.AudioContext ||
-          (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (AudioContext) {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(440, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.1);
-          gain.gain.setValueAtTime(0.08, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.15);
+  const startWatchdog = useCallback(() => {
+    clearWatchdog();
+    watchdogTimeoutRef.current = setTimeout(() => {
+      if (!isStartedRef.current) return;
+
+      const now = Date.now();
+      const timeSinceLastRestart = now - lastRestartTimeRef.current;
+      if (timeSinceLastRestart < 60000) {
+        restartCount60sRef.current++;
+        if (restartCount60sRef.current >= MAX_RESTARTS_60S) {
+          logger.error("STT watchdog: too many restarts in 60s, entering error state");
+          emitDebugEvent({ type: 'stt.error', data: { error: 'stalled', restarts: restartCount60sRef.current } });
+          toast.error("Mic stalled—tap to restart");
+          setVoiceState('Error');
+          stopRecordingRef.current();
+          return;
         }
-        triggerHaptic([8, 20, 8]);
+      } else {
+        restartCount60sRef.current = 1;
       }
     } catch {
       // Ignore audio context errors during stop
     }
+  }, []);
 
-    isIntentionalStop.current = true;
+  const startSilenceTimer = useCallback(() => {
+    clearSilenceTimer();
+    silenceTimeoutRef.current = setTimeout(() => {
+      if (isStartedRef.current && recognitionRef.current) {
+        logger.info("Silence timeout reached, stopping recognition");
+        recognitionRef.current.stop();
+      }
+    }, SILENCE_TIMEOUT_MS);
+  }, [clearSilenceTimer]);
+
+  const emitInterimUpdate = useCallback((text: string, force = false) => {
+    const now = Date.now();
+    if (!force && now - lastInterimEmitRef.current < INTERIM_UPDATE_INTERVAL) {
+      return;
+    }
+    lastInterimEmitRef.current = now;
+    setInterimTranscript(text);
+  }, []);
+
+  const commitInterimAsFinal = useCallback(() => {
+    const interim = interimTranscriptRef.current.trim();
+    if (!interim) return;
+    setFinalTranscript(prev => (prev + " " + interim).trim());
+    options.onTranscript?.(interim);
+    interimTranscriptRef.current = "";
+    emitInterimUpdate("", true);
+  }, [emitInterimUpdate, options]);
+
+  const stopRecording = useCallback(() => {
+    setVoiceState('Idle');
+    emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
+    commitInterimAsFinal();
     cleanup();
     setRecording(false);
     setIsPaused(false);
-    setInterimTranscript(""); // Clear residual interim
-    audioDebug.log("session_end", { reason: "user_stop" });
-  }, [cleanup, setRecording]);
+    emitInterimUpdate("", true); // Clear interim on stop
+  }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
+
+  // Update stopRecordingRef
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
 
   const handleRecognitionResult = useCallback(
     (event: any) => {
+      // Update activity timestamp and reset timers on ANY recognition activity
+      lastActivityAtRef.current = Date.now();
+      startWatchdog();
+      clearSilenceTimer();
+      startSilenceTimer();
+
       // 1. Gate: Assistant Speaking
       if (assistantIsSpeakingRef.current) {
-        audioDebug.log("stt_interim", {
-          ignored: true,
-          reason: "assistant_speaking",
+        emitDebugEvent({
+          type: 'stt.partial',
+          data: {
+            ignored: true,
+            reason: "assistant_speaking",
+          }
         });
         return;
       }
 
       // 2. Gate: Reverb Buffer (AudioSession)
       if (isGated()) {
-        audioDebug.log("stt_interim", {
-          ignored: true,
-          reason: "reverb_gated",
+        emitDebugEvent({
+          type: 'stt.partial',
+          data: {
+            ignored: true,
+            reason: "reverb_gated",
+          }
         });
         return;
       }
@@ -248,6 +381,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         }
       }
 
+      // Always replace interim (this is the key fix for "rapping")
+      interimTranscriptRef.current = newInterimText;
+      emitInterimUpdate(newInterimText);
+
       // Smart Silence Detection (Reset timer if final text received)
       if (newFinalText) {
         if (silenceTimer.current) clearTimeout(silenceTimer.current);
@@ -255,28 +392,15 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           logger.info(`Silence detected after ${silenceTimeoutMs}ms. Stopping.`);
           stopRecording();
         }, silenceTimeoutMs);
-      }
 
-      // UPDATE TRANSCRIPTS
-      // Always REPLACE interim
-      setInterimTranscript(newInterimText);
-      if (newInterimText) {
-        interimCountRef.current += 1;
-        audioDebug.log("stt_interim", {
-          text: newInterimText,
-          count: interimCountRef.current,
-        });
-      }
-
-      // Commit Final with Deduplication
-      if (newFinalText) {
+        // Commit Final with Deduplication
         const normalized = newFinalText.trim().toLowerCase();
         const now = Date.now();
 
         const isDuplicate =
           (normalized === lastFinalText.current &&
             now - lastFinalCommitTime.current < DEDUPE_WINDOW_MS) ||
-          globalFinalHistory.has(normalized + "_" + Math.floor(now / 5000)); // Rough 5s window check
+          globalFinalHistory.has(normalized + "_" + Math.floor(now / 5000));
 
         if (isDuplicate) {
           audioDebug.log("stt_dedupe", {
@@ -300,44 +424,108 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           });
         }
       }
-
-      // Reset watchdog on any results
-      if (newFinalText || newInterimText) {
-        if (watchdogTimer.current) {
-          clearInterval(watchdogTimer.current);
-        }
-        watchdogTimer.current = setInterval(() => {
-          if (isStartedRef.current) {
-            try {
-              recognitionRef.current?.stop();
-              recognitionRef.current?.start();
-              audioDebug.log("watchdog_restart", { interval: watchdogIntervalMs });
-            } catch (e) {
-              audioDebug.error("watchdog_restart_failed", e as Error);
-            }
-          }
-        }, watchdogIntervalMs);
-      }
     },
-    [options, setInterimTranscript, setFinalTranscript, stopRecording, watchdogIntervalMs]
+    [assistantIsSpeakingRef, emitInterimUpdate, silenceTimeoutMs, options, stopRecording, startWatchdog, clearSilenceTimer, startSilenceTimer]
   );
 
   const handleRecognitionError = useCallback(
     (event: any) => {
-      if (event.error === "aborted") return; // Normal stop
+      // AGGRESSIVE RESTART: For network, aborted, or no-speech errors, restart immediately
+      const error = event.error;
+      const context = "handler";
 
-      audioDebug.error("recognizer_error", { error: event.error });
-      setError(`Voice error: ${event.error}`);
-      toast.error("Voice recognition error", { description: event.error });
+      const restartableErrors = ['network', 'aborted', 'no-speech'];
 
+      if (restartableErrors.includes(error)) {
+        restartCount60sRef.current++;
+        if (restartCount60sRef.current < 5) {
+          logger.warn(`Aggressive restart for ${error} (${restartCount60sRef.current}/5)`);
+          emitDebugEvent({
+            type: 'stt.error', data: {
+              error,
+              context,
+              aggressiveRestart: true,
+              restartCount: restartCount60sRef.current
+            }
+          });
+
+          // DON'T set isRecording to false - keep UI alive
+          setTimeout(() => {
+            if (recognitionRef.current && isStartedRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch (restartError) {
+                logger.error("Failed to restart recognition", restartError as Error);
+              }
+            }
+          }, 100);
+          return;
+        } else {
+          logger.error(`Too many restarts (${restartCount60sRef.current}), giving up`);
+        }
+      }
+
+      logger.error(`Recognition error`, new Error(error));
+      emitDebugEvent({ type: 'stt.error', data: { error, context } });
+      setError(`Voice recognition error: ${error}`);
       setRecording(false);
       setIsPaused(false);
       isStartedRef.current = false;
-
-      options.onError?.(new Error(event.error));
+      options.onError?.(new Error(error));
     },
     [options, setError, setRecording]
   );
+
+  const createRecognition = useCallback((opts: {
+    onStart?: () => void;
+    onEnd?: () => void;
+    onErrorContext: string;
+  }) => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) return null;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = !isIOSSafariMode.current;
+    recognition.interimResults = true;
+    recognition.lang = getActiveSpeechLocale();
+
+    recognition.onstart = () => {
+      isStartedRef.current = true;
+      setVoiceState('Listening');
+      startWatchdog();
+      startSilenceTimer();
+      opts.onStart?.();
+    };
+
+    recognition.onresult = handleRecognitionResult;
+    recognition.onerror = handleRecognitionError;
+
+    recognition.onend = () => {
+      clearWatchdog();
+      clearSilenceTimer();
+
+      if (restartRequestedRef.current && isStartedRef.current) {
+        // Watchdog triggered restart
+        restartRequestedRef.current = false;
+        setTimeout(() => {
+          if (recognitionRef.current && isStartedRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              logger.warn("Failed to restart recognition after watchdog", e);
+            }
+          }
+        }, RESTART_BACKOFF_MS);
+        return;
+      }
+      setVoiceState('Idle');
+      opts.onEnd?.();
+    };
+
+    return recognition;
+  }, [handleRecognitionResult, handleRecognitionError, startWatchdog, startSilenceTimer, clearWatchdog, clearSilenceTimer, watchdogIntervalMs]);
 
   const startRecording = useCallback(async () => {
     if (!voiceEnabled) {
@@ -410,43 +598,41 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       isIntentionalStop.current = false;
       lastFinalText.current = "";
 
-      const recognition = new SpeechRecognition();
-      recognition.continuous = !isIOSSafariMode.current;
-      recognition.interimResults = true;
-      // ✅ Key fix: bind STT language to app language (BCP-47)
-      recognition.lang = getActiveSpeechLocale();
-
-      recognition.onstart = () => {
-        isStartedRef.current = true;
-        setRecording(true);
-        setIsPaused(false);
-        audioDebug.log("recognizer_start", {
-          mode: isIOSSafariMode.current ? "safari_fallback" : "continuous",
-          lang: recognition.lang,
-        });
-      };
-
-      recognition.onresult = handleRecognitionResult;
-      recognition.onerror = handleRecognitionError;
-
-      recognition.onend = () => {
-        audioDebug.log("session_end", { intentional: isIntentionalStop.current });
-        if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
-          try {
-            // Refresh language on restart in case user changed app language mid-session
-            recognition.lang = getActiveSpeechLocale();
-            recognition.start();
-          } catch {
-            // ignore
+      const recognition = createRecognition({
+        onStart: () => {
+          setRecording(true);
+          setIsPaused(false);
+          audioDebug.log("recognizer_start", {
+            mode: isIOSSafariMode.current ? "safari_fallback" : "continuous",
+            lang: recognition ? recognition.lang : 'unknown',
+          });
+        },
+        onEnd: () => {
+          audioDebug.log("session_end", { intentional: isIntentionalStop.current });
+          if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
+            try {
+              // Refresh language on restart
+              if (recognition) {
+                recognition.lang = getActiveSpeechLocale();
+                recognition.start();
+              }
+            } catch {
+              // ignore
+            }
+          } else {
+            setRecording(false);
+            isStartedRef.current = false;
+            // Ensure watchdog is stopped
+            clearWatchdog();
           }
-        } else {
-          setRecording(false);
-          isStartedRef.current = false;
-        }
-      };
+        },
+        onErrorContext: 'start'
+      });
 
-      recognitionRef.current = recognition;
-      recognition.start();
+      if (recognition) {
+        recognitionRef.current = recognition;
+        recognition.start();
+      }
 
       // Start watchdog timer
       watchdogTimer.current = setInterval(() => {
@@ -469,15 +655,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     voiceEnabled,
     setError,
     cleanup,
-    handleRecognitionResult,
-    handleRecognitionError,
+    createRecognition,
     setRecording,
     isPaused,
+    clearWatchdog,
   ]);
-
-  const toggleRecording = useCallback(() => {
-    isRecording ? stopRecording() : startRecording();
-  }, [isRecording, stopRecording, startRecording]);
 
   const pauseRecording = useCallback(() => {
     if (isRecording && !isPaused) {
@@ -492,11 +674,41 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const resumeRecording = useCallback(() => {
     if (isPaused) {
       setIsPaused(false);
+      isStartedRef.current = false; // Allow restart
+
+      const recognition = createRecognition({
+        onStart: () => {
+          emitDebugEvent({ type: 'stt.start', data: { action: 'resume' } });
+        },
+        onEnd: () => {
+          if (!isPaused) {
+            commitInterimAsFinal();
+            setRecording(false);
+            isStartedRef.current = false;
+          }
+        },
+        onErrorContext: 'resume',
+      });
+
+      if (!recognition) return;
+
+      recognitionRef.current = recognition;
+      emitDebugEvent({ type: 'listener.attach', data: { action: 'resume' } });
+
+      recognition.start();
+      logger.info("Recording resumed");
+    }
+  }, [isPaused, setRecording, commitInterimAsFinal, createRecognition]);
+
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
       startRecording();
       triggerHaptic(8);
       audioDebug.log("app_state_change", { state: "resumed" });
     }
-  }, [isPaused, startRecording]);
+  }, [isRecording, isPaused, startRecording, stopRecording]);
 
   const togglePause = useCallback(() => {
     isPaused ? resumeRecording() : pauseRecording();
@@ -524,6 +736,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     isRecording,
     isSupported,
     isPaused,
+    voiceState,
     transcript,
     finalTranscript,
     interimTranscript,
