@@ -256,6 +256,28 @@ describe('Reverb Gate Logic', () => {
 
     vi.useRealTimers();
   });
+
+  // Helper function for gate clearing tests
+  const testGateClearsAfterDelay = (description: string, delayMs: number = 100) => {
+    it(`gate wedge fix: clearGateAfterDelay called on ${description}`, () => {
+      vi.useFakeTimers();
+      const gate = createReverbGate(delayMs);
+
+      gate.setGate();
+      expect(gate.isGated()).toBe(true);
+
+      // Simulate the terminal path - should clear gate
+      gate.clearGateAfterDelay();
+      vi.advanceTimersByTime(delayMs);
+      expect(gate.isGated()).toBe(false);
+
+      vi.useRealTimers();
+    });
+  };
+
+  testGateClearsAfterDelay('TTS end');
+  testGateClearsAfterDelay('TTS error');
+  testGateClearsAfterDelay('play rejection');
 });
 
 // Helper that mirrors the reverb gate implementation
