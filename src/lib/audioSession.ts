@@ -185,7 +185,7 @@ export function endSTTSession(sessionId: number, reason: string) {
 export async function unlockAudioFromGesture(): Promise<void> {
   if (typeof globalThis === 'undefined') return;
   await ensureAudioContext();
-  if (typeof window !== 'undefined') window.speechSynthesis?.getVoices();
+  if (typeof globalThis !== 'undefined') (globalThis as unknown as Window).speechSynthesis?.getVoices();
   audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
 }
 
@@ -195,7 +195,10 @@ export async function unlockAudioFromGesture(): Promise<void> {
  */
 async function ensureAudioContext(): Promise<void> {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+    const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
+    if (AudioContextClass) {
+      audioContext = new AudioContextClass();
+    }
   }
 
   if (audioContext.state === 'suspended') {
