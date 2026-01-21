@@ -69,7 +69,7 @@ interface TextToSpeechState {
 export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const {
     voice = 'nova',
-    speed = 1,
+    speed = 1.1,
     volume = 1,
     forceWebSpeech = false,
     fallbackToWebSpeech = true,
