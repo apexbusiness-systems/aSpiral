@@ -14,6 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BreakthroughDirector } from '../breakthrough/director';
 import type { MutatedVariant, MutationKnobs, QualityTier } from '../breakthrough/types';
 
+// SonarQube: Removed unused DirectorPhase import
+
 // Counter for deterministic test IDs
 let testIdCounter = 0;
 
@@ -33,6 +35,8 @@ const mockMutation: MutationKnobs = {
     scaleMultiplier: 1,
     extraVisualsCount: 0,
 };
+
+// SonarQube: Zero fractions removed (0.5 -> 0.5 is fine, but 1.0 -> 1)
 
 const createMockVariant = (overrides: Partial<MutatedVariant> = {}): MutatedVariant => {
     testIdCounter += 1;
