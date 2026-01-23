@@ -185,9 +185,17 @@ export function endSTTSession(sessionId: number, reason: string) {
 
 export async function unlockAudioFromGesture(): Promise<void> {
   if (typeof window === 'undefined') return;
-  await ensureAudioContext();
-  window.speechSynthesis?.getVoices();
-  audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
+
+  try {
+    await ensureAudioContext();
+    // Pre-load voices for Web Speech API (some browsers need this)
+    window.speechSynthesis?.getVoices();
+    audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
+  } catch (error) {
+    // Log but don't throw - audio unlock is best-effort
+    logger.warn('Audio unlock encountered an error', { error: (error as Error).message });
+    audioDebug.log('audio_route_change', { status: 'audio_unlock_failed', error: (error as Error).message });
+  }
 }
 
 /**
@@ -196,7 +204,18 @@ export async function unlockAudioFromGesture(): Promise<void> {
  */
 async function ensureAudioContext(): Promise<void> {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) {
+        logger.warn('AudioContext not supported in this browser');
+        return;
+      }
+      audioContext = new AudioContextClass();
+    } catch (error) {
+      // AudioContext constructor can throw on some mobile browsers when audio is blocked
+      logger.warn('AudioContext creation failed', { error: (error as Error).message });
+      return;
+    }
   }
 
   if (audioContext.state === 'suspended') {
