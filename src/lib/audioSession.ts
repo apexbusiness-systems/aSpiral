@@ -195,7 +195,18 @@ export async function unlockAudioFromGesture(): Promise<void> {
  */
 async function ensureAudioContext(): Promise<void> {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) {
+        logger.warn('AudioContext not supported in this browser');
+        return;
+      }
+      audioContext = new AudioContextClass();
+    } catch (error) {
+      // AudioContext constructor can throw on some mobile browsers when audio is blocked
+      logger.warn('AudioContext creation failed', { error: (error as Error).message });
+      return;
+    }
   }
 
   if (audioContext.state === 'suspended') {
