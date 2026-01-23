@@ -31,19 +31,34 @@ const GEOMETRY = Object.freeze({
 } as const)
 
 /**
+ * Simple seeded PRNG (Mulberry32) for deterministic sparkle positions.
+ * Using seeded PRNG instead of Math.random() for consistent visuals across renders.
+ */
+function createSeededRandom(seed: number): () => number {
+    return () => {
+        seed = (seed + 0x6D2B79F5) | 0
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+}
+
+/**
  * Creates sparkle particle positions array.
  * Distributed in cylindrical volume above platform.
+ * Uses seeded PRNG for deterministic, reproducible sparkle distribution.
  */
 function createSparklePositions(count: number): Float32Array {
     const positions = new Float32Array(count * 3)
+    const random = createSeededRandom(42) // Fixed seed for consistent sparkle pattern
 
     for (let i = 0; i < count; i++) {
-        const theta = Math.random() * Math.PI * 2
-        const radius = Math.random() * 4 + 1
+        const theta = random() * Math.PI * 2
+        const radius = random() * 4 + 1
         const idx = i * 3
 
         positions[idx] = Math.cos(theta) * radius
-        positions[idx + 1] = Math.random() * 2 + 0.5
+        positions[idx + 1] = random() * 2 + 0.5
         positions[idx + 2] = Math.sin(theta) * radius
     }
 
