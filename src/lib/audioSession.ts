@@ -3,6 +3,16 @@ import { addBreadcrumb } from '@/lib/debugOverlay';
 import { useAssistantSpeakingStore } from '@/hooks/useAssistantSpeaking';
 import { featureFlags } from '@/lib/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
+import { audioDebug } from '@/lib/audioLogger';
+import {
+  markAudioPlaybackStart,
+  getSyncStats,
+  waitForSyncDelay,
+  markSpeakRequestStart
+} from '@/lib/adaptiveVoiceSync';
+import { i18n } from '@/lib/i18n';
+import { getSpeechLocale } from '@/lib/i18n/speechLocale';
+import { toast } from 'sonner';
 
 const logger = createLogger('AudioSession');
 
