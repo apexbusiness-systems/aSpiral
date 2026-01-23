@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 
 interface MicButtonProps {
   isRecording: boolean;
@@ -25,15 +25,37 @@ export function MicButton({
   onStop,
 }: MicButtonProps) {
   const isMobile = useIsMobile();
-  
+
   // Local pressed state for instant visual feedback
   const [isMainPressed, setIsMainPressed] = useState(false);
   const [isStopPressed, setIsStopPressed] = useState(false);
   const [isPausePressed, setIsPausePressed] = useState(false);
-  
+
+  // State transition lock to prevent rapid toggle desync
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Debounce protection
   const lastClickRef = useRef<number>(0);
   const DEBOUNCE_MS = 200;
+  const TRANSITION_LOCK_MS = 300;
+
+  // Clear transition lock when parent state changes (confirms transition complete)
+  useEffect(() => {
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
+    }
+    setIsTransitioning(false);
+  }, [isRecording, isPaused]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // RESPONSIVE SIZING: Viewport-relative units for mobile adaptation
   // Mobile: 20vw width with min 80px (ensures touch target >= 48px on all devices)
@@ -48,27 +70,38 @@ export function MicButton({
   const iconSize = isMobile ? "h-[6vw] min-h-[24px] w-[6vw] min-w-[24px]" : "h-7 w-7";
   const smallIconSize = isMobile ? "h-[4vw] min-h-[16px] w-[4vw] min-w-[16px]" : "h-4 w-4";
 
-  // Debounced click handlers for reliability
+  // Lock state during transitions to prevent rapid toggle issues
+  const lockTransition = useCallback(() => {
+    setIsTransitioning(true);
+    transitionTimeoutRef.current = setTimeout(() => {
+      setIsTransitioning(false);
+    }, TRANSITION_LOCK_MS);
+  }, []);
+
+  // Debounced click handlers with transition lock for reliability
   const handleMainClick = useCallback(() => {
     const now = Date.now();
-    if (now - lastClickRef.current < DEBOUNCE_MS) return;
+    if (now - lastClickRef.current < DEBOUNCE_MS || isTransitioning) return;
     lastClickRef.current = now;
+    lockTransition();
     onClick();
-  }, [onClick]);
+  }, [onClick, isTransitioning, lockTransition]);
 
   const handleStopClick = useCallback(() => {
     const now = Date.now();
-    if (now - lastClickRef.current < DEBOUNCE_MS) return;
+    if (now - lastClickRef.current < DEBOUNCE_MS || isTransitioning) return;
     lastClickRef.current = now;
+    lockTransition();
     onStop?.();
-  }, [onStop]);
+  }, [onStop, isTransitioning, lockTransition]);
 
   const handlePauseClick = useCallback(() => {
     const now = Date.now();
-    if (now - lastClickRef.current < DEBOUNCE_MS) return;
+    if (now - lastClickRef.current < DEBOUNCE_MS || isTransitioning) return;
     lastClickRef.current = now;
+    lockTransition();
     onPause?.();
-  }, [onPause]);
+  }, [onPause, isTransitioning, lockTransition]);
 
   if (!isSupported) {
     return (
@@ -146,7 +179,7 @@ export function MicButton({
           onPointerDown={() => setIsMainPressed(true)}
           onPointerUp={() => setIsMainPressed(false)}
           onPointerLeave={() => setIsMainPressed(false)}
-          disabled={isProcessing}
+          disabled={isProcessing || isTransitioning}
           size="lg"
           aria-label={getAriaLabel()}
           className={cn(

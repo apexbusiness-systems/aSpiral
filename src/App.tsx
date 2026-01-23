@@ -16,6 +16,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import PremiumSplash from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { unlockAudioFromGesture } from "@/lib/audioSession";
+import { runVoiceHealthCheck } from "@/lib/voiceHealthCheck";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -55,12 +56,17 @@ function PWAUpdateHandler() {
   return null;
 }
 
+/** Navigator with iOS-specific standalone property */
+interface IOSNavigator extends Navigator {
+  standalone?: boolean;
+}
+
 function StandaloneModeRedirect() {
   const location = useLocation();
   const { user, loading } = useAuth();
 
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true;
+    (window.navigator as IOSNavigator).standalone === true;
 
   if (isStandalone && !loading && user && location.pathname === '/') {
     return <Navigate to="/app" replace />;
@@ -80,10 +86,29 @@ const App = () => {
         // Web environment - ignore
       }
 
-      // 2. Keep React Splash visible for branding
+      // 2. Run voice system health check
+      try {
+        const voiceHealth = await runVoiceHealthCheck();
+        if (!voiceHealth.healthy) {
+          console.warn('[App] Voice system issues detected:', voiceHealth.errors);
+          // Only show toast for critical issues (mic denied)
+          if (voiceHealth.micPermission === 'denied') {
+            toast.warning('Microphone access denied', {
+              description: 'Enable microphone in browser settings for voice features.',
+              duration: 5000,
+            });
+          }
+        } else if (import.meta.env.DEV) {
+          console.info('[App] Voice system healthy:', voiceHealth);
+        }
+      } catch (err) {
+        console.warn('[App] Voice health check failed:', err);
+      }
+
+      // 3. Keep React Splash visible for branding
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // 3. Exit animation
+      // 4. Exit animation
       setShowSplash(false);
     };
 

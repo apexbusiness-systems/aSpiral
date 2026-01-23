@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Pre-commit hook: Validate staged files before commit
+# - Runs TypeScript type checking on changed .ts/.tsx files
+# - Runs ESLint on staged files
+# - Catches missing imports and merge conflicts before they reach the repo
+
+npx lint-staged

@@ -107,11 +107,34 @@ The project includes hardened build processes with:
 ```
 
 ### Code Quality Standards
-- **TypeScript**: Strict mode enabled
-- **ESLint**: Zero warnings/errors
+- **TypeScript**: Strict mode enabled (progressive adoption via `tsconfig.strict.json`)
+- **ESLint**: Zero warnings/errors, merge conflict detection
 - **SonarQube**: Grade A maintainability
-- **Testing**: 100% pass rate required
+- **Testing**: 100% pass rate required (170 tests)
 - **Build**: Zero failures in CI/CD
+
+### Pre-commit Hooks
+The project uses Husky and lint-staged to validate code before commits:
+```sh
+# Automatically runs on git commit:
+# 1. TypeScript type checking (tsc --noEmit)
+# 2. ESLint with auto-fix
+# 3. Merge conflict marker detection
+```
+
+### Voice System Health Check
+The app includes a comprehensive voice system health check at startup:
+- Validates Speech Recognition (STT) support
+- Validates Speech Synthesis (TTS) support
+- Checks microphone permissions
+- Detects platform-specific issues (iOS Safari, etc.)
+- Provides diagnostics via `VoiceHealthStatus` interface
+
+### Error Boundaries
+Voice components are wrapped in `VoiceErrorBoundary` to:
+- Prevent voice-related crashes from taking down the app
+- Provide graceful degradation when voice is unavailable
+- Enable retry/recovery functionality
 
 ## 🚀 Deployment
 
