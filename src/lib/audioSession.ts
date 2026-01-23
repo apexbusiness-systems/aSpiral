@@ -553,6 +553,30 @@ async function playOpenAiAudioFallback(blob: Blob, requestId: number, options: S
   });
 }
 
+/**
+ * Selects the best available voice for the desired language.
+ * Prioritizes: Default -> Google -> Samantha/Daniel -> First available
+ * Extracted for complexity reduction per SonarQube guidelines.
+ */
+function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): SpeechSynthesisVoice | undefined {
+  const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
+
+  const matchingVoices = voices.filter((v) => {
+    const vLang = (v.lang ?? "").toLowerCase();
+    return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
+  });
+
+  const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
+
+  return (
+    pickFrom.find((v) => v.default) ||
+    pickFrom.find((v) => v.name.includes("Google")) ||
+    pickFrom.find((v) => v.name.includes("Samantha")) ||
+    pickFrom.find((v) => v.name.includes("Daniel")) ||
+    pickFrom[0]
+  );
+}
+
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
   if (!window.speechSynthesis) {
     throw new Error('Web Speech API not supported');
@@ -572,21 +596,8 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   // Use the active i18n language instead of document fallback for more accurate language selection
   const activeLang = i18n.resolvedLanguage ?? i18n.language ?? "en";
   const desiredLang = getSpeechLocale(activeLang);
-  const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
 
-  const matchingVoices = voices.filter((v) => {
-    const vLang = (v.lang ?? "").toLowerCase();
-    return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
-  });
-
-  const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
-
-  const preferredVoice =
-    pickFrom.find((v) => v.default) ||
-    pickFrom.find((v) => v.name.includes("Google")) ||
-    pickFrom.find((v) => v.name.includes("Samantha")) ||
-    pickFrom.find((v) => v.name.includes("Daniel")) ||
-    pickFrom[0];
+  const preferredVoice = selectBestVoice(voices, desiredLang);
 
   let isFirstSentence = true;
   let hasErrored = false;
