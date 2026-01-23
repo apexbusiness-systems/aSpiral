@@ -103,7 +103,7 @@ type VoiceDebugEvent = {
 // Global debug event buffer (circular, max 50 events)
 const DEBUG_BUFFER_SIZE = 50;
 let debugBuffer: VoiceDebugEvent[] = [];
-let debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
+const debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
 
 function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
   const fullEvent: VoiceDebugEvent = { ...event, timestamp: Date.now() };
