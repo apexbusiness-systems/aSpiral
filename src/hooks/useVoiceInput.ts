@@ -114,6 +114,27 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   // Ref for stopRecording to avoid circular dependency
   const stopRecordingRef = useRef<() => void>(() => {});
 
+  // Watchdog and activity tracking
+  const lastActivityAtRef = useRef(Date.now());
+  const watchdogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restartRequestedRef = useRef(false);
+  const restartCount60sRef = useRef(0);
+  const lastRestartTimeRef = useRef(0);
+  const WATCHDOG_INTERVAL_MS = 90000; // 90s to catch 60-120s stalls
+  const MAX_RESTARTS_60S = 3;
+  const RESTART_BACKOFF_MS = 250;
+
+  // Silence timeout
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SILENCE_TIMEOUT_MS = 30000; // 30s
+
+  // Ref for stopRecording to avoid circular dependency
+  const stopRecordingRef = useRef<() => void>(() => { });
+
+  // Interim update throttling
+  const lastInterimEmitRef = useRef<number>(0);
+  const interimTranscriptRef = useRef<string>("");
+
   const { isRecording, setRecording, setError } = useSessionStore();
   const voiceEnabled = featureFlags.voiceEnabled;
   const assistantIsSpeaking = useAssistantSpeakingStore((state) => state.isSpeaking);
