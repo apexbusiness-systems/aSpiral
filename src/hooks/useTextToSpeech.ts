@@ -136,6 +136,12 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
       return;
     }
 
+    // Enterprise-grade input validation
+    if (text.length > 4000) {
+      logger.warn('Text exceeds maximum length, truncating');
+      text = text.substring(0, 4000) + '...';
+    }
+
     emitTTSDebugEvent({
       type: 'tts.request',
       data: { textLength: text.length, voice, speed },
@@ -149,7 +155,15 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
     }));
 
     try {
-      await sessionSpeak({
+      // Add request timeout for enterprise reliability
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('TTS request timeout after 30 seconds'));
+        }, 30000);
+      });
+
+      // Race condition protection
+      const speakPromise = sessionSpeak({
         text,
         voice,
         speed,
@@ -174,12 +188,55 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         },
       });
 
+      await Promise.race([speakPromise, timeoutPromise]);
+
       const backend = getAudioSessionStatus().backend;
       if (backend === 'webSpeech') {
         emitTTSDebugEvent({ type: 'tts.fallback', data: { engine: 'webSpeech' } });
       }
     } catch (error) {
       const err = error as Error;
+      logger.error('TTS failed with error:', err);
+
+      // Enhanced error classification and recovery
+      if (err.message.includes('timeout') || err.message.includes('network')) {
+        // Network-related errors - attempt fallback if available
+        if (fallbackToWebSpeech && !forceWebSpeech) {
+          logger.info('Attempting WebSpeech fallback due to network error');
+          try {
+            await sessionSpeak({
+              text,
+              voice,
+              speed,
+              volume,
+              forceWebSpeech: true,
+              fallbackToWebSpeech: false,
+              supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+              supabaseKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              onStart: () => {
+                emitTTSDebugEvent({ type: 'tts.play_start', data: { fallback: true } });
+                onStart?.();
+              },
+              onEnd: () => {
+                emitTTSDebugEvent({ type: 'tts.play_end', data: { fallback: true } });
+                onEnd?.();
+              },
+              onError: (fallbackError) => {
+                emitTTSDebugEvent({ type: 'tts.error', data: { error: fallbackError.message, fallback: true } });
+                setState(prev => ({ ...prev, error: fallbackError.message }));
+                toast.error('Fallback voice playback failed', { description: fallbackError.message });
+                onError?.(fallbackError);
+              },
+            });
+            setState(prev => ({ ...prev, usesFallback: true }));
+            return;
+          } catch (fallbackError) {
+            logger.error('Fallback also failed:', fallbackError as Error);
+            err.message = `Primary and fallback TTS failed: ${err.message}`;
+          }
+        }
+      }
+
       setState(prev => ({
         ...prev,
         isSpeaking: false,
