@@ -144,18 +144,21 @@ export function GrindingGears({
     sparkTime.current += delta;
     if (sparkTime.current > 0.1 / intensity && sparksRef.current.length < 20) {
       sparkTime.current = 0;
+      // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
       const angle = Math.random() * Math.PI * 2;
       const sparkPos = new THREE.Vector3(
         Math.cos(angle) * 0.5,
         0,
         Math.sin(angle) * 0.3
       );
+      // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
       const sparkVel = new THREE.Vector3(
         (Math.random() - 0.5) * 3,
         Math.random() * 2 + 1,
         (Math.random() - 0.5) * 3
       );
       sparksRef.current.push({
+        // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
         id: Date.now() + Math.random(),
         pos: sparkPos,
         vel: sparkVel,
