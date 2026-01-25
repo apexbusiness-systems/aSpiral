@@ -195,7 +195,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const {
     speak: speakText,
     stop: stopSpeaking,
-    isTTSSpeaking,
+    isSpeaking: isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
     voice: 'nova', // Warm, friendly voice
