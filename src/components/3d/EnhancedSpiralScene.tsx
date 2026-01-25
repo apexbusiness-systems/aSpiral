@@ -9,12 +9,19 @@ import { PremiumSpiral } from "./PremiumSpiral";
 import { EffectsHandler } from "./EffectsHandler";
 import { CameraRig } from "./CameraRig";
 import { OffscreenSpiralCanvas } from "./OffscreenSpiralCanvas";
+import { AuroraPlatform } from "./aurora/AuroraPlatform";
 import { isRendererWorkerEnabled } from "@/lib/rendererFlags";
 import { useSessionStore } from "@/stores/sessionStore";
+import { GrindingGears } from "./gears/GrindingGears";
+import { GreaseApplication } from "./GreaseApplication";
+import { BreakthroughTransformation } from "./BreakthroughTransformation";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
 
 function supportsOffscreenCanvas(): boolean {
-  return typeof HTMLCanvasElement !== "undefined" && "transferControlToOffscreen" in HTMLCanvasElement.prototype;
+  return (
+    typeof HTMLCanvasElement !== "undefined" &&
+    "transferControlToOffscreen" in HTMLCanvasElement.prototype
+  );
 }
 
 function useDeviceProfile(): { capabilities: DeviceCapabilities; reducedMotion: boolean } {
@@ -23,11 +30,31 @@ function useDeviceProfile(): { capabilities: DeviceCapabilities; reducedMotion: 
   return { capabilities, reducedMotion };
 }
 
-function EnhancedSceneContent({ capabilities, reducedMotion }: { capabilities: DeviceCapabilities; reducedMotion: boolean }) {
+function EnhancedSceneContent({
+  capabilities,
+  reducedMotion,
+}: {
+  capabilities: DeviceCapabilities;
+  reducedMotion: boolean;
+}) {
+  const isBreakthroughImminent = useSessionStore((state) => state.isBreakthroughImminent);
+  const isBreakthroughActive = useSessionStore((state) => state.isBreakthroughActive);
+
+  const showPremiumSpiral = isBreakthroughImminent || isBreakthroughActive;
+
+  // Enable sparkles only on higher-tier devices and when motion is allowed
+  const enableSparkles = capabilities.gpuTier >= 2 && !reducedMotion;
+
   return (
     <>
       <SceneLighting capabilities={capabilities} enableEnvironment={!reducedMotion} />
-      <PremiumSpiral capabilities={capabilities} reducedMotion={reducedMotion} />
+
+      {/* Aurora Platform - premium visual foundation with glows */}
+      <AuroraPlatform enableSparkles={enableSparkles} />
+
+      {showPremiumSpiral && (
+        <PremiumSpiral capabilities={capabilities} reducedMotion={reducedMotion} />
+      )}
       <SpiralEntities />
       <FrictionEffects />
       <CameraRig autoRotate={!reducedMotion} />
@@ -36,11 +63,26 @@ function EnhancedSceneContent({ capabilities, reducedMotion }: { capabilities: D
   );
 }
 
-export function EnhancedSpiralScene() {
+export interface EnhancedSpiralSceneProps {
+  /**
+   * When true, always render an interactive R3F Canvas (camera controls).
+   * OffscreenCanvas worker rendering is intentionally non-interactive.
+   */
+  interactive?: boolean;
+}
+
+export function EnhancedSpiralScene({ interactive = true }: EnhancedSpiralSceneProps) {
   const currentSession = useSessionStore((state) => state.currentSession);
   const hasEntities = (currentSession?.entities?.length || 0) > 0;
   const { capabilities, reducedMotion } = useDeviceProfile();
-  const useWorker = supportsOffscreenCanvas() && isRendererWorkerEnabled() && !hasEntities;
+
+  // IMPORTANT: The worker/offscreen renderer is non-interactive.
+  // If this scene is used as the user's "stage" (camera manipulation), force interactive Canvas.
+  const useWorker =
+    !interactive &&
+    supportsOffscreenCanvas() &&
+    isRendererWorkerEnabled() &&
+    !hasEntities;
 
   if (useWorker) {
     return (

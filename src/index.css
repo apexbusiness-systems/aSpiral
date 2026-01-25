@@ -709,3 +709,20 @@
 .loading-pulse {
   animation: loading-pulse 1.5s ease-in-out infinite;
 }
+
+/* ==========================================
+   SPIRAL SVG ANIMATION (CSS-only, no WebGL)
+   ========================================== */
+
+@keyframes spiral-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spiral-hero-container {
+  animation: spiral-rotate 30s linear infinite;
+}

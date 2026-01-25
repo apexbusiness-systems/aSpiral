@@ -2,6 +2,17 @@ import { createLogger } from '@/lib/logger';
 import { addBreadcrumb } from '@/lib/debugOverlay';
 import { useAssistantSpeakingStore } from '@/hooks/useAssistantSpeaking';
 import { featureFlags } from '@/lib/featureFlags';
+import { supabase } from '@/integrations/supabase/client';
+import { audioDebug } from '@/lib/audioLogger';
+import {
+  markAudioPlaybackStart,
+  getSyncStats,
+  waitForSyncDelay,
+  markSpeakRequestStart
+} from '@/lib/adaptiveVoiceSync';
+import { i18n } from '@/lib/i18n';
+import { getSpeechLocale } from '@/lib/i18n/speechLocale';
+import { toast } from 'sonner';
 
 const logger = createLogger('AudioSession');
 
@@ -17,14 +28,27 @@ export interface AudioSessionStatus {
 }
 
 export interface SpeakOptions {
+  /** The text to speak */
   text: string;
+  /** The voice to use */
   voice: string;
+  /** Speech speed multiplier */
   speed: number;
+  /** Volume level (0-1) */
+  volume?: number;
+  /** Force use of Web Speech API only */
+  forceWebSpeech?: boolean;
+  /** Whether to fallback to Web Speech if OpenAI fails. Defaults to true. */
   fallbackToWebSpeech: boolean;
+  /** Supabase URL for OpenAI TTS */
   supabaseUrl?: string;
+  /** Supabase key for OpenAI TTS */
   supabaseKey?: string;
+  /** Callback when speech starts */
   onStart?: () => void;
+  /** Callback when speech ends */
   onEnd?: () => void;
+  /** Callback when speech errors */
   onError?: (error: Error) => void;
 }
 
@@ -35,6 +59,12 @@ export interface STTController {
 }
 
 const listeners = new Set<(status: AudioSessionStatus) => void>();
+const ttsQueue: Array<{
+  id: number;
+  options: SpeakOptions;
+  resolve: () => void;
+  reject: (error: Error) => void;
+}> = [];
 
 let status: AudioSessionStatus = {
   isSpeaking: false,
@@ -51,6 +81,10 @@ let abortController: AbortController | null = null;
 let audioContext: AudioContext | null = null;
 let sttController: STTController | null = null;
 let resumeListeningRequestId: number | null = null;
+let ttsRequestCounter = 0;
+let isProcessingQueue = false;
+let activeSTTSessionId: number | null = null;
+let sttSessionCounter = 0;
 
 // ============================================================================
 // REVERB BUFFER: Prevents echo/feedback loops by gating STT input after TTS ends
@@ -73,14 +107,14 @@ function setGate(): void {
   if (gateTimeoutId) {
     clearTimeout(gateTimeoutId);
   }
-  addBreadcrumb({ type: 'audio', message: 'reverb_gate_set', data: { durationMs: REVERB_BUFFER_MS } });
+  audioDebug.log('audio_route_change', { status: 'gated_for_reverb', duration: REVERB_BUFFER_MS });
 }
 
 function clearGateAfterDelay(): void {
   gateTimeoutId = setTimeout(() => {
     isGatedFlag = false;
     gateTimeoutId = null;
-    addBreadcrumb({ type: 'audio', message: 'reverb_gate_cleared' });
+    audioDebug.log('audio_route_change', { status: 'gate_cleared' });
   }, REVERB_BUFFER_MS);
 }
 
@@ -112,16 +146,83 @@ export function updateListeningState(isListening: boolean) {
   updateStatus({ isListening });
 }
 
+export function beginSTTSession(source: string): number | null {
+  if (activeSTTSessionId !== null) {
+    audioDebug.log('app_state_change', {
+      status: 'stt_session_rejected',
+      activeSessionId: activeSTTSessionId,
+      source,
+    });
+    return null;
+  }
+  sttSessionCounter += 1;
+  activeSTTSessionId = sttSessionCounter;
+  audioDebug.log('app_state_change', {
+    status: 'stt_session_started',
+    sessionId: activeSTTSessionId,
+    source,
+  });
+  return activeSTTSessionId;
+}
+
+export function endSTTSession(sessionId: number, reason: string) {
+  if (activeSTTSessionId !== sessionId) {
+    audioDebug.log('app_state_change', {
+      status: 'stt_session_end_ignored',
+      sessionId,
+      activeSessionId: activeSTTSessionId,
+      reason,
+    });
+    return;
+  }
+  activeSTTSessionId = null;
+  audioDebug.log('app_state_change', {
+    status: 'stt_session_ended',
+    sessionId,
+    reason,
+  });
+}
+
+export async function unlockAudioFromGesture(): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  try {
+    await ensureAudioContext();
+    // Pre-load voices for Web Speech API (some browsers need this)
+    window.speechSynthesis?.getVoices();
+    audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
+  } catch (error) {
+    // Log but don't throw - audio unlock is best-effort
+    logger.warn('Audio unlock encountered an error', { error: (error as Error).message });
+    audioDebug.log('audio_route_change', { status: 'audio_unlock_failed', error: (error as Error).message });
+  }
+}
+
+/**
+ * Ensures AudioContext is ready and resumed.
+ * CRITICAL for iOS: Must be called inside a user gesture handler initially.
+ */
 async function ensureAudioContext(): Promise<void> {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) {
+        logger.warn('AudioContext not supported in this browser');
+        return;
+      }
+      audioContext = new AudioContextClass();
+    } catch (error) {
+      // AudioContext constructor can throw on some mobile browsers when audio is blocked
+      logger.warn('AudioContext creation failed', { error: (error as Error).message });
+      return;
+    }
   }
 
   if (audioContext.state === 'suspended') {
     try {
       await audioContext.resume();
     } catch (error) {
-      logger.warn('AudioContext resume failed', error as Error);
+      logger.warn('AudioContext resume failed', { error: (error as Error).message });
     }
   }
 }
@@ -143,6 +244,11 @@ function clearSpeechUtterance() {
   }
 }
 
+function clearQueue() {
+  ttsQueue.splice(0, ttsQueue.length);
+  audioDebug.log('tts_enqueue', { queueLength: 0, cleared: true });
+}
+
 // ============================================================================
 // TTS SENTENCE CHUNKING: Improves iOS Safari reliability by breaking long text
 // iOS Safari has issues with long utterances - they can cut off or fail silently
@@ -155,7 +261,8 @@ function clearSpeechUtterance() {
 function splitIntoSentences(text: string): string[] {
   // Match sentence endings: period, exclamation, question mark followed by space or end
   // Also handles ellipsis and keeps punctuation with the sentence
-  const sentences = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
+  // Fixed for security: avoid catastrophic backtracking with atomic groups
+  const sentences = text.match(/(?:[^.!?]+[.!?]+(?:\s|$))|(?:[^.!?]+$)/g);
 
   if (!sentences) return [text];
 
@@ -195,24 +302,22 @@ function cancelActive(reason: string, resumeListening: boolean) {
 
   useAssistantSpeakingStore.getState().stopSpeaking();
 
-  if (resumeListening && resumeListeningRequestId === status.requestId && sttController) {
-    sttController.resumeListening();
-    updateStatus({ isListening: sttController.isListening() });
-    resumeListeningRequestId = null;
+  if (resumeListening && resumeListeningRequestId === status.requestId) {
+    resumeListeningIfNeeded(status.requestId);
   }
 
-  addBreadcrumb({
-    type: 'audio',
-    message: 'tts_cancel',
-    data: { reason },
-  });
+  audioDebug.log('tts_end', { reason });
 }
 
-async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
+async function fetchOpenAiAudio(options: SpeakOptions): Promise<Response> {
   const { supabaseUrl, supabaseKey, text, voice, speed } = options;
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase not configured');
   }
+
+  // Get current session for access token
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
 
   abortController = new AbortController();
   const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
@@ -220,7 +325,7 @@ async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
     headers: {
       'Content-Type': 'application/json',
       'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
+      'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${supabaseKey}`,
     },
     body: JSON.stringify({ text, voice, speed }),
     signal: abortController.signal,
@@ -231,7 +336,7 @@ async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
     throw new Error(errorData.error || `TTS request failed: ${response.status}`);
   }
 
-  return response.blob();
+  return response;
 }
 
 function pauseListeningForRequest(requestId: number) {
@@ -245,7 +350,7 @@ function pauseListeningForRequest(requestId: number) {
     sttController.stopListening();
     resumeListeningRequestId = requestId;
     updateStatus({ isListening: sttController.isListening() });
-    addBreadcrumb({ type: 'audio', message: 'stt_paused_for_tts' });
+    audioDebug.log('app_state_change', { status: 'stt_paused_for_tts' });
   }
 }
 
@@ -264,31 +369,97 @@ function resumeListeningIfNeeded(requestId: number) {
     sttController.resumeListening();
     updateStatus({ isListening: sttController.isListening() });
     resumeListeningRequestId = null;
-    addBreadcrumb({ type: 'audio', message: 'stt_resumed_after_tts', data: { delayMs: REVERB_BUFFER_MS } });
+    audioDebug.log('app_state_change', { status: 'stt_resumed_after_tts_delay' });
   }, REVERB_BUFFER_MS);
 }
 
-async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOptions): Promise<void> {
-  const audioUrl = URL.createObjectURL(blob);
-  const audio = new Audio(audioUrl);
+async function playOpenAiAudio(response: Response, requestId: number, options: SpeakOptions): Promise<void> {
+  // Check if MediaSource is supported
+  if (!window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
+    // Fallback to old blob method
+    logger.warn('MediaSource not supported, falling back to blob method');
+    const blob = await response.blob();
+    return playOpenAiAudioFallback(blob, requestId, options);
+  }
+
+  const mediaSource = new MediaSource();
+  const audio = new Audio();
+  audio.src = URL.createObjectURL(mediaSource);
   audioElement = audio;
 
+  let sourceBuffer: SourceBuffer | null = null;
+  let isFirstChunk = true;
+  const bufferQueue: Uint8Array[] = [];
+  let isAppending = false;
+
   return new Promise<void>((resolve, reject) => {
-    audio.onplay = () => {
+    mediaSource.addEventListener('sourceopen', async () => {
       if (requestId !== status.requestId) return;
-      updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
-      useAssistantSpeakingStore.getState().startSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai' } });
-      options.onStart?.();
-    };
+
+      try {
+        sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+        sourceBuffer.addEventListener('updateend', () => {
+          if (requestId !== status.requestId) return;
+
+          isAppending = false;
+
+          // Try to append next chunk from queue
+          if (bufferQueue.length > 0 && !sourceBuffer!.updating) {
+            const nextChunk = bufferQueue.shift()!;
+            isAppending = true;
+            sourceBuffer!.appendBuffer(nextChunk);
+          }
+        });
+
+        // Start streaming the response
+        const reader = response.body!.getReader();
+        let done = false;
+
+        while (!done) {
+          if (requestId !== status.requestId) break;
+
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+
+          if (value) {
+            if (isFirstChunk) {
+              // Start playback immediately after first chunk
+              await audio.play();
+              isFirstChunk = false;
+              updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
+              useAssistantSpeakingStore.getState().startSpeaking();
+              addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai', streaming: true } });
+              options.onStart?.();
+            }
+
+            // Queue the buffer for appending
+            if (!sourceBuffer!.updating && !isAppending) {
+              isAppending = true;
+              sourceBuffer!.appendBuffer(value as any);
+            } else {
+              bufferQueue.push(value);
+            }
+          }
+        }
+
+        // Mark end of stream
+        if (sourceBuffer && !sourceBuffer.updating) {
+          mediaSource.endOfStream();
+        }
+
+      } catch (error) {
+        reject(error);
+      }
+    });
 
     audio.onended = () => {
       if (requestId !== status.requestId) return;
       updateStatus({ isSpeaking: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().stopSpeaking();
-      URL.revokeObjectURL(audioUrl);
+      URL.revokeObjectURL(audio.src);
+      clearGateAfterDelay();
       resumeListeningIfNeeded(requestId);
-      addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'openai' } });
+      addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'openai', streaming: true } });
       options.onEnd?.();
       resolve();
     };
@@ -298,15 +469,112 @@ async function playOpenAiAudio(blob: Blob, requestId: number, options: SpeakOpti
       const error = new Error('Audio playback failed');
       updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
       useAssistantSpeakingStore.getState().stopSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'openai' } });
+      URL.revokeObjectURL(audio.src);
+      clearGateAfterDelay();
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'openai', streaming: true } });
       options.onError?.(error);
       reject(error);
     };
 
     audio.play().catch((error) => {
-      reject(error as Error);
+      if (requestId !== status.requestId) return;
+      const playError = new Error(`Audio play blocked: ${(error as Error).message}`);
+      updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      URL.revokeObjectURL(audio.src);
+      clearGateAfterDelay();
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({ type: 'audio', message: 'tts_play_rejected', data: { error: playError.message } });
+      console.warn('[TTS] Audio blocked—tap once to enable sound');
+      options.onError?.(playError);
+      reject(playError);
     });
   });
+}
+
+// Fallback method for browsers without MediaSource support
+async function playOpenAiAudioFallback(blob: Blob, requestId: number, options: SpeakOptions): Promise<void> {
+  const audioUrl = URL.createObjectURL(blob);
+  const audio = new Audio(audioUrl);
+  audio.volume = options.volume ?? 1;
+  audioElement = audio;
+
+  return new Promise<void>((resolve, reject) => {
+    audio.onplay = () => {
+      if (requestId !== status.requestId) return;
+      // Mark playback start for adaptive sync latency measurement
+      markAudioPlaybackStart();
+      updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
+      useAssistantSpeakingStore.getState().startSpeaking();
+      addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai', fallback: true } });
+      options.onStart?.();
+    };
+
+    audio.onended = () => {
+      if (requestId !== status.requestId) return;
+      updateStatus({ isSpeaking: false, backend: 'openai' });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      URL.revokeObjectURL(audioUrl);
+      clearGateAfterDelay();
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'openai', fallback: true } });
+      options.onEnd?.();
+      resolve();
+    };
+
+    audio.onerror = () => {
+      if (requestId !== status.requestId) return;
+      const error = new Error('Audio playback failed');
+      updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      URL.revokeObjectURL(audioUrl);
+      clearGateAfterDelay();
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'openai', fallback: true } });
+      options.onError?.(error);
+      toast.error("TTS Error", { description: error.message });
+      reject(error);
+    };
+
+    audio.play().catch((error) => {
+      if (requestId !== status.requestId) return;
+      const playError = new Error(`Audio play blocked: ${(error as Error).message}`);
+      updateStatus({ isSpeaking: false, isLoading: false, backend: 'openai' });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      URL.revokeObjectURL(audioUrl);
+      clearGateAfterDelay();
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({ type: 'audio', message: 'tts_play_rejected', data: { error: playError.message } });
+      console.warn('[TTS] Audio blocked—tap once to enable sound');
+      options.onError?.(playError);
+      reject(playError);
+    });
+  });
+}
+
+/**
+ * Selects the best available voice for the desired language.
+ * Prioritizes: Default -> Google -> Samantha/Daniel -> First available
+ * Extracted for complexity reduction per SonarQube guidelines.
+ */
+function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): SpeechSynthesisVoice | undefined {
+  const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
+
+  const matchingVoices = voices.filter((v) => {
+    const vLang = (v.lang ?? "").toLowerCase();
+    return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
+  });
+
+  const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
+
+  return (
+    pickFrom.find((v) => v.default) ||
+    pickFrom.find((v) => v.name.includes("Google")) ||
+    pickFrom.find((v) => v.name.includes("Samantha")) ||
+    pickFrom.find((v) => v.name.includes("Daniel")) ||
+    pickFrom[0]
+  );
 }
 
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
@@ -321,20 +589,15 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   const sentences = useChunking ? splitIntoSentences(options.text) : [options.text];
 
   if (useChunking && sentences.length > 1) {
-    addBreadcrumb({
-      type: 'audio',
-      message: 'tts_chunking_enabled',
-      data: { sentenceCount: sentences.length }
-    });
+    audioDebug.log('tts_enqueue', { chunking: true, sentenceCount: sentences.length });
   }
 
   const voices = window.speechSynthesis.getVoices();
-  const preferredVoice =
-    voices.find((v) =>
-      v.name.includes('Google') ||
-      v.name.includes('Samantha') ||
-      v.name.includes('Daniel')
-    ) || voices[0];
+  // Use the active i18n language instead of document fallback for more accurate language selection
+  const activeLang = i18n.resolvedLanguage ?? i18n.language ?? "en";
+  const desiredLang = getSpeechLocale(activeLang);
+
+  const preferredVoice = selectBestVoice(voices, desiredLang);
 
   let isFirstSentence = true;
   let hasErrored = false;
@@ -350,6 +613,10 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       const utterance = new SpeechSynthesisUtterance(sentence);
       utterance.rate = options.speed;
       utterance.pitch = 1.0;
+      utterance.volume = options.volume ?? 1;
+
+      // ✅ Bind TTS language to active document/app language
+      utterance.lang = preferredVoice?.lang ?? desiredLang;
 
       if (preferredVoice) {
         utterance.voice = preferredVoice;
@@ -358,9 +625,11 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       utterance.onstart = () => {
         if (requestId !== status.requestId) return;
         if (isFirstSentence) {
+          // Mark playback start for adaptive sync latency measurement
+          markAudioPlaybackStart();
           updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
           useAssistantSpeakingStore.getState().startSpeaking();
-          addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'webSpeech', chunked: useChunking } });
+          audioDebug.log('tts_start', { backend: 'webSpeech', chunked: useChunking, syncStats: getSyncStats() });
           options.onStart?.();
           isFirstSentence = false;
         }
@@ -372,7 +641,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
           updateStatus({ isSpeaking: false, backend: 'webSpeech' });
           useAssistantSpeakingStore.getState().stopSpeaking();
           resumeListeningIfNeeded(requestId);
-          addBreadcrumb({ type: 'audio', message: 'tts_play_end', data: { backend: 'webSpeech', chunked: useChunking } });
+          audioDebug.log('tts_end', { backend: 'webSpeech' });
           options.onEnd?.();
         }
         resolve();
@@ -389,8 +658,10 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
         const error = new Error(`Speech synthesis error: ${event.error}`);
         updateStatus({ isSpeaking: false, isLoading: false, backend: 'webSpeech' });
         useAssistantSpeakingStore.getState().stopSpeaking();
-        addBreadcrumb({ type: 'audio', message: 'tts_error', data: { backend: 'webSpeech', error: event.error } });
+        audioDebug.error('tts_error', { backend: 'webSpeech', error: event.error });
+        resumeListeningIfNeeded(requestId);
         options.onError?.(error);
+        toast.error("TTS Error", { description: error.message });
         reject(error);
       };
 
@@ -402,6 +673,81 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
     if (useChunking && !isLastSentence && requestId === status.requestId) {
       await new Promise(r => setTimeout(r, 50));
     }
+  }
+}
+
+async function processQueue() {
+  if (isProcessingQueue || ttsQueue.length === 0) return;
+  isProcessingQueue = true;
+
+  try {
+    while (ttsQueue.length > 0) {
+      const entry = ttsQueue.shift();
+      if (!entry) continue;
+
+      const requestId = entry.id;
+      updateStatus({ requestId });
+      cancelActive('superseded', false);
+
+      // Apply adaptive sync delay before starting TTS (max 1.5s)
+      // This makes agent responses feel more natural and conversational
+      const textLength = entry.options.text.length;
+      await waitForSyncDelay(textLength);
+
+      updateStatus({ isLoading: true, backend: 'none' });
+      pauseListeningForRequest(requestId);
+
+      // Mark request start for latency measurement
+      markSpeakRequestStart();
+
+      audioDebug.log('tts_enqueue', { queueLength: ttsQueue.length, requestId, textLength });
+
+      try {
+        if (entry.options.forceWebSpeech) {
+          // Force WebSpeech only
+          await speakWithWebSpeech(requestId, entry.options);
+          entry.resolve();
+        } else {
+          // Try OpenAI first, fallback to WebSpeech
+          const blob = await fetchOpenAiAudio(entry.options);
+          if (requestId !== status.requestId) {
+            entry.resolve();
+            continue;
+          }
+          await playOpenAiAudio(blob, requestId, entry.options);
+          entry.resolve();
+        }
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          entry.reject(error as Error);
+          continue;
+        }
+
+        logger.error('TTS failed, trying fallback', error as Error);
+        audioDebug.error('tts_error', { backend: entry.options.forceWebSpeech ? 'webSpeech' : 'openai', fallback: true });
+
+        if (!entry.options.forceWebSpeech && entry.options.fallbackToWebSpeech) {
+          try {
+            await speakWithWebSpeech(requestId, entry.options);
+            entry.resolve();
+          } catch (fallbackError) {
+            const finalError = new Error(`TTS failed: ${(fallbackError as Error).message}`);
+            updateStatus({ isSpeaking: false, isLoading: false });
+            resumeListeningIfNeeded(requestId);
+            entry.options.onError?.(finalError);
+            entry.reject(finalError);
+          }
+        } else {
+          const finalError = error as Error;
+          updateStatus({ isSpeaking: false, isLoading: false });
+          resumeListeningIfNeeded(requestId);
+          entry.options.onError?.(finalError);
+          entry.reject(finalError);
+        }
+      }
+    }
+  } finally {
+    isProcessingQueue = false;
   }
 }
 
@@ -417,45 +763,26 @@ export async function speak(options: SpeakOptions): Promise<void> {
     return;
   }
 
-  const requestId = status.requestId + 1;
-  updateStatus({ requestId });
-  cancelActive('superseded', false);
-  updateStatus({ isLoading: true, backend: 'none' });
-  pauseListeningForRequest(requestId);
+  // Ensure AudioContext is active first
+  await ensureAudioContext();
 
-  addBreadcrumb({ type: 'audio', message: 'tts_request', data: { textLength: trimmed.length } });
-
-  try {
-    await ensureAudioContext();
-    const blob = await fetchOpenAiAudio({ ...options, text: trimmed });
-    if (requestId !== status.requestId) return;
-    await playOpenAiAudio(blob, requestId, options);
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      return;
-    }
-
-    logger.error('OpenAI TTS failed, trying fallback', error as Error);
-
-    if (options.fallbackToWebSpeech) {
-      try {
-        await speakWithWebSpeech(requestId, options);
-      } catch (fallbackError) {
-        const finalError = new Error(`TTS failed: ${(fallbackError as Error).message}`);
-        updateStatus({ isSpeaking: false, isLoading: false });
-        resumeListeningIfNeeded(requestId);
-        options.onError?.(finalError);
-      }
-    } else {
-      const finalError = error as Error;
-      updateStatus({ isSpeaking: false, isLoading: false });
-      resumeListeningIfNeeded(requestId);
-      options.onError?.(finalError);
-    }
-  }
+  return new Promise<void>((resolve, reject) => {
+    ttsRequestCounter += 1;
+    const { fallbackToWebSpeech = true, ...rest } = options;
+    const entry = {
+      id: ttsRequestCounter,
+      options: { ...rest, fallbackToWebSpeech, text: trimmed },
+      resolve,
+      reject,
+    };
+    ttsQueue.push(entry);
+    audioDebug.log('tts_enqueue', { textLength: trimmed.length, queueLength: ttsQueue.length });
+    void processQueue();
+  });
 }
 
 export function stop(reason = 'stopped') {
+  clearQueue();
   cancelActive(reason, true);
 }
 
@@ -467,9 +794,16 @@ export function disposeAudioSession() {
     isGatedFlag = false;
   }
 
+  clearQueue();
   cancelActive('disposed', true);
   if (audioContext) {
     audioContext.close();
     audioContext = null;
   }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    audioDebug.log('audio_route_change', { status: document.visibilityState });
+  });
 }
