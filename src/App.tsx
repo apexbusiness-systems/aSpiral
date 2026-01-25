@@ -36,6 +36,10 @@ import GetBreakthrough from "./pages/steps/GetBreakthrough";
 
 const queryClient = new QueryClient();
 
+// Module-level flag to prevent race conditions across multiple event types
+// (touchstart + pointerdown both fire on mobile taps)
+let audioUnlockAttempted = false;
+
 /**
  * PWA Update Handler (Auto-Update Mode)
  */
@@ -91,26 +95,22 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
-    let unlocked = false;
+    // Use only 'pointerdown' - it fires for both mouse and touch on modern browsers
+    // This prevents duplicate events from touchstart + pointerdown race condition
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown"];
 
     const handler = async () => {
-      if (unlocked) return;
-      unlocked = true;
-      try {
-        await unlockAudioFromGesture();
-        if (import.meta.env.DEV) {
-          console.info("[Audio] User gesture unlock completed");
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.warn("[Audio] User gesture unlock failed", error);
-        }
-        toast.error("Audio unlock failed", {
-          description: "Tap again to enable voice playback.",
-        });
-        unlocked = false;
-        return;
+      // Use module-level flag to prevent race conditions
+      // (React StrictMode double-mount + multiple events can cause races)
+      if (audioUnlockAttempted) return;
+      audioUnlockAttempted = true;
+
+      // Audio unlock is best-effort and silent - errors are logged but not shown to users
+      // Users shouldn't see audio errors when just browsing; errors only matter when
+      // they explicitly try to use voice features
+      await unlockAudioFromGesture();
+      if (import.meta.env.DEV) {
+        console.info("[Audio] User gesture unlock attempted");
       }
       cleanup();
     };

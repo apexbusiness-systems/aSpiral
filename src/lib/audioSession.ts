@@ -175,9 +175,17 @@ export function endSTTSession(sessionId: number, reason: string) {
 
 export async function unlockAudioFromGesture(): Promise<void> {
   if (typeof window === 'undefined') return;
-  await ensureAudioContext();
-  window.speechSynthesis?.getVoices();
-  audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
+
+  try {
+    await ensureAudioContext();
+    // Pre-load voices for Web Speech API (some browsers need this)
+    window.speechSynthesis?.getVoices();
+    audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
+  } catch (error) {
+    // Log but don't throw - audio unlock is best-effort
+    logger.warn('Audio unlock encountered an error', { error: (error as Error).message });
+    audioDebug.log('audio_route_change', { status: 'audio_unlock_failed', error: (error as Error).message });
+  }
 }
 
 /**
@@ -186,7 +194,18 @@ export async function unlockAudioFromGesture(): Promise<void> {
  */
 async function ensureAudioContext(): Promise<void> {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) {
+        logger.warn('AudioContext not supported in this browser');
+        return;
+      }
+      audioContext = new AudioContextClass();
+    } catch (error) {
+      // AudioContext constructor can throw on some mobile browsers when audio is blocked
+      logger.warn('AudioContext creation failed', { error: (error as Error).message });
+      return;
+    }
   }
 
   if (audioContext.state === 'suspended') {
@@ -524,6 +543,30 @@ async function playOpenAiAudioFallback(blob: Blob, requestId: number, options: S
   });
 }
 
+/**
+ * Selects the best available voice for the desired language.
+ * Prioritizes: Default -> Google -> Samantha/Daniel -> First available
+ * Extracted for complexity reduction per SonarQube guidelines.
+ */
+function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): SpeechSynthesisVoice | undefined {
+  const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
+
+  const matchingVoices = voices.filter((v) => {
+    const vLang = (v.lang ?? "").toLowerCase();
+    return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
+  });
+
+  const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
+
+  return (
+    pickFrom.find((v) => v.default) ||
+    pickFrom.find((v) => v.name.includes("Google")) ||
+    pickFrom.find((v) => v.name.includes("Samantha")) ||
+    pickFrom.find((v) => v.name.includes("Daniel")) ||
+    pickFrom[0]
+  );
+}
+
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
   if (!window.speechSynthesis) {
     throw new Error('Web Speech API not supported');
@@ -543,21 +586,8 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   // Use the active i18n language instead of document fallback for more accurate language selection
   const activeLang = i18n.resolvedLanguage ?? i18n.language ?? "en";
   const desiredLang = getSpeechLocale(activeLang);
-  const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
 
-  const matchingVoices = voices.filter((v) => {
-    const vLang = (v.lang ?? "").toLowerCase();
-    return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
-  });
-
-  const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
-
-  const preferredVoice =
-    pickFrom.find((v) => v.default) ||
-    pickFrom.find((v) => v.name.includes("Google")) ||
-    pickFrom.find((v) => v.name.includes("Samantha")) ||
-    pickFrom.find((v) => v.name.includes("Daniel")) ||
-    pickFrom[0];
+  const preferredVoice = selectBestVoice(voices, desiredLang);
 
   let isFirstSentence = true;
   let hasErrored = false;
