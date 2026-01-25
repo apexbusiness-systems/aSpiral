@@ -153,8 +153,11 @@ export function GrindingGears({
       );
       // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
       const sparkVel = new THREE.Vector3(
+        // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
         (Math.random() - 0.5) * 3,
+        // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
         Math.random() * 2 + 1,
+        // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
         (Math.random() - 0.5) * 3
       );
       sparksRef.current.push({
