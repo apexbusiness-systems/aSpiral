@@ -103,7 +103,7 @@ type VoiceDebugEvent = {
 // Global debug event buffer (circular, max 50 events)
 const DEBUG_BUFFER_SIZE = 50;
 let debugBuffer: VoiceDebugEvent[] = [];
-let debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
+const debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
 
 function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
   const fullEvent: VoiceDebugEvent = { ...event, timestamp: Date.now() };
@@ -137,6 +137,34 @@ export function clearVoiceDebugBuffer() {
   debugBuffer = [];
   debugSubscribers.forEach(cb => cb(debugBuffer));
 }
+
+// Interfaces for SpeechRecognition
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
 
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
@@ -364,7 +392,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [stopRecording]);
 
   const handleRecognitionResult = useCallback(
-    (event: any) => {
+    (event: Event) => {
+      const speechEvent = event as SpeechRecognitionEvent;
       // Update activity timestamp and reset timers on ANY recognition activity
       lastActivityAtRef.current = Date.now();
       startWatchdog();
@@ -399,8 +428,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       let newInterimText = "";
 
       // Process results
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
+      for (let i = speechEvent.resultIndex; i < speechEvent.results.length; i++) {
+        const result = speechEvent.results[i];
         const text = result[0].transcript;
 
         if (VOICE_STOP_KEYWORDS.some((k) => text.toLowerCase().includes(k))) {
@@ -463,9 +492,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   );
 
   const handleRecognitionError = useCallback(
-    (event: any) => {
+    (event: Event) => {
       // AGGRESSIVE RESTART: For network, aborted, or no-speech errors, restart immediately
-      const error = event.error;
+      const errorEvent = event as SpeechRecognitionErrorEvent;
+      const error = errorEvent.error;
       const context = "handler";
 
       const restartableErrors = ['network', 'aborted', 'no-speech'];
@@ -499,7 +529,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         }
       }
 
-      logger.error(`Recognition error`, { error });
+      logger.error(`Recognition error`, new Error(error));
       emitDebugEvent({ type: 'stt.error', data: { error, context } });
       setError(`Voice recognition error: ${error}`);
       setRecording(false);

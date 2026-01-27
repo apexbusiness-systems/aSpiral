@@ -51,12 +51,13 @@ const ApiKeys = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
+  const [expiryDays, setExpiryDays] = useState<string>('never');
   const [showNewKey, setShowNewKey] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -69,15 +70,15 @@ const ApiKeys = () => {
 
   const loadApiKeys = async () => {
     try {
-      const db = supabase as any;
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('api_keys')
         .select('id, name, last_used_at, created_at, expires_at')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setApiKeys(data || []);
+      // Force cast to known type since supabase types might be loose currently
+      setApiKeys(data as unknown as ApiKey[] || []);
     } catch (error) {
       console.error('Error loading API keys:', error);
       toast({
@@ -91,9 +92,11 @@ const ApiKeys = () => {
 
   const generateApiKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const array = new Uint8Array(40);
+    crypto.getRandomValues(array);
     let key = 'sp_';
     for (let i = 0; i < 40; i++) {
-      key += chars.charAt(Math.floor(Math.random() * chars.length));
+      key += chars.charAt(array[i] % chars.length);
     }
     return key;
   };
@@ -107,20 +110,27 @@ const ApiKeys = () => {
   };
 
   const createApiKey = async () => {
-    if (!newKeyName.trim()) return;
-    
+    if (!newKeyName.trim() || !user) return;
+
     setIsCreating(true);
     try {
       const key = generateApiKey();
       const keyHash = await hashApiKey(key);
 
-      const db = supabase as any;
-      const { error } = await db
+      let expiresAt = null;
+      if (expiryDays !== 'never') {
+        const date = new Date();
+        date.setDate(date.getDate() + parseInt(expiryDays));
+        expiresAt = date.toISOString();
+      }
+
+      const { error } = await supabase
         .from('api_keys')
         .insert({
-          user_id: user!.id,
+          user_id: user.id,
           name: newKeyName.trim(),
           key_hash: keyHash,
+          expires_at: expiresAt
         });
 
       if (error) throw error;
@@ -129,11 +139,12 @@ const ApiKeys = () => {
       setShowNewKey(true);
       toast({ title: 'API key created!' });
       loadApiKeys();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating API key:', error);
+      const msg = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: 'Failed to create API key',
-        description: error.message,
+        description: msg,
         variant: 'destructive',
       });
     } finally {
@@ -142,14 +153,14 @@ const ApiKeys = () => {
   };
 
   const deleteApiKey = async () => {
-    if (!deleteTarget) return;
-    
+    if (!deleteTarget || !user) return;
+
     try {
-      const db = supabase as any;
-      const { error } = await db
+      const { error } = await supabase
         .from('api_keys')
         .delete()
-        .eq('id', deleteTarget);
+        .eq('id', deleteTarget)
+        .eq('user_id', user.id); // Defense in depth: Verify owner
 
       if (error) throw error;
 
@@ -182,7 +193,7 @@ const ApiKeys = () => {
     <div className="app-container min-h-screen">
       <div className="ambient-orb w-96 h-96 bg-primary/30 top-0 left-0" />
       <div className="ambient-orb w-80 h-80 bg-secondary/20 bottom-20 right-10" style={{ animationDelay: '-5s' }} />
-      
+
       <div className="relative z-10 container max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -204,7 +215,7 @@ const ApiKeys = () => {
               </p>
             </div>
           </div>
-          
+
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             if (!open) closeNewKeyDialog();
             else setDialogOpen(true);
@@ -221,13 +232,13 @@ const ApiKeys = () => {
                   {newKeyValue ? 'API Key Created' : 'Create API Key'}
                 </DialogTitle>
                 <DialogDescription>
-                  {newKeyValue 
+                  {newKeyValue
                     ? 'Copy your API key now. You won\'t be able to see it again!'
                     : 'Create a new API key for programmatic access'
                   }
                 </DialogDescription>
               </DialogHeader>
-              
+
               {newKeyValue ? (
                 <div className="space-y-4 pt-4">
                   <div className="p-4 rounded-lg bg-muted border border-border">
@@ -257,16 +268,27 @@ const ApiKeys = () => {
                 </div>
               ) : (
                 <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <Input
                       placeholder="Key name (e.g., Production)"
                       value={newKeyName}
                       onChange={(e) => setNewKeyName(e.target.value)}
                       className="bg-input border-border"
                     />
+                    <select
+                      className="w-full bg-input border-border rounded-md px-3 py-2 text-sm"
+                      value={expiryDays}
+                      onChange={(e) => setExpiryDays(e.target.value)}
+                    >
+                      <option value="never">Never expires</option>
+                      <option value="30">30 days</option>
+                      <option value="60">60 days</option>
+                      <option value="90">90 days</option>
+                      <option value="365">1 year</option>
+                    </select>
                   </div>
-                  <Button 
-                    onClick={createApiKey} 
+                  <Button
+                    onClick={createApiKey}
                     disabled={isCreating || !newKeyName.trim()}
                     className="w-full"
                   >
