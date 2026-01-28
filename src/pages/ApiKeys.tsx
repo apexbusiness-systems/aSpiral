@@ -120,7 +120,7 @@ const ApiKeys = () => {
       let expiresAt = null;
       if (expiryDays !== 'never') {
         const date = new Date();
-        date.setDate(date.getDate() + parseInt(expiryDays));
+        date.setDate(date.getDate() + Number.parseInt(expiryDays, 10));
         expiresAt = date.toISOString();
       }
 

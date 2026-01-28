@@ -5,8 +5,9 @@ import * as THREE from "three";
 
 // Helper to suppress SonarQube security warning for visual-only random values
 const visualRandom = () => {
-  // NOSONAR: Security/WeakCryptography - Only used for visual particle effects, intentionally deterministic-ish
-  return Math.random();
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] / (0xffffffff + 1);
 };
 
 interface GrindingGearsProps {

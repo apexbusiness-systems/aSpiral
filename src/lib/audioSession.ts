@@ -14,12 +14,7 @@ import {
 import { i18n } from '@/lib/i18n';
 import { getSpeechLocale } from '@/lib/i18n/speechLocale';
 import { toast } from 'sonner';
-import {
-  markSpeakRequestStart,
-  markAudioPlaybackStart,
-  getSyncStats,
-  waitForSyncDelay
-} from '@/lib/adaptiveVoiceSync';
+
 
 const logger = createLogger('AudioSession');
 
@@ -398,7 +393,7 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
           if (bufferQueue.length > 0 && !sourceBuffer!.updating) {
             const nextChunk = bufferQueue.shift()!;
             isAppending = true;
-            sourceBuffer!.appendBuffer(nextChunk);
+            sourceBuffer!.appendBuffer(nextChunk as any);
           }
         });
 
@@ -579,28 +574,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   const useChunking = needsSentenceChunking();
   const sentences = useChunking ? splitIntoSentences(options.text) : [options.text];
 
-  /**
-   * Selects the best available voice for the desired language.
-   * Prioritizes: Default -> Google -> Samantha/Daniel -> First available
-   */
-  const selectBestVoice = (voices: SpeechSynthesisVoice[], desiredLang: string): SpeechSynthesisVoice | undefined => {
-    const desiredBase = desiredLang.split("-")[0]?.toLowerCase() ?? "en";
 
-    const matchingVoices = voices.filter((v) => {
-      const vLang = (v.lang ?? "").toLowerCase();
-      return vLang === desiredLang.toLowerCase() || vLang.startsWith(`${desiredBase}-`) || vLang === desiredBase;
-    });
-
-    const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
-
-    return (
-      pickFrom.find((v) => v.default) ||
-      pickFrom.find((v) => v.name.includes("Google")) ||
-      pickFrom.find((v) => v.name.includes("Samantha")) ||
-      pickFrom.find((v) => v.name.includes("Daniel")) ||
-      pickFrom[0]
-    );
-  };
 
   if (useChunking && sentences.length > 1) {
     audioDebug.log('tts_enqueue', { chunking: true, sentenceCount: sentences.length });

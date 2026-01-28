@@ -13,13 +13,19 @@ declare global {
 
 // Support both build-time (Vite) and runtime (window.ENV) environment variables
 // This allows the app to work even if build-time variables are missing
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  (typeof window !== 'undefined' ? window.ENV?.SUPABASE_URL : undefined);
+const getGlobalEnv = () => {
+  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+    return (globalThis as any).window?.ENV;
+  }
+  return undefined;
+};
+
+const globalEnv = getGlobalEnv();
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || globalEnv?.SUPABASE_URL;
 
 const SUPABASE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  (typeof window !== 'undefined' ? window.ENV?.SUPABASE_PUBLISHABLE_KEY : undefined);
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || globalEnv?.SUPABASE_PUBLISHABLE_KEY;
 
 /**
  * Creates a mock Supabase client that logs errors on usage.
