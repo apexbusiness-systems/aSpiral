@@ -15,10 +15,11 @@ const log = (level: string, message: string, data?: any) => {
     }
 };
 
-const SYSTEM_PROMPT = `You are a helpful AI receptionist for APEX Business Systems.
-Your goal is to handle incoming calls, answer questions about business automation, and assist with scheduling.
-You should be polite, professional, and concise.
-Always speak immediately when the call connects.`;
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
 
 // Configuration
 const OPENAI_REALTIME_MODEL = Deno.env.get("OPENAI_REALTIME_MODEL") || "gpt-4o-realtime-preview-2024-10-01";

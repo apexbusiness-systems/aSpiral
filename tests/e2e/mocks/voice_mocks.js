@@ -1,18 +1,5 @@
 
 // Mock SpeechRecognition
-<<<<<<< HEAD
-window.SpeechRecognition = class MockSpeechRecognition {
-    constructor() {
-        this.continuous = false;
-        this.interimResults = false;
-        this.lang = 'en-US';
-        this.onresult = null;
-        this.onerror = null;
-        this.onstart = null;
-        this.onend = null;
-        this.started = false;
-        window.lastRecognition = this; // Expose instance for testing
-=======
 globalThis.SpeechRecognition = class MockSpeechRecognition {
     continuous = false;
     interimResults = false;
@@ -25,7 +12,6 @@ globalThis.SpeechRecognition = class MockSpeechRecognition {
 
     constructor() {
         globalThis.lastRecognition = this; // Expose instance for testing
->>>>>>> test/voice-system-verification-opt
     }
 
     start() {
@@ -67,17 +53,10 @@ globalThis.SpeechRecognition = class MockSpeechRecognition {
         }
     }
 };
-<<<<<<< HEAD
-window.webkitSpeechRecognition = window.SpeechRecognition;
-
-// Mock SpeechSynthesis
-window.speechSynthesis = {
-=======
 globalThis.webkitSpeechRecognition = globalThis.SpeechRecognition;
 
 // Mock SpeechSynthesis
 globalThis.speechSynthesis = {
->>>>>>> test/voice-system-verification-opt
     speaking: false,
     paused: false,
     pending: false,
@@ -107,18 +86,6 @@ globalThis.speechSynthesis = {
     resume() { this.paused = false; }
 };
 
-<<<<<<< HEAD
-window.SpeechSynthesisUtterance = class MockSpeechSynthesisUtterance {
-    constructor(text) {
-        this.text = text;
-        this.lang = 'en-US';
-        this.volume = 1;
-        this.rate = 1;
-        this.pitch = 1;
-        this.onstart = null;
-        this.onend = null;
-        this.onerror = null;
-=======
 globalThis.SpeechSynthesisUtterance = class MockSpeechSynthesisUtterance {
     text;
     lang = 'en-US';
@@ -133,10 +100,8 @@ globalThis.SpeechSynthesisUtterance = class MockSpeechSynthesisUtterance {
         this.text = text;
     }
 
-    // Dummy method to avoid "Unexpected class with only a constructor" smell
-    // even though this is a data container mock.
+    // Clone method for completeness
     clone() {
         return new MockSpeechSynthesisUtterance(this.text);
->>>>>>> test/voice-system-verification-opt
     }
 };

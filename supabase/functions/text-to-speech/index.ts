@@ -100,11 +100,11 @@ serve(async (req) => {
     // Return audio as binary
     const audioBuffer = await response.arrayBuffer();
 
-    return new Response(audioBuffer, {
+    return new Response(response.body, {
       headers: {
         ...corsHeaders(origin),
         'Content-Type': 'audio/mpeg',
-        'Content-Length': audioBuffer.byteLength.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
 
