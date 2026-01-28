@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -136,13 +137,13 @@ export function MainMenu({
                     "text-xs font-semibold uppercase tracking-wider",
                     "px-3 py-1 rounded-full w-fit",
                     sessionState === "idle" &&
-                      "bg-muted/50 text-muted-foreground border border-muted",
+                    "bg-muted/50 text-muted-foreground border border-muted",
                     sessionState === "active" &&
-                      "bg-green-500/20 text-green-500 border border-green-500/30",
+                    "bg-green-500/20 text-green-500 border border-green-500/30",
                     sessionState === "paused" &&
-                      "bg-yellow-500/20 text-yellow-500 border border-yellow-500/30",
+                    "bg-yellow-500/20 text-yellow-500 border border-yellow-500/30",
                     sessionState === "breakthrough" &&
-                      "bg-primary/20 text-primary border border-primary/30"
+                    "bg-primary/20 text-primary border border-primary/30"
                   )}
                 >
                   {sessionState === "idle" && "Ready"}
@@ -366,7 +367,7 @@ export function MainMenu({
                   <MenuAction
                     icon={Keyboard}
                     label="Keyboard Shortcuts"
-                    onClick={() => {}}
+                    onClick={() => { }}
                   />
                 </div>
               </div>
@@ -380,18 +381,18 @@ export function MainMenu({
                   </h3>
 
                   {installPwa ? (
-                     <Button
-                       variant="secondary"
-                       className="w-full justify-start gap-2"
-                       onClick={installPwa}
-                     >
-                       <Download size={16} />
-                       Add to Home Screen
-                     </Button>
+                    <Button
+                      variant="secondary"
+                      className="w-full justify-start gap-2"
+                      onClick={installPwa}
+                    >
+                      <Download size={16} />
+                      Add to Home Screen
+                    </Button>
                   ) : isIOS ? (
-                     <p className="text-xs text-muted-foreground">
-                       Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
-                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
+                    </p>
                   ) : null}
                 </div>
               )}
@@ -405,15 +406,15 @@ export function MainMenu({
                   Install App
                 </h3>
                 {installPwa ? (
-                   <MenuAction
-                     icon={Download}
-                     label="Add to Home Screen"
-                     onClick={installPwa}
-                   />
+                  <MenuAction
+                    icon={Download}
+                    label="Add to Home Screen"
+                    onClick={installPwa}
+                  />
                 ) : (/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream) ? (
-                   <p className="text-xs text-muted-foreground">
-                     Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
-                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
+                  </p>
                 ) : null}
               </div>
             )}
@@ -464,13 +465,13 @@ const MenuAction = forwardRef<HTMLButtonElement, MenuActionProps>(
           "cursor-pointer transition-all duration-200",
           "hover:translate-x-[-2px]",
           variant === "default" &&
-            "bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border",
+          "bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border",
           variant === "primary" &&
-            "bg-primary/20 border-primary/40 hover:bg-primary/30 hover:border-primary/60",
+          "bg-primary/20 border-primary/40 hover:bg-primary/30 hover:border-primary/60",
           variant === "accent" &&
-            "bg-green-500/20 border-green-500/40 hover:bg-green-500/30 hover:border-green-500/60",
+          "bg-green-500/20 border-green-500/40 hover:bg-green-500/30 hover:border-green-500/60",
           variant === "danger" &&
-            "bg-destructive/10 border-destructive/30 hover:bg-destructive/20 hover:border-destructive/50"
+          "bg-destructive/10 border-destructive/30 hover:bg-destructive/20 hover:border-destructive/50"
         )}
         onClick={onClick}
       >

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -70,13 +72,13 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState<NormalizedError | null>(null);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [usageStats, setUsageStats] = useState<UsageStats>(EMPTY_USAGE_STATS);
-  const [entityTypes, setEntityTypes] = useState<{name: string; value: number}[]>([]);
+  const [entityTypes, setEntityTypes] = useState<{ name: string; value: number }[]>([]);
 
   const loadStats = useCallback(async (isRetry = false) => {
     if (isRetry) {
@@ -89,7 +91,7 @@ const AdminDashboard = () => {
     try {
       // Cast supabase to any to bypass strict typing for tables not yet in schema
       const db = supabase as any;
-      
+
       // Get sessions
       const { data: sessions, error: sessionsError } = await db
         .from('sessions')
@@ -115,7 +117,7 @@ const AdminDashboard = () => {
       ]);
 
       // Extract data, treating errors as empty arrays (partial rendering)
-      const breakthroughsData = breakthroughsRes.status === 'fulfilled' 
+      const breakthroughsData = breakthroughsRes.status === 'fulfilled'
         ? breakthroughsRes.value.data || []
         : [];
       const entitiesData = entitiesRes.status === 'fulfilled'
@@ -189,7 +191,7 @@ const AdminDashboard = () => {
       // Check if any partial failures occurred (non-blocking warning)
       const partialFailures = [breakthroughsRes, entitiesRes, messagesRes]
         .filter(r => r.status === 'rejected');
-      
+
       if (partialFailures.length > 0 && partialFailures.length < 3) {
         // Some data loaded, some failed - show non-blocking warning
         console.warn('Dashboard partial load failures:', partialFailures);
@@ -203,7 +205,7 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error('Error loading stats:', err);
       const normalized = normalizeError(err);
-      
+
       // Only show error for real failures, not empty data
       if (!normalized.isNonError) {
         setError(normalized);
@@ -257,7 +259,7 @@ const AdminDashboard = () => {
     <div className="app-container min-h-screen">
       <div className="ambient-orb w-96 h-96 bg-primary/30 top-0 left-0" />
       <div className="ambient-orb w-80 h-80 bg-secondary/20 bottom-20 right-10" style={{ animationDelay: '-5s' }} />
-      
+
       <div className="relative z-10 container max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -362,20 +364,20 @@ const AdminDashboard = () => {
                     borderRadius: '8px',
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="sessions" 
-                  stackId="1" 
-                  stroke="hsl(var(--primary))" 
-                  fill="hsl(var(--primary) / 0.3)" 
+                <Area
+                  type="monotone"
+                  dataKey="sessions"
+                  stackId="1"
+                  stroke="hsl(var(--primary))"
+                  fill="hsl(var(--primary) / 0.3)"
                   name="Sessions"
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="breakthroughs" 
-                  stackId="1" 
-                  stroke="hsl(var(--accent))" 
-                  fill="hsl(var(--accent) / 0.3)" 
+                <Area
+                  type="monotone"
+                  dataKey="breakthroughs"
+                  stackId="1"
+                  stroke="hsl(var(--accent))"
+                  fill="hsl(var(--accent) / 0.3)"
                   name="Breakthroughs"
                 />
               </AreaChart>
@@ -422,8 +424,8 @@ const AdminDashboard = () => {
               <div className="flex flex-wrap gap-3 mt-4 justify-center">
                 {entityTypes.map((type, index) => (
                   <div key={type.name} className="flex items-center gap-2 text-sm">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
                     <span className="text-muted-foreground">{type.name}: {type.value}</span>

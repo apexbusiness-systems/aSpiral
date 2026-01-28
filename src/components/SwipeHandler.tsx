@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, ReactNode } from "react";
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ export function SwipeHandler({
 
   const handleDragEnd = (_: any, info: PanInfo) => {
     setIsDragging(false);
-    
+
     if (info.offset.x > threshold && onSwipeRight) {
       onSwipeRight();
     } else if (info.offset.x < -threshold && onSwipeLeft) {

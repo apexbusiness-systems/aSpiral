@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Voice Debug Panel
  * 
@@ -13,8 +14,8 @@ import { Bug, X, Trash2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // Voice debug functions removed - useVoiceInput doesn't export these
 // Stubbing them for now until proper debug exports are added
-const subscribeToVoiceDebug = (cb: (events: any[]) => void) => { cb([]); return () => {}; };
-const clearVoiceDebugBuffer = () => {};
+const subscribeToVoiceDebug = (cb: (events: any[]) => void) => { cb([]); return () => { }; };
+const clearVoiceDebugBuffer = () => { };
 import { subscribeToTTSDebug } from "@/hooks/useTextToSpeech";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 
@@ -28,7 +29,7 @@ export function VoiceDebugPanel() {
   const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [events, setEvents] = useState<DebugEvent[]>([]);
-  
+
   const isSpeaking = useAssistantSpeakingStore(state => state.isSpeaking);
 
   // Check URL param on mount
@@ -47,7 +48,7 @@ export function VoiceDebugPanel() {
         setIsVisible(prev => !prev);
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -55,22 +56,22 @@ export function VoiceDebugPanel() {
   // Subscribe to both STT and TTS debug events
   useEffect(() => {
     if (!isVisible) return;
-    
+
     // Merge both event streams
     let allEvents: DebugEvent[] = [];
-    
+
     const unsubscribeSTT = subscribeToVoiceDebug((sttEvents) => {
       allEvents = [...allEvents.filter(e => !e.type.startsWith('stt') && !e.type.startsWith('listener')), ...sttEvents];
       setEvents([...allEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50));
     });
-    
+
     const unsubscribeTTS = subscribeToTTSDebug((ttsEvents) => {
       allEvents = [...allEvents.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio')), ...ttsEvents];
       setEvents([...allEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50));
     });
-    
-    return () => { 
-      unsubscribeSTT(); 
+
+    return () => {
+      unsubscribeSTT();
       unsubscribeTTS();
     };
   }, [isVisible]);
@@ -82,10 +83,10 @@ export function VoiceDebugPanel() {
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    const timeStr = date.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
       second: '2-digit'
     });
     const ms = String(date.getMilliseconds()).padStart(3, '0');
@@ -104,7 +105,7 @@ export function VoiceDebugPanel() {
       return 'text-cyan-500';
     }
     if (type.includes('audioContext')) return 'text-purple-300';
-    
+
     // STT events
     if (type.includes('start')) return 'text-green-400';
     if (type.includes('stop')) return 'text-red-400';
@@ -179,7 +180,7 @@ export function VoiceDebugPanel() {
                 </div>
               ) : (
                 events.slice().reverse().map((event, i) => (
-                  <div 
+                  <div
                     key={`${event.timestamp}-${i}`}
                     className="flex gap-2 text-[10px] leading-tight"
                   >

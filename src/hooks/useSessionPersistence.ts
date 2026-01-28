@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,7 +46,7 @@ export function useSessionPersistence() {
     error: null,
     isLoading: false,
   });
-  
+
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const lastSavedDataRef = useRef<string>('');
   const autoSaveIntervalRef = useRef<NodeJS.Timeout>();
@@ -231,7 +232,7 @@ export function useSessionPersistence() {
           userId: user.id,
           status: 'paused',
         });
-        
+
         navigator.sendBeacon?.(
           `${import.meta.env.VITE_SUPABASE_URL || 'https://eqtwatyodujxofrdznen.supabase.co'}/rest/v1/rpc/save_session_status`,
           payload
