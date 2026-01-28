@@ -150,6 +150,7 @@ const INJECTION_PATTERNS = {
       // Cyrillic lookalikes for "ignore"
       /[іiı][ğgɡ][ñnη][оoο][řrг][еeε]/gi,
       // Zero-width characters
+      // eslint-disable-next-line no-misleading-character-class
       /[\u200B\u200C\u200D\uFEFF\u2060]/g,
       // Invisible separators
       /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g,
@@ -340,6 +341,7 @@ function sanitizeInput(input: string): string {
   let sanitized = input;
 
   // Remove zero-width characters
+  // eslint-disable-next-line no-misleading-character-class
   sanitized = sanitized.replace(/[\u200B\u200C\u200D\uFEFF\u2060]/g, "");
 
   // Remove invisible separators

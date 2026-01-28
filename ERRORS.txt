@@ -1,0 +1,2240 @@
+17:41:03.601 Running build in Portland, USA (West) – pdx1
+17:41:03.602 Build machine configuration: 4 cores, 8 GB
+17:41:03.708 Cloning github.com/apexbusiness-systems/aSpiral (Branch: chore/sonarqube-grade-a-launch-audit, Commit: ac16bba)
+17:41:05.282 Warning: Failed to fetch one or more git submodules
+17:41:05.282 Cloning completed: 1.574s
+17:41:05.608 Restored build cache from previous deployment (GkfyjdWWV6WS4QkCi28fxbQt6n8A)
+17:41:05.870 Warning: Due to "engines": { "node": "22.x" } in your `package.json` file, the Node.js Version defined in your Project Settings ("24.x") will not apply, Node.js Version "22.x" will be used instead. Learn More: https://vercel.link/node-version
+17:41:05.870 Running "vercel build"
+17:41:06.620 Vercel CLI 50.5.2
+17:41:07.109 Warning: Due to "engines": { "node": "22.x" } in your `package.json` file, the Node.js Version defined in your Project Settings ("24.x") will not apply, Node.js Version "22.x" will be used instead. Learn More: https://vercel.link/node-version
+17:41:07.122 Installing dependencies...
+17:41:08.807 
+17:41:08.807 up to date in 1s
+17:41:08.808 
+17:41:08.808 191 packages are looking for funding
+17:41:08.808   run `npm fund` for details
+17:41:08.840 Running "npm run build"
+17:41:08.942 
+17:41:08.942 > aspiral@1.0.0 build
+17:41:08.942 > vite build
+17:41:08.942 
+17:41:09.381 [36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+17:41:09.734 transforming...
+17:41:12.759 [32m✓[39m 2117 modules transformed.
+17:41:12.764 [31m✗[39m Build failed in 3.35s
+17:41:12.765 [31merror during build:
+17:41:12.765 [31m[vite-plugin-pwa:build] [plugin vite-plugin-pwa:build] src/hooks/useVoiceInput.ts (387:8): There was an error during the build:
+17:41:12.765   Transform failed with 4 errors:
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:387:8: ERROR: The symbol "startSilenceTimer" has already been declared
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:397:8: ERROR: The symbol "emitInterimUpdate" has already been declared
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:406:8: ERROR: The symbol "commitInterimAsFinal" has already been declared
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:419:3: ERROR: Unexpected ","
+17:41:12.765 Additionally, handling the error in the 'buildEnd' hook caused the following error:
+17:41:12.765   Transform failed with 4 errors:
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:387:8: ERROR: The symbol "startSilenceTimer" has already been declared
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:397:8: ERROR: The symbol "emitInterimUpdate" has already been declared
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:406:8: ERROR: The symbol "commitInterimAsFinal" has already been declared
+17:41:12.765 /vercel/path0/src/hooks/useVoiceInput.ts:419:3: ERROR: Unexpected ","[31m
+17:41:12.765 file: [36m/vercel/path0/src/hooks/useVoiceInput.ts:387:8[31m
+17:41:12.766 [33m
+17:41:12.766 [33mThe symbol "startSilenceTimer" has already been declared[33m
+17:41:12.766 385 |    }, []);
+17:41:12.766 386 |  
+17:41:12.766 387 |    const startSilenceTimer = useCallback(() => {
+17:41:12.766     |          ^
+17:41:12.766 388 |      clearSilenceTimer();
+17:41:12.766 389 |      silenceTimeoutRef.current = setTimeout(() => {
+17:41:12.766 
+17:41:12.766 [33mThe symbol "emitInterimUpdate" has already been declared[33m
+17:41:12.766 395 |    }, [clearSilenceTimer]);
+17:41:12.766 396 |  
+17:41:12.766 397 |    const emitInterimUpdate = useCallback((text: string, force = false) => {
+17:41:12.766     |          ^
+17:41:12.766 398 |      const now = Date.now();
+17:41:12.766 399 |      if (!force && now - lastInterimEmitRef.current < INTERIM_UPDATE_INTERVAL) {
+17:41:12.766 
+17:41:12.766 [33mThe symbol "commitInterimAsFinal" has already been declared[33m
+17:41:12.766 404 |    }, []);
+17:41:12.766 405 |  
+17:41:12.766 406 |    const commitInterimAsFinal = useCallback(() => {
+17:41:12.767     |          ^
+17:41:12.767 407 |      const interim = interimTranscriptRef.current.trim();
+17:41:12.767 408 |      if (!interim) return;
+17:41:12.767 
+17:41:12.767 [33mUnexpected ","[33m
+17:41:12.767 417 |      setIsPaused(false);
+17:41:12.767 418 |      emitInterimUpdate("", true); // Clear interim on stop
+17:41:12.767 419 |    }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
+17:41:12.767     |     ^
+17:41:12.767 420 |  
+17:41:12.767 421 |    // Update stopRecordingRef
+17:41:12.767 [31m
+17:41:12.767     at getRollupError (file:///vercel/path0/node_modules/vite/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+17:41:12.767     at file:///vercel/path0/node_modules/vite/node_modules/rollup/dist/es/shared/node-entry.js:23418:39
+17:41:12.767     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+17:41:12.767     at async catchUnfinishedHookActions (file:///vercel/path0/node_modules/vite/node_modules/rollup/dist/es/shared/node-entry.js:22876:16)
+17:41:12.767     at async rollupInternal (file:///vercel/path0/node_modules/vite/node_modules/rollup/dist/es/shared/node-entry.js:23401:5)
+17:41:12.767     at async buildEnvironment (file:///vercel/path0/node_modules/vite/dist/node/chunks/config.js:33541:12)
+17:41:12.767     at async Object.build (file:///vercel/path0/node_modules/vite/dist/node/chunks/config.js:33900:19)
+17:41:12.768     at async Object.buildApp (file:///vercel/path0/node_modules/vite/dist/node/chunks/config.js:33897:153)
+17:41:12.768     at async CAC.<anonymous> (file:///vercel/path0/node_modules/vite/dist/node/cli.js:629:3)[39m
+17:41:12.810 Error: Command "npm run build" exited with 1
+
+
+
+============================================================================================================================================================================================
+
+
+
+CI Success
+failed 3 hours ago in 2s
+Search logs
+0s
+1s
+Run if [ "failure" != "success" ]; then
+❌ Build failed
+Error: Process completed with exit code 1.
+
+
+
+
+============================================================================================================================================================================================
+
+
+
+
+Build & Lint
+failed 3 hours ago in 25s
+Search logs
+0s
+2s
+5s
+11s
+4s
+Run npm run lint --if-present
+
+> aspiral@1.0.0 lint
+> eslint .
+
+
+/home/runner/work/aSpiral/aSpiral/src/components/3d/AdaptiveEntity.tsx
+Error:   1:1  error  Definition for rule 'react/no-unknown-property' was not found  react/no-unknown-property
+
+/home/runner/work/aSpiral/aSpiral/src/components/3d/BreakthroughEffect.tsx
+Warning:   115:18  warning  The ref value 'sceneRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'sceneRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/components/3d/SpiralEntities.tsx
+Warning:   29:9  warning  The 'entities' logical expression could make the dependencies of useEffect Hook (at line 115) change on every render. To fix this, wrap the initialization of 'entities' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/components/cinematics/CinematicPlayer.tsx
+Warning:   329:6  warning  React Hook useEffect has a missing dependency: 'handleSkip'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/badge.tsx
+Warning:   29:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/button.tsx
+Warning:   47:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/command.tsx
+Error:   24:11  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/form.tsx
+Warning:   129:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/navigation-menu.tsx
+Warning:   111:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/sidebar.tsx
+Warning:   636:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/sonner.tsx
+Warning:   27:19  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/textarea.tsx
+Error:   5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/home/runner/work/aSpiral/aSpiral/src/components/ui/toggle.tsx
+Warning:   37:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/contexts/AuthContext.tsx
+Warning:   30:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/src/hooks/useSessionPersistence.ts
+Warning:   223:6  warning  React Hook useEffect has missing dependencies: 'currentSession' and 'user'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/hooks/useTextToSpeech.ts
+Warning:   192:6  warning  React Hook useCallback has missing dependencies: 'forceWebSpeech' and 'volume'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/hooks/useVoiceInput.ts
+  419:3  error  Parsing error: Declaration or statement expected
+
+/home/runner/work/aSpiral/aSpiral/src/integrations/supabase/client.ts
+Error:    9:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Error:   13:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/src/lib/__tests__/voice-pipeline-integration.test.ts
+Error:   30:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/src/lib/audioLogger.ts
+Error:   26:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Error:   31:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Error:   50:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/src/lib/breakthrough/types.ts
+Error:   338:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/src/lib/cinematics/ParticleSystem.tsx
+Warning:   79:8  warning  React Hook useEffect has a missing dependency: 'updateInstancedMesh'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/lib/i18n/__tests__/translation-keys.test.ts
+Error:   32:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Error:   52:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Error:   69:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/src/lib/performance/optimizer.ts
+Error:   475:7  error  Include a description after the "@ts-expect-error" directive to explain why the @ts-expect-error is necessary. The description must be 3 characters or longer  @typescript-eslint/ban-ts-comment
+
+/home/runner/work/aSpiral/aSpiral/src/pages/AdminDashboard.tsx
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+/home/runner/work/aSpiral/aSpiral/src/pages/ApiKeys.tsx
+Warning:   69:6  warning  React Hook useEffect has a missing dependency: 'loadApiKeys'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/runner/work/aSpiral/aSpiral/src/workers/renderer.worker.tsx
+Warning:   28:10  warning  Fast refresh only works when a file has exports. Move your component(s) to a separate file  react-refresh/only-export-components
+Warning:   41:10  warning  Fast refresh only works when a file has exports. Move your component(s) to a separate file  react-refresh/only-export-components
+
+/home/runner/work/aSpiral/aSpiral/supabase/functions/api-entities/index.ts
+Error:   9:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/supabase/functions/api-export/index.ts
+Error:    9:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+Error:   44:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/supabase/functions/api-insights/index.ts
+Error:   9:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/supabase/functions/spiral-ai/input-validator.ts
+Error:   257:36  error  Unexpected control character(s) in regular expression: \x00, \x08, \x0b, \x0c, \x0e, \x1f  no-control-regex
+
+/home/runner/work/aSpiral/aSpiral/supabase/functions/spiral-ai/prompt-shield.ts
+Error:   153:15  error  Unexpected joined character sequence in character class  no-misleading-character-class
+Error:   343:41  error  Unexpected joined character sequence in character class  no-misleading-character-class
+
+/home/runner/work/aSpiral/aSpiral/supabase/functions/voice-stream/index.ts
+Error:   6:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/runner/work/aSpiral/aSpiral/tailwind.config.ts
+Error:   165:13  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+✖ 42 problems (24 errors, 18 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+Error: Process completed with exit code 1.
+0s
+0s
+0s
+0s
+0s
+0s
+Cleaning up orphan processes
+
+
+
+
+============================================================================================================================================================================================
+
+
+
+
+Duplicated Lines (%) on New Code
+3.4%
+Duplicated Lines (%) on New Code
+Duplicated Lines on New Code
+
+src/lib/audioSession.ts
+47.1%
+16
+
+
+
+============================================================================================================================================================================================
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 133 more lines
+New code
+    // Shake effect based on intensity
+    if (groupRef.current) {
+      const shake = intensity * 0.02;
+      // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
+      groupRef.current.position.x = position[0] + (Math.random() - 0.5) * shake;
+Make sure that using this pseudorandom number generator is safe here.
+
+      groupRef.current.position.y = position[1] + (Math.random() - 0.5) * shake;
+    }
+    // Generate sparks
+    sparkTime.current += delta;
+
+
+Show 102 more lines
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 134 more lines
+New code
+    // Shake effect based on intensity
+    if (groupRef.current) {
+      const shake = intensity * 0.02;
+      // NOSONAR: Security/WeakCryptography - Used for visual particle effects only, not security.
+      groupRef.current.position.x = position[0] + (Math.random() - 0.5) * shake;
+      groupRef.current.position.y = position[1] + (Math.random() - 0.5) * shake;
+Make sure that using this pseudorandom number generator is safe here.
+
+    }
+    // Generate sparks
+    sparkTime.current += delta;
+    if (sparkTime.current > 0.1 / intensity && sparksRef.current.length < 20) {
+
+
+Show 101 more lines
+
+
+
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 141 more lines
+New code
+    // Generate sparks
+    sparkTime.current += delta;
+    if (sparkTime.current > 0.1 / intensity && sparksRef.current.length < 20) {
+      sparkTime.current = 0;
+      const angle = Math.random() * Math.PI * 2;
+Make sure that using this pseudorandom number generator is safe here.
+
+      const sparkPos = new THREE.Vector3(
+        Math.cos(angle) * 0.5,
+        0,
+        Math.sin(angle) * 0.3
+      );
+
+
+Show 94 more lines
+
+
+
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 148 more lines
+        Math.cos(angle) * 0.5,
+        0,
+        Math.sin(angle) * 0.3
+      );
+      const sparkVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 3,
+Make sure that using this pseudorandom number generator is safe here.
+
+        Math.random() * 2 + 1,
+        (Math.random() - 0.5) * 3
+      );
+      sparksRef.current.push({
+        id: Date.now() + Math.random(),
+
+
+Show 87 more lines
+
+
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 149 more lines
+        0,
+        Math.sin(angle) * 0.3
+      );
+      const sparkVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 3,
+        Math.random() * 2 + 1,
+Make sure that using this pseudorandom number generator is safe here.
+
+        (Math.random() - 0.5) * 3
+      );
+      sparksRef.current.push({
+        id: Date.now() + Math.random(),
+        pos: sparkPos,
+
+
+Show 86 more lines
+
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 150 more lines
+        Math.sin(angle) * 0.3
+      );
+      const sparkVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 3,
+        Math.random() * 2 + 1,
+        (Math.random() - 0.5) * 3
+Make sure that using this pseudorandom number generator is safe here.
+
+      );
+      sparksRef.current.push({
+        id: Date.now() + Math.random(),
+        pos: sparkPos,
+        vel: sparkVel,
+
+
+Show 85 more lines
+
+
+
+Make sure that using this pseudorandom number generator is safe here.
+
+Using pseudorandom number generators (PRNGs) is security-sensitivetypescript:S2245
+Status: To Review
+This Security Hotspot needs to be reviewed to assess whether the code poses a risk.
+
+Review
+Review priority:
+Medium
+Category:
+Weak Cryptography
+Assignee:
+Apex Business Apps
+Apex Business Apps
+Where is the risk?
+What's the risk?
+Assess the risk
+How can I fix it?
+Activity
+src/components/3d/GrindingGears.tsx
+
+
+
+
+*
+
+
+Show 153 more lines
+        (Math.random() - 0.5) * 3,
+        Math.random() * 2 + 1,
+        (Math.random() - 0.5) * 3
+      );
+      sparksRef.current.push({
+        id: Date.now() + Math.random(),
+Make sure that using this pseudorandom number generator is safe here.
+
+        pos: sparkPos,
+        vel: sparkVel,
+      });
+    }
+
+
+Show 82 more lines
+
+
+
+
+scripts/validate-build.js
+
+
+Remove this unused import of 'execFileSync'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L8
+1min effort
+8 days ago
+Code Smell
+Minor
+
+
+Remove this useless assignment to variable "key".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+cwe
+unused
++
+Open
+Not assigned
+L183
+1min effort
+8 days ago
+Code Smell
+Major
+src/components/3d/EnhancedSpiralScene.tsx
+
+
+Remove this unused import of 'GrindingGears'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L15
+1min effort
+9 days ago
+Code Smell
+Minor
+
+
+Remove this unused import of 'GreaseApplication'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L16
+1min effort
+9 days ago
+Code Smell
+Minor
+
+
+Remove this unused import of 'BreakthroughTransformation'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L17
+1min effort
+9 days ago
+Code Smell
+Minor
+src/components/3d/EntityMesh.tsx
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L28
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L35
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L44
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L51
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'position' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L84
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'position' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L89
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'castShadow' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L92
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'receiveShadow' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L93
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'emissive' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L100
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'emissiveIntensity' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L101
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'metalness' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L102
+5min effort
+15 days ago
+Code Smell
+Major
+
+
+Unknown property 'roughness' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L103
+5min effort
+15 days ago
+Code Smell
+Major
+src/components/3d/aurora/AuroraPlatform.tsx
+
+
+Use `Math.trunc` instead of `| 0`.
+
+Intentionality
+Reliability
+
+
+4
+High
+Maintainability
+
+
+4
+High
+confusing
++
+Open
+Not assigned
+L39
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'position' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L126
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'rotation' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L128
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L129
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'transparent' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L133
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'metalness' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L135
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'roughness' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L136
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'rotation' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L141
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'position' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L141
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L142
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'transparent' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L146
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'alphaMap' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L148
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'blending' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L149
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'depthWrite' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L150
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'rotation' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L155
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'position' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L155
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L156
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'transparent' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L164
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'blending' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L166
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'depthWrite' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L167
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'rotation' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L172
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'position' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L172
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'args' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L173
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'transparent' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L181
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'blending' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L183
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'depthWrite' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L184
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'attach' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L193
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'count' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L194
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'array' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L195
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'itemSize' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L196
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'transparent' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L203
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'blending' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L205
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'depthWrite' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L206
+5min effort
+4 days ago
+Code Smell
+Major
+
+
+Unknown property 'sizeAttenuation' found
+
+Intentionality
+Reliability
+
+
+3
+Low
+Maintainability
+
+
+2
+Medium
+react
++
+Open
+Not assigned
+L207
+5min effort
+4 days ago
+Code Smell
+Major
+src/components/3d/aurora/deviceTier.ts
+
+
+Compare with `undefined` directly instead of using `typeof`.
+
+Consistency
+Maintainability
+
+
+3
+Low
+readability
+style
++
+Open
+Not assigned
+L142
+2min effort
+9 days ago
+Code Smell
+Minor
+src/hooks/useEntities.ts
+
+
+Refactor this code to not nest functions more than 4 levels deep.
+
+Adaptability
+Maintainability
+
+
+4
+High
+brain-overload
++
+Open
+Not assigned
+L84
+20min effort
+15 days ago
+Code Smell
+Critical
+src/hooks/useVoiceInput.ts
+
+
+Remove this useless assignment to variable "watchdogTimer".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+cwe
+unused
++
+Open
+Not assigned
+L188
+1min effort
+9 days ago
+Code Smell
+Major
+
+
+Handle this exception or don't catch it at all.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+cwe
+error-handling
+...
++
+Open
+Not assigned
+L292
+1h effort
+8 days ago
+Code Smell
+Minor
+
+
+Prefer `globalThis` over `window`.
+
+Consistency
+Maintainability
+
+
+3
+Low
+es2020
+portability
++
+Open
+Not assigned
+L503
+2min effort
+6 days ago
+Code Smell
+Minor
+
+
+Prefer `globalThis` over `window`.
+
+Consistency
+Maintainability
+
+
+3
+Low
+es2020
+portability
++
+Open
+Not assigned
+L503
+2min effort
+6 days ago
+Code Smell
+Minor
+
+
+Prefer using an optional chain expression instead, as it's more concise and easier to read.
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+No tags
++
+Open
+Not assigned
+L562
+5min effort
+8 days ago
+Code Smell
+Major
+src/lib/__tests__/voice-pipeline-integration.test.ts
+
+
+Remove this unused import of 'vi'.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+es2015
+type-dependent
+...
++
+Open
+Not assigned
+L1
+1min effort
+9 days ago
+Code Smell
+Minor
+src/lib/audioSession.ts
+
+
+Prefer `globalThis` over `window`.
+
+Consistency
+Maintainability
+
+
+3
+Low
+es2020
+portability
++
+Open
+Not assigned
+L208
+2min effort
+5 days ago
+Code Smell
+Minor
+
+
+Prefer `globalThis` over `window`.
+
+Consistency
+Maintainability
+
+
+3
+Low
+es2020
+portability
++
+Open
+Not assigned
+L208
+2min effort
+5 days ago
+Code Smell
+Minor
+
+
+Prefer `globalThis` over `window`.
+
+Consistency
+Maintainability
+
+
+3
+Low
+es2020
+portability
++
+Open
+Not assigned
+L378
+2min effort
+7 days ago
+Code Smell
+Minor
+
+
+Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
+
+Adaptability
+Maintainability
+
+
+4
+High
+brain-overload
++
+Open
+Not assigned
+L396
+7min effort
+7 days ago
+Code Smell
+Critical
+
+
+This assertion is unnecessary since it does not change the type of the expression.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+redundant
+type-dependent
++
+Open
+Not assigned
+L407
+1min effort
+7 days ago
+Code Smell
+Minor
+
+
+This assertion is unnecessary since it does not change the type of the expression.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+redundant
+type-dependent
++
+Open
+Not assigned
+L408
+1min effort
+7 days ago
+Code Smell
+Minor
+
+
+This assertion is unnecessary since it does not change the type of the expression.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+redundant
+type-dependent
++
+Open
+Not assigned
+L410
+1min effort
+7 days ago
+Code Smell
+Minor
+
+
+This assertion is unnecessary since it does not change the type of the expression.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+redundant
+type-dependent
++
+Open
+Not assigned
+L415
+1min effort
+7 days ago
+Code Smell
+Minor
+
+
+This assertion is unnecessary since it does not change the type of the expression.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+redundant
+type-dependent
++
+Open
+Not assigned
+L436
+1min effort
+7 days ago
+Code Smell
+Minor
+
+
+This assertion is unnecessary since it does not change the type of the expression.
+
+Intentionality
+Maintainability
+
+
+3
+Low
+redundant
+type-dependent
++
+Open
+Not assigned
+L438
+1min effort
+7 days ago
+Code Smell
+Minor
+supabase/functions/voice-stream/index.ts
+
+
+Remove this useless assignment to variable "isConnected".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+cwe
+unused
++
+Open
+Not assigned
+L70
+1min effort
+7 days ago
+Code Smell
+Major
+
+
+Remove this useless assignment to variable "isConnected".
+
+Intentionality
+Maintainability
+
+
+2
+Medium
+cwe
+unused
++
+Open
+Not assigned
+L125
+1min effort
+7 days ago
+Code Smell
+Major
+
+
+
+
+============================================================================================================================================================================================
+
+
+
+Duplicated Lines (%) on New Code
+1.0%
+New code: since previous version
+Duplicated Lines (%) on New Code
+Duplicated Lines on New Code
+
+src/hooks/useEntities.ts
+31.6%
+31
+
+src/components/3d/SpiralEntities.tsx
+30.8%
+32

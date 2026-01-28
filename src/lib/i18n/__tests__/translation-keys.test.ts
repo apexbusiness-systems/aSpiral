@@ -29,7 +29,7 @@ type SupportedLanguage = (typeof supportedLanguages)[number];
 /**
  * Recursively flatten object keys into dot-notation paths
  */
-function flattenKeys(obj: any, prefix = ""): string[] {
+function flattenKeys(obj: Record<string, unknown>, prefix = ""): string[] {
   const keys: string[] = [];
 
   for (const key in obj) {
@@ -37,7 +37,7 @@ function flattenKeys(obj: any, prefix = ""): string[] {
     const value = obj[key];
 
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      keys.push(...flattenKeys(value, fullKey));
+      keys.push(...flattenKeys(value as Record<string, unknown>, fullKey));
     } else {
       keys.push(fullKey);
     }
@@ -49,7 +49,7 @@ function flattenKeys(obj: any, prefix = ""): string[] {
 /**
  * Validate that a value is a non-empty string
  */
-function validateTranslationValue(value: any, key: string, language: string): void {
+function validateTranslationValue(value: unknown, key: string, language: string): void {
   if (value === null || value === undefined) {
     throw new Error(`Null/undefined value for key "${key}" in ${language}`);
   }
@@ -66,13 +66,13 @@ function validateTranslationValue(value: any, key: string, language: string): vo
 /**
  * Recursively validate all leaf values in a translation object
  */
-function validateAllValues(obj: any, prefix = "", language: string): void {
+function validateAllValues(obj: Record<string, unknown>, prefix = "", language: string): void {
   for (const key in obj) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
     const value = obj[key];
 
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      validateAllValues(value, fullKey, language);
+      validateAllValues(value as Record<string, unknown>, fullKey, language);
     } else {
       validateTranslationValue(value, fullKey, language);
     }

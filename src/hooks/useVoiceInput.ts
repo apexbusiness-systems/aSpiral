@@ -356,6 +356,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
     commitInterimAsFinal();
 
+    cleanup();
+    setRecording(false);
+    setIsPaused(false);
+    emitInterimUpdate("", true); // Clear interim on stop
+
     // Sound Effect
     try {
       if (shouldPlayFeedback()) {
@@ -382,40 +387,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     } catch {
       // Ignore audio context errors during stop
     }
-  }, []);
-
-  const startSilenceTimer = useCallback(() => {
-    clearSilenceTimer();
-    silenceTimeoutRef.current = setTimeout(() => {
-      if (isStartedRef.current && recognitionRef.current) {
-        logger.info("Silence timeout reached, stopping recognition");
-        recognitionRef.current.stop();
-      }
-    }, SILENCE_TIMEOUT_MS);
-  }, [clearSilenceTimer]);
-
-  const emitInterimUpdate = useCallback((text: string, force = false) => {
-    const now = Date.now();
-    if (!force && now - lastInterimEmitRef.current < INTERIM_UPDATE_INTERVAL) {
-      return;
-    }
-    lastInterimEmitRef.current = now;
-    setInterimTranscript(text);
-  }, []);
-
-  const commitInterimAsFinal = useCallback(() => {
-    const interim = interimTranscriptRef.current.trim();
-    if (!interim) return;
-    setFinalTranscript(prev => (prev + " " + interim).trim());
-    options.onTranscript?.(interim);
-    interimTranscriptRef.current = "";
-    emitInterimUpdate("", true);
-  }, [emitInterimUpdate, options]);
-
-    cleanup();
-    setRecording(false);
-    setIsPaused(false);
-    emitInterimUpdate("", true); // Clear interim on stop
   }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
 
   // Update stopRecordingRef

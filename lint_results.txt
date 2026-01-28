@@ -1,0 +1,74 @@
+﻿
+> aspiral@1.0.0 lint
+> eslint .
+
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\3d\AdaptiveEntity.tsx
+  1:1  error  Definition for rule 'react/no-unknown-property' was not found  react/no-unknown-property
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\3d\BreakthroughEffect.tsx
+  115:18  warning  The ref value 'sceneRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'sceneRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\3d\SpiralEntities.tsx
+  29:9  warning  The 'entities' logical expression could make the dependencies of useEffect Hook (at line 115) change on every render. To fix this, wrap the initialization of 'entities' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\cinematics\CinematicPlayer.tsx
+  329:6  warning  React Hook useEffect has a missing dependency: 'handleSkip'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\badge.tsx
+  29:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\button.tsx
+  47:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\form.tsx
+  129:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\navigation-menu.tsx
+  111:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\sidebar.tsx
+  636:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\sonner.tsx
+  27:19  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\components\ui\toggle.tsx
+  37:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\contexts\AuthContext.tsx
+  30:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\hooks\useSessionPersistence.ts
+  223:6  warning  React Hook useEffect has missing dependencies: 'currentSession' and 'user'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\hooks\useTextToSpeech.ts
+  192:6  warning  React Hook useCallback has missing dependencies: 'forceWebSpeech' and 'volume'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\lib\__tests__\voice-pipeline-integration.test.ts
+  30:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\lib\cinematics\ParticleSystem.tsx
+  79:8  warning  React Hook useEffect has a missing dependency: 'updateInstancedMesh'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\lib\i18n\__tests__\translation-keys.test.ts
+  32:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  69:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\lib\performance\optimizer.ts
+  475:7  error  Include a description after the "@ts-expect-error" directive to explain why the @ts-expect-error is necessary. The description must be 3 characters or longer  @typescript-eslint/ban-ts-comment
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\pages\AdminDashboard.tsx
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\pages\ApiKeys.tsx
+  69:6  warning  React Hook useEffect has a missing dependency: 'loadApiKeys'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\sinyo\aSpiral\aSpiral\aSpiral\aSpiral\src\workers\renderer.worker.tsx
+  28:10  warning  Fast refresh only works when a file has exports. Move your component(s) to a separate file  react-refresh/only-export-components
+  41:10  warning  Fast refresh only works when a file has exports. Move your component(s) to a separate file  react-refresh/only-export-components
+
+Γ£û 24 problems (6 errors, 18 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
