@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "validate": "npm run typecheck && npm run lint && npm run test",
     "precommit": "npm run validate",
-    "prepush": "npm run validate && npm run build"
+    "prepush": "npm run validate && npm run build",
+    "security:audit": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

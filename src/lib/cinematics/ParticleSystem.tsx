@@ -15,14 +15,15 @@ interface ParticleSystemProps extends ParticleConfig {
   loop?: boolean;
 }
 
-interface Particle {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Particle = {
   position: THREE.Vector3;
   velocity: THREE.Vector3;
   life: number;
   maxLife: number;
   size: number;
   color: THREE.Color;
-}
+};
 
 export const ParticleSystem = forwardRef<ParticleSystemRef, ParticleSystemProps>(
   (
