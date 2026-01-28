@@ -150,7 +150,7 @@ export function AdaptiveEntity({
 
         {/* Ground indicator - simplified */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -baseSize - 0.1, 0]}> {/* NOSONAR */}
-          <ringGeometry args={[baseSize * 0.8, baseSize * 1, 16]} /> // NOSONAR
+          <ringGeometry args={[baseSize * 0.8, baseSize * 1, 16]} />{/* NOSONAR */}
           <meshBasicMaterial
             color={color}
             transparent // NOSONAR

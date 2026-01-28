@@ -15,7 +15,7 @@ declare global {
 // This allows the app to work even if build-time variables are missing
 const getGlobalEnv = () => {
   if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
-    return (globalThis as any).window?.ENV;
+    return (globalThis as unknown as Window).ENV;
   }
   return undefined;
 };

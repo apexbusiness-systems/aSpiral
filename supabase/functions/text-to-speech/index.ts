@@ -19,7 +19,7 @@ const DEFAULT_MODEL = 'tts-1';
 const RequestSchema = z.object({
   text: z.string().min(1).max(4000),
   voice: z.enum(VOICES).optional().default(DEFAULT_VOICE),
-  speed: z.number().min(0.25).max(4.0).optional().default(1),
+  speed: z.number().min(0.25).max(4).optional().default(1),
 });
 
 serve(async (req) => {
@@ -98,8 +98,6 @@ serve(async (req) => {
     }
 
     // Return audio as binary
-    const audioBuffer = await response.arrayBuffer();
-
     return new Response(response.body, {
       headers: {
         ...corsHeaders(origin),
