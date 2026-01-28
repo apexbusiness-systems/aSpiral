@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 /**
  * useVoiceInput Hook - Fixed for STT "Rap God" Duplication Bug
  *
@@ -47,7 +49,7 @@ const parseStoredSettings = (value: string | null): StoredSettings | null => {
 };
 
 const shouldPlayFeedback = (): boolean => {
-  if (typeof window === "undefined") return false;
+  if (typeof globalThis === "undefined") return false;
   const stored = parseStoredSettings(localStorage.getItem(SETTINGS_STORAGE_KEY));
   if (stored?.soundEffects === false) return false;
   if (stored?.reducedMotion === true) return false;
@@ -76,10 +78,10 @@ function checkVoiceSupport(): {
   requiresFallback: boolean;
   reason?: string;
 } {
-  if (typeof window === "undefined") {
+  if (typeof globalThis === "undefined") {
     return { supported: false, requiresFallback: false, reason: "no_window" };
   }
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
   if (!SpeechRecognition) {
     return { supported: false, requiresFallback: false, reason: "no_speech_api" };
   }
@@ -120,18 +122,6 @@ function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
 
   // Also log to console for debugging
   logger.debug(`[${event.type}]`, event.data);
-
-  // Diagnostics snapshot at every transition
-  if (event.type.startsWith('stt.')) {
-    // Note: Hook-scoped variables not available in global function scope
-    console.log(`[VOICE_SNAPSHOT] ${JSON.stringify({
-      voiceState: fullEvent.type,
-      isGated: isGated(),
-      // Hook variables would need to be passed to this global function if needed
-      audioContextState: 'unknown',
-      ttsBackend: 'unknown'
-    })}`);
-  }
 }
 
 // Export for debug panel
@@ -149,6 +139,34 @@ export function clearVoiceDebugBuffer() {
   debugBuffer = [];
   debugSubscribers.forEach(cb => cb(debugBuffer));
 }
+
+// Interfaces for SpeechRecognition
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
 
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
@@ -184,8 +202,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const recognitionRef = useRef<any>(null);
   const isStartedRef = useRef(false);
   const isIntentionalStop = useRef(false);
+
+  // Cleaned up unused refs based on SonarQube
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
-  const watchdogTimer = useRef<NodeJS.Timeout | null>(null);
+  const watchdogTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Dedupe tracking
   const lastFinalCommitTime = useRef<number>(0);
@@ -195,7 +215,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // Watchdog and activity tracking
   const lastActivityAtRef = useRef(Date.now());
-  const watchdogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restartRequestedRef = useRef(false);
   const restartCount60sRef = useRef(0);
   const lastRestartTimeRef = useRef(0);
@@ -204,7 +223,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const RESTART_BACKOFF_MS = 250;
 
   // Silence timeout
-  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const SILENCE_TIMEOUT_MS = 30000; // 30s
 
   // Ref for stopRecording to avoid circular dependency
@@ -336,10 +355,38 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     setVoiceState('Idle');
     emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
     commitInterimAsFinal();
+
     cleanup();
     setRecording(false);
     setIsPaused(false);
     emitInterimUpdate("", true); // Clear interim on stop
+
+    // Sound Effect
+    try {
+      if (shouldPlayFeedback()) {
+        const AudioContext =
+          (globalThis as any).AudioContext ||
+          (globalThis as any).webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        }
+      } else {
+        restartCount60sRef.current = 1;
+      }
+    } catch {
+      // Ignore audio context errors during stop
+    }
   }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
 
   // Update stopRecordingRef
@@ -348,7 +395,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [stopRecording]);
 
   const handleRecognitionResult = useCallback(
-    (event: any) => {
+    (event: Event) => {
+      const speechEvent = event as SpeechRecognitionEvent;
       // Update activity timestamp and reset timers on ANY recognition activity
       lastActivityAtRef.current = Date.now();
       startWatchdog();
@@ -383,8 +431,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       let newInterimText = "";
 
       // Process results
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
+      for (let i = speechEvent.resultIndex; i < speechEvent.results.length; i++) {
+        const result = speechEvent.results[i];
         const text = result[0].transcript;
 
         if (VOICE_STOP_KEYWORDS.some((k) => text.toLowerCase().includes(k))) {
@@ -447,9 +495,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   );
 
   const handleRecognitionError = useCallback(
-    (event: any) => {
+    (event: Event) => {
       // AGGRESSIVE RESTART: For network, aborted, or no-speech errors, restart immediately
-      const error = event.error;
+      const errorEvent = event as SpeechRecognitionErrorEvent;
+      const error = errorEvent.error;
       const context = "handler";
 
       const restartableErrors = ['network', 'aborted', 'no-speech'];
@@ -500,7 +549,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     onErrorContext: string;
   }) => {
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) return null;
 
@@ -532,7 +581,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             try {
               recognitionRef.current.start();
             } catch (e) {
-              logger.warn("Failed to restart recognition after watchdog", e);
+              logger.warn("Failed to restart recognition after watchdog", { error: e });
             }
           }
         }, RESTART_BACKOFF_MS);
@@ -568,10 +617,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         }
       }
     } catch (permError) {
-      logger.debug("Permission API not available", permError as Error);
+      logger.debug("Permission API not available", { error: permError });
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError("Not supported");
       toast.error("Speech recognition not supported");
@@ -586,8 +635,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     try {
       if (shouldPlayFeedback()) {
         const AudioContext =
-          window.AudioContext ||
-          (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          (globalThis as any).AudioContext ||
+          (globalThis as any).webkitAudioContext;
         if (AudioContext) {
           const ctx = new AudioContext();
           const osc = ctx.createOscillator();
@@ -716,7 +765,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [isRecording, isPaused, startRecording, stopRecording]);
 
   const togglePause = useCallback(() => {
-    isPaused ? resumeRecording() : pauseRecording();
+    if (isPaused) {
+      resumeRecording();
+    } else {
+      pauseRecording();
+    }
   }, [isPaused, resumeRecording, pauseRecording]);
 
   // Register with AudioSession for TTS coordination

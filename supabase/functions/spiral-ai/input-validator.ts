@@ -20,11 +20,11 @@ export const TranscriptSchema = z.object({
     .min(1, "Transcript cannot be empty")
     .max(10000, "Transcript too long (max 10,000 chars)")
     .refine(
-      (val) => !containsNullBytes(val),
+      (val: string) => !containsNullBytes(val),
       "Invalid characters detected"
     )
     .refine(
-      (val) => !isEncodedPayload(val),
+      (val: string) => !isEncodedPayload(val),
       "Encoded payloads not allowed"
     ),
 
@@ -148,7 +148,8 @@ export function validateInput(rawInput: unknown): ValidationResult {
     const result = TranscriptSchema.safeParse(rawInput);
 
     if (!result.success) {
-      const errors: ValidationError[] = result.error.errors.map((err) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errors: ValidationError[] = result.error.errors.map((err: any) => ({
         field: err.path.join('.') || 'root',
         message: err.message,
         code: err.code,
@@ -254,6 +255,7 @@ function sanitizeTranscript(transcript: string): string {
   sanitized = sanitized.replaceAll(/\s+/g, ' ').trim();
 
   // Remove control characters (except newline and tab)
+  // eslint-disable-next-line no-control-regex
   sanitized = sanitized.replaceAll(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
 
   // Limit consecutive newlines

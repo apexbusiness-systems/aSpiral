@@ -82,10 +82,12 @@ The project includes hardened build processes with:
 - [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
 - [Security Review](docs/SECURITY_REVIEW.md) - Security audit results
 - [Code Review](docs/CODE_REVIEW.md) - Code quality guidelines
+- [Audit Report](docs/CI_RESCUE_WALKTHROUGH.md) - CI/CD hardening and rescue log
 
 ### Setup Guides
 - [Supabase Setup](SUPABASE_SETUP.md) - Backend configuration
 - [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md) - Production deployment
+- [Bootstrap Guide](docs/bootstrap.md) - New environment setup
 
 ## 🔧 Development
 

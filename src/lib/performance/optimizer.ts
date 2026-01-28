@@ -472,7 +472,7 @@ export async function isLowPowerModeAsync(): Promise<boolean> {
   try {
     // @ts-expect-error - Battery API not fully typed
     if (navigator.getBattery) {
-      // @ts-expect-error
+      // @ts-expect-error -- Performance API types mismatch in some environments
       const battery = await navigator.getBattery();
 
       // Low power if battery < 20% and not charging
@@ -518,14 +518,14 @@ export async function getQualitySettingsAsync(
  */
 export function detectDeviceTier(): 'low' | 'mid' | 'high' {
   const capabilities = detectDeviceCapabilities();
-  
+
   if (capabilities.gpuTier >= 3 && capabilities.deviceType === 'desktop') {
     return 'high';
   }
-  
+
   if (capabilities.gpuTier >= 2) {
     return 'mid';
   }
-  
+
   return 'low';
 }

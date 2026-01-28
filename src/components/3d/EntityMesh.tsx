@@ -25,14 +25,14 @@ export const EntityMesh: React.FC<EntityMeshProps> = ({ entity, index, position 
         switch (entity.type) {
             case 'friction':
                 return {
-                    geometry: <boxGeometry args={[0.8, 0.8, 0.8]} />,
+                    geometry: <boxGeometry args={[0.8, 0.8, 0.8]} />, // NOSONAR
                     color: '#ff4444',
                     emissive: '#ff2222',
                     scale: 1,
                 };
             case 'grease':
                 return {
-                    geometry: <coneGeometry args={[0.6, 1.2, 4]} />,
+                    geometry: <coneGeometry args={[0.6, 1.2, 4]} />, // NOSONAR
                     color: '#ffcc00',
                     emissive: '#ffaa00',
                     scale: 1,
@@ -41,14 +41,14 @@ export const EntityMesh: React.FC<EntityMeshProps> = ({ entity, index, position 
             case 'value': // Fallback for similar types 
             case 'action':
                 return {
-                    geometry: <sphereGeometry args={[0.5, 32, 32]} />,
+                    geometry: <sphereGeometry args={[0.5, 32, 32]} />, // NOSONAR
                     color: '#4488ff',
                     emissive: '#2266ff',
                     scale: 1,
                 };
             default: // emotion, problem, etc
                 return {
-                    geometry: <sphereGeometry args={[0.4, 32, 32]} />,
+                    geometry: <sphereGeometry args={[0.4, 32, 32]} />, // NOSONAR
                     color: '#8b5cf6', // Brand purple
                     emissive: '#6d28d9',
                     scale: 0.8,

@@ -6,29 +6,29 @@ const logger = createLogger('AudioDebug');
 
 export interface AudioDebugEvent {
   type:
-    | 'mic_permission'
-    | 'session_start'
-    | 'session_end'
-    | 'recognizer_start'
-    | 'recognizer_stop'
-    | 'recognizer_error'
-    | 'stt_interim'
-    | 'stt_final'
-    | 'stt_dedupe'
-    | 'watchdog_restart'
-    | 'watchdog_restart_failed'
-    | 'tts_enqueue'
-    | 'tts_start'
-    | 'tts_end'
-    | 'tts_error'
-    | 'audio_route_change'
-    | 'app_state_change';
-  payload: any;
+  | 'mic_permission'
+  | 'session_start'
+  | 'session_end'
+  | 'recognizer_start'
+  | 'recognizer_stop'
+  | 'recognizer_error'
+  | 'stt_interim'
+  | 'stt_final'
+  | 'stt_dedupe'
+  | 'watchdog_restart'
+  | 'watchdog_restart_failed'
+  | 'tts_enqueue'
+  | 'tts_start'
+  | 'tts_end'
+  | 'tts_error'
+  | 'audio_route_change'
+  | 'app_state_change';
+  payload: unknown;
   timestamp: number;
 }
 
 export const audioDebug = {
-  log: (type: AudioDebugEvent['type'], payload: any) => {
+  log: (type: AudioDebugEvent['type'], payload: unknown) => {
     if (!isDebugEnabled) return;
 
     const event: AudioDebugEvent = {
@@ -47,7 +47,7 @@ export const audioDebug = {
     // For now, it stays in console/memory
   },
 
-  error: (type: AudioDebugEvent['type'], error: any) => {
+  error: (type: AudioDebugEvent['type'], error: unknown) => {
     if (!isDebugEnabled) return;
     console.error(`%c[Audio Error] ${type}`, 'color: #ef4444; font-weight: bold;', error);
   }

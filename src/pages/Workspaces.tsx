@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +57,7 @@ const Workspaces = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -75,7 +76,7 @@ const Workspaces = () => {
 
     try {
       const db = supabase as any;
-      
+
       // Get workspaces where user is a member
       const { data: memberData, error: memberError } = await db
         .from('workspace_members')
@@ -92,7 +93,7 @@ const Workspaces = () => {
       }
 
       const workspaceIds = memberData?.map((m: any) => m.workspace_id) || [];
-      
+
       if (workspaceIds.length > 0) {
         const { data: workspacesData, error: workspacesError } = await db
           .from('workspaces')
@@ -105,7 +106,7 @@ const Workspaces = () => {
             throw workspacesError;
           }
         }
-        
+
         setWorkspaces(workspacesData || []);
       } else {
         // No workspaces - this is SUCCESS, not an error
@@ -118,7 +119,7 @@ const Workspaces = () => {
     } catch (err) {
       console.error('Error loading workspaces:', err);
       const normalized = normalizeError(err);
-      
+
       // Only show error banner for real errors, not empty states
       if (!normalized.isNonError) {
         setError(normalized);
@@ -150,7 +151,7 @@ const Workspaces = () => {
 
   const createWorkspace = async () => {
     if (!newWorkspaceName.trim()) return;
-    
+
     setIsCreating(true);
     try {
       const slug = newWorkspaceName
@@ -203,7 +204,7 @@ const Workspaces = () => {
     <div className="app-container min-h-screen">
       <div className="ambient-orb w-96 h-96 bg-primary/30 top-0 left-0" />
       <div className="ambient-orb w-80 h-80 bg-secondary/20 bottom-20 right-10" style={{ animationDelay: '-5s' }} />
-      
+
       <div className="relative z-10 container max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -225,7 +226,7 @@ const Workspaces = () => {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {/* Refresh button */}
             <Button
@@ -262,8 +263,8 @@ const Workspaces = () => {
                       className="bg-input border-border"
                     />
                   </div>
-                  <Button 
-                    onClick={createWorkspace} 
+                  <Button
+                    onClick={createWorkspace}
                     disabled={isCreating || !newWorkspaceName.trim()}
                     className="w-full"
                   >

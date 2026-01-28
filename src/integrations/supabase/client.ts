@@ -2,15 +2,30 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+declare global {
+  interface Window {
+    ENV?: {
+      SUPABASE_URL?: string;
+      SUPABASE_PUBLISHABLE_KEY?: string;
+    };
+  }
+}
+
 // Support both build-time (Vite) and runtime (window.ENV) environment variables
 // This allows the app to work even if build-time variables are missing
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  (typeof window !== 'undefined' ? (window as any).ENV?.SUPABASE_URL : undefined);
+const getGlobalEnv = () => {
+  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+    return (globalThis as unknown as Window).ENV;
+  }
+  return undefined;
+};
+
+const globalEnv = getGlobalEnv();
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || globalEnv?.SUPABASE_URL;
 
 const SUPABASE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  (typeof window !== 'undefined' ? (window as any).ENV?.SUPABASE_PUBLISHABLE_KEY : undefined);
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || globalEnv?.SUPABASE_PUBLISHABLE_KEY;
 
 /**
  * Creates a mock Supabase client that logs errors on usage.
@@ -40,7 +55,7 @@ function createMockClient(): SupabaseClient<Database> {
             signInWithOtp: throwError,
             signUp: throwError,
             signOut: () => Promise.resolve({ error: new Error(errorMessage) }),
-            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
             // Database methods
             select: () => createProxy({ data: null, error: new Error(errorMessage) }),
             insert: throwError,
@@ -56,7 +71,7 @@ function createMockClient(): SupabaseClient<Database> {
             channel: () => createProxy({
               on: () => createProxy({}),
               subscribe: () => createProxy({}),
-              unsubscribe: () => {},
+              unsubscribe: () => { },
             }),
           } as unknown as T);
         }

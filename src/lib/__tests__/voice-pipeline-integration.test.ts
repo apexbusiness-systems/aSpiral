@@ -27,6 +27,7 @@ describe('Voice Pipeline Integration', () => {
 
   describe('TTS Fallback Default', () => {
     it('should default fallbackToWebSpeech to true', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const options = { text: 'test', voice: 'test', speed: 1 } as any;
       const { fallbackToWebSpeech = true, ...rest } = options;
 
