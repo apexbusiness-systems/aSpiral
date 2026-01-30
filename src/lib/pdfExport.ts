@@ -13,6 +13,18 @@ interface SessionExportData {
   }>;
 }
 
+/**
+ * Escapes HTML entities to prevent XSS attacks
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function generateSessionHTML(data: SessionExportData): string {
   const { session, messages, breakthroughs = [] } = data;
   const sessionDate = format(new Date(session.createdAt), 'MMMM d, yyyy');
@@ -285,7 +297,7 @@ function generateSessionHTML(data: SessionExportData): string {
           <div class="meta-item">📅 ${sessionDate}</div>
           <div class="meta-item">🕐 ${sessionTime}</div>
           <div class="meta-item">
-            <span class="status-badge">${session.status}</span>
+            <span class="status-badge">${escapeHtml(session.status)}</span>
           </div>
         </div>
       </div>
@@ -295,14 +307,14 @@ function generateSessionHTML(data: SessionExportData): string {
           <div class="section-title">Key Breakthroughs</div>
           ${breakthroughs.map((b, i) => `
             <div class="breakthrough-card">
-              <div class="breakthrough-content">${b.content}</div>
+              <div class="breakthrough-content">${escapeHtml(b.content)}</div>
               <div class="breakthrough-meta">
-                ${b.insight_type ? `<span>Type: ${b.insight_type}</span>` : ''}
+                ${b.insight_type ? `<span>Type: ${escapeHtml(b.insight_type)}</span>` : ''}
                 ${b.significance ? `
                   <span>
                     Significance:
                     <span class="significance-bar">
-                      <span class="significance-fill" style="width: ${b.significance * 100}%"></span>
+                      <span class="significance-fill" style="width: ${Math.min(100, Math.max(0, b.significance * 100))}%"></span>
                     </span>
                   </span>
                 ` : ''}
@@ -324,7 +336,7 @@ function generateSessionHTML(data: SessionExportData): string {
                 </div>
                 <ul class="entity-list">
                   ${entities.slice(0, 5).map(e => `
-                    <li class="entity-item">${e.label}</li>
+                    <li class="entity-item">${escapeHtml(e.label)}</li>
                   `).join('')}
                   ${entities.length > 5 ? `<li class="entity-item" style="color: #64748b;">+${entities.length - 5} more...</li>` : ''}
                 </ul>
@@ -340,8 +352,8 @@ function generateSessionHTML(data: SessionExportData): string {
           <div class="messages-container">
             ${messages.slice(0, 20).map(m => `
               <div class="message message-${m.role}">
-                <div class="message-role">${m.role}</div>
-                <div class="message-content">${m.content.substring(0, 300)}${m.content.length > 300 ? '...' : ''}</div>
+                <div class="message-role">${escapeHtml(m.role)}</div>
+                <div class="message-content">${escapeHtml(m.content.substring(0, 300))}${m.content.length > 300 ? '...' : ''}</div>
               </div>
             `).join('')}
             ${messages.length > 20 ? `

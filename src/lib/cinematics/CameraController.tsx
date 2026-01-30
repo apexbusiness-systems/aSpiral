@@ -51,6 +51,17 @@ export const CameraController = forwardRef<CameraControllerRef, CameraController
       typeof path.easing === 'string' ? getEasingFunction(path.easing) : path.easing || easeInOutCubic
     );
 
+    // Reusable objects to prevent memory allocation on every frame
+    const startPos = useRef(new THREE.Vector3());
+    const endPos = useRef(new THREE.Vector3());
+    const currentPos = useRef(new THREE.Vector3());
+    const shakeVec = useRef(new THREE.Vector3());
+    const startRot = useRef(new THREE.Euler());
+    const endRot = useRef(new THREE.Euler());
+    const startQuat = useRef(new THREE.Quaternion());
+    const endQuat = useRef(new THREE.Quaternion());
+    const currentQuat = useRef(new THREE.Quaternion());
+
     // Setup look-at target
     useEffect(() => {
       if (path.lookAt === 'center') {
@@ -134,36 +145,37 @@ export const CameraController = forwardRef<CameraControllerRef, CameraController
       // Apply easing
       const t = easingFn.current(progress);
 
-      // Interpolate position
-      const startPos = new THREE.Vector3(path.from.x, path.from.y, path.from.z);
-      const endPos = new THREE.Vector3(path.to.x, path.to.y, path.to.z);
-      const currentPos = new THREE.Vector3().lerpVectors(startPos, endPos, t);
+      // Interpolate position using reusable objects
+      startPos.current.set(path.from.x, path.from.y, path.from.z);
+      endPos.current.set(path.to.x, path.to.y, path.to.z);
+      currentPos.current.lerpVectors(startPos.current, endPos.current, t);
 
       // Apply camera shake if enabled
       if (enableShake && progress < 0.9) {
         const shakeX = (Math.random() - 0.5) * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * shakeIntensity;
         const shakeZ = (Math.random() - 0.5) * shakeIntensity;
-        currentPos.add(new THREE.Vector3(shakeX, shakeY, shakeZ));
+        shakeVec.current.set(shakeX, shakeY, shakeZ);
+        currentPos.current.add(shakeVec.current);
       }
 
-      camera.position.copy(currentPos);
+      camera.position.copy(currentPos.current);
 
-      // Interpolate rotation if specified
+      // Interpolate rotation if specified using reusable objects
       if (path.rotation) {
-        const startRot = new THREE.Euler(0, 0, 0, path.rotation.order || 'XYZ');
-        const endRot = new THREE.Euler(
+        startRot.current.set(0, 0, 0, path.rotation.order || 'XYZ');
+        endRot.current.set(
           path.rotation.x,
           path.rotation.y,
           path.rotation.z,
           path.rotation.order || 'XYZ'
         );
 
-        const startQuat = new THREE.Quaternion().setFromEuler(startRot);
-        const endQuat = new THREE.Quaternion().setFromEuler(endRot);
-        const currentQuat = new THREE.Quaternion().slerpQuaternions(startQuat, endQuat, t);
+        startQuat.current.setFromEuler(startRot.current);
+        endQuat.current.setFromEuler(endRot.current);
+        currentQuat.current.slerpQuaternions(startQuat.current, endQuat.current, t);
 
-        camera.quaternion.copy(currentQuat);
+        camera.quaternion.copy(currentQuat.current);
       }
 
       // Interpolate FOV if specified
