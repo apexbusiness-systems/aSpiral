@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -89,8 +87,16 @@ const AdminDashboard = () => {
     setError(null);
 
     try {
+      type DatabaseRow = { id: string; created_at: string; user_id?: string; session_id?: string; type?: string };
       // Cast supabase to any to bypass strict typing for tables not yet in schema
-      const db = supabase as any;
+      const db = supabase as unknown as {
+        from: (table: string) => {
+          select: (columns: string) => {
+            eq: (column: string, value: string) => Promise<{ data: DatabaseRow[] | null; error: Error | null }>;
+            then: (resolve: (value: { data: DatabaseRow[] | null; error: Error | null }) => void) => Promise<{ data: DatabaseRow[] | null; error: Error | null }>;
+          };
+        };
+      };
 
       // Get sessions
       const { data: sessions, error: sessionsError } = await db
@@ -107,7 +113,7 @@ const AdminDashboard = () => {
         }
       }
 
-      const sessionIds = sessions?.map((s: any) => s.id) || [];
+      const sessionIds = sessions?.map((s) => s.id) || [];
 
       // Get other stats - use Promise.allSettled for partial rendering
       const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.allSettled([
@@ -128,9 +134,9 @@ const AdminDashboard = () => {
         : [];
 
       // Filter to user's sessions
-      const userBreakthroughs = breakthroughsData.filter((b: any) => sessionIds.includes(b.session_id));
-      const userEntities = entitiesData.filter((e: any) => sessionIds.includes(e.session_id));
-      const userMessages = messagesData.filter((m: any) => sessionIds.includes(m.session_id));
+      const userBreakthroughs = breakthroughsData.filter((b) => sessionIds.includes(b.session_id || ''));
+      const userEntities = entitiesData.filter((e) => sessionIds.includes(e.session_id || ''));
+      const userMessages = messagesData.filter((m) => sessionIds.includes(m.session_id || ''));
 
       // Calculate usage stats - zeros are valid for first-run
       setUsageStats({
@@ -143,8 +149,9 @@ const AdminDashboard = () => {
 
       // Calculate entity types
       const typeCounts: Record<string, number> = {};
-      userEntities.forEach((e: any) => {
-        typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+      userEntities.forEach((e) => {
+        const entityType = e.type || 'unknown';
+        typeCounts[entityType] = (typeCounts[entityType] || 0) + 1;
       });
       setEntityTypes(Object.entries(typeCounts).map(([name, value]) => ({ name, value })));
 
@@ -160,19 +167,19 @@ const AdminDashboard = () => {
         };
       });
 
-      (sessions || []).forEach((s: any) => {
+      (sessions || []).forEach((s) => {
         const sessionDate = startOfDay(new Date(s.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === sessionDate.getTime());
         if (dayEntry) dayEntry.sessions++;
       });
 
-      userBreakthroughs.forEach((b: any) => {
+      userBreakthroughs.forEach((b) => {
         const bDate = startOfDay(new Date(b.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === bDate.getTime());
         if (dayEntry) dayEntry.breakthroughs++;
       });
 
-      userEntities.forEach((e: any) => {
+      userEntities.forEach((e) => {
         const eDate = startOfDay(new Date(e.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === eDate.getTime());
         if (dayEntry) dayEntry.entities++;
@@ -232,7 +239,7 @@ const AdminDashboard = () => {
     loadStats(true);
   };
 
-  const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color: string }) => (
+  const StatCard = ({ icon: Icon, label, value, color }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; color: string }) => (
     <div className="glass-card p-6">
       <div className="flex items-center gap-4">
         <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
