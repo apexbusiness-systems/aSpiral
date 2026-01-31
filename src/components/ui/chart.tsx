@@ -6,6 +6,28 @@ import { cn } from "@/lib/utils";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+/**
+ * Validates and sanitizes CSS color values to prevent CSS injection
+ * Allows: hex colors, rgb/rgba, hsl/hsla, named colors, CSS variables
+ */
+function sanitizeCssColor(color: string): string | null {
+  if (!color) return null;
+
+  // Allow CSS variables
+  if (color.startsWith('var(--') && color.endsWith(')')) {
+    return color;
+  }
+
+  // Allow valid CSS color formats (hex, rgb, rgba, hsl, hsla, named colors)
+  const validColorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\([^)]+\)|rgba\([^)]+\)|hsl\([^)]+\)|hsla\([^)]+\)|[a-z]+)$/;
+
+  if (validColorRegex.test(color.trim())) {
+    return color.trim();
+  }
+
+  return null;
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -75,7 +97,8 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    const sanitized = color ? sanitizeCssColor(color) : null;
+    return sanitized ? `  --color-${key}: ${sanitized};` : null;
   })
   .join("\n")}
 }

@@ -15,7 +15,6 @@ interface ParticleSystemProps extends ParticleConfig {
   loop?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Particle = {
   position: THREE.Vector3;
   velocity: THREE.Vector3;
