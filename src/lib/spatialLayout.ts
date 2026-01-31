@@ -68,15 +68,7 @@ export function calculateOptimalLayout(
         const minDistance = 1.5;
         if (distance < minDistance) {
           const force = repulsionStrength / (distance * distance);
-          const fx = (dx / distance) * force;
-          const fy = (dy / distance) * force;
-          const fz = (dz / distance) * force * 0.3; // Reduce Z force
-          
-          const f1 = forces.get(e1.id)!;
-          forces.set(e1.id, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
-          
-          const f2 = forces.get(e2.id)!;
-          forces.set(e2.id, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
+          applyMutualForce(forces, e1.id, e2.id, [dx, dy, dz], distance, force);
         }
       });
     });
@@ -100,15 +92,7 @@ export function calculateOptimalLayout(
       const displacement = distance - idealDistance;
       const force = displacement * attractionStrength * conn.strength;
       
-      const fx = (dx / distance) * force;
-      const fy = (dy / distance) * force;
-      const fz = (dz / distance) * force * 0.3;
-      
-      const f1 = forces.get(conn.fromEntityId)!;
-      forces.set(conn.fromEntityId, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
-      
-      const f2 = forces.get(conn.toEntityId)!;
-      forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
+      applyMutualForce(forces, conn.fromEntityId, conn.toEntityId, [dx, dy, dz], distance, force);
     });
     
     // Center gravity (prevent drift)
@@ -142,6 +126,28 @@ export function calculateOptimalLayout(
   normalizePositions(positions);
   
   return positions;
+}
+
+/**
+ * Apply mutual force between two entities
+ */
+function applyMutualForce(
+  forces: Map<string, Position>,
+  id1: string,
+  id2: string,
+  delta: Position,
+  distance: number,
+  forceMagnitude: number
+) {
+  const fx = (delta[0] / distance) * forceMagnitude;
+  const fy = (delta[1] / distance) * forceMagnitude;
+  const fz = (delta[2] / distance) * forceMagnitude * 0.3; // Reduce Z force
+  
+  const f1 = forces.get(id1)!;
+  forces.set(id1, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
+  
+  const f2 = forces.get(id2)!;
+  forces.set(id2, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
 }
 
 /**

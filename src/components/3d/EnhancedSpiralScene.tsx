@@ -96,7 +96,7 @@ export function EnhancedSpiralScene({ interactive = true }: EnhancedSpiralSceneP
         style={{ background: "transparent" }}
         dpr={capabilities.deviceType === "mobile" ? [1, 1.25] : [1, 1.6]}
         performance={{ min: capabilities.gpuTier === 1 ? 0.4 : 0.6 }}
-        frameloop="demand"
+        frameloop="always"
         onCreated={({ gl }) => {
           gl.outputColorSpace = THREE.SRGBColorSpace;
           gl.toneMapping = THREE.ACESFilmicToneMapping;

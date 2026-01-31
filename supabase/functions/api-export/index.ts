@@ -12,7 +12,7 @@ function toCSV(data: Record<string, unknown>[], headers: string[]): string {
       const stringValue = String(value);
       // Escape quotes and wrap in quotes if needed
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
+        return `"${stringValue.replaceAll('"', '""')}"`;
       }
       return stringValue;
     }).join(',')

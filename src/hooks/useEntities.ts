@@ -77,13 +77,18 @@ export function useEntities() {
         setVisibleEntityIds(initial);
         invalidate();
 
-        // Staggered rest
-        sorted.slice(visibleLimit).forEach((entity, index) => {
-            const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
+        // Helper to add entity visibility (reduces nesting depth)
+        const scheduleEntityReveal = (entityId: string, delay: number) => {
             setTimeout(() => {
-                setVisibleEntityIds(prev => new Set([...prev, entity.id]));
+                setVisibleEntityIds(prev => new Set([...prev, entityId]));
                 invalidate();
             }, delay);
+        };
+
+        // Staggered rest - extracted callback reduces nesting
+        sorted.slice(visibleLimit).forEach((entity, index) => {
+            const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
+            scheduleEntityReveal(entity.id, delay);
         });
     }, [entities, profile, invalidate]);
 
@@ -92,6 +97,7 @@ export function useEntities() {
         connections,
         visibleEntityIds,
         getEntityPosition,
-        workerState
+        workerState,
+        positionRefs, // Exposed for direct mesh updates in SpiralEntities
     };
 }

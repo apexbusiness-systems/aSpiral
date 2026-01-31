@@ -516,9 +516,9 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
               logger.info("Breakthrough data from explicit fields", { btData });
             }
 
-            // Method 2: Try JSON code block
+            // Method 2: Try JSON code block (ReDoS-safe regex)
             if (!btData) {
-              const jsonBlockMatch = data.response?.match(/```json\s*([\s\S]*?)\s*```/);
+              const jsonBlockMatch = data.response?.match(/```json\s*([^`]+)\s*```/);
               if (jsonBlockMatch) {
                 try {
                   btData = JSON.parse(jsonBlockMatch[1]) as BreakthroughData;
@@ -529,15 +529,19 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
               }
             }
 
-            // Method 3: Try inline JSON object
-            if (!btData) {
-              const objMatch = data.response?.match(/\{[\s\S]*?"friction"[\s\S]*?"grease"[\s\S]*?"insight"[\s\S]*?\}/);
-              if (objMatch) {
-                try {
-                  btData = JSON.parse(objMatch[0]) as BreakthroughData;
-                  logger.info("Breakthrough data from inline JSON", { btData });
-                } catch (e) {
-                  logger.warn("Failed to parse inline JSON", e);
+            // Method 3: Try inline JSON object (ReDoS-safe: bounded search with indexOf)
+            if (!btData && data.response) {
+              const startIdx = data.response.indexOf('{');
+              const endIdx = data.response.lastIndexOf('}');
+              if (startIdx !== -1 && endIdx > startIdx) {
+                const candidate = data.response.slice(startIdx, endIdx + 1);
+                if (candidate.includes('"friction"') && candidate.includes('"grease"') && candidate.includes('"insight"')) {
+                  try {
+                    btData = JSON.parse(candidate) as BreakthroughData;
+                    logger.info("Breakthrough data from inline JSON", { btData });
+                  } catch (e) {
+                    logger.warn("Failed to parse inline JSON", e);
+                  }
                 }
               }
             }

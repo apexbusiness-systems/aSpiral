@@ -233,12 +233,13 @@ function performSemanticValidation(data: ValidatedInput): ValidationError[] {
 }
 
 function containsInjectionAttempt(value: string): boolean {
+  // ReDoS-safe: All patterns use bounded or fixed-length matching
   const injectionPatterns = [
-    /ignore\s*(previous|all|prior)/gi,
-    /system\s*prompt/gi,
-    /\[\[.*?\]\]/g,
-    /\{\{.*?\}\}/g,
-    /<\s*system\s*>/gi,
+    /ignore\s{0,10}(previous|all|prior)/gi,
+    /system\s{0,10}prompt/gi,
+    /\[\[[^\]]{0,100}\]\]/g, // Bounded: max 100 chars inside brackets
+    /\{\{[^}]{0,100}\}\}/g, // Bounded: max 100 chars inside braces
+    /<\s{0,5}system\s{0,5}>/gi,
   ];
 
   return injectionPatterns.some(pattern => pattern.test(value));

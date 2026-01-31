@@ -32,7 +32,7 @@ interface SessionState {
   error: string | null;
   
   // Actions
-  createSession: (userId: string) => Session;
+  createSession: (userId: string, forceNew?: boolean) => Session;
   updateSession: (updates: Partial<Session>) => void;
   endSession: () => void;
   
@@ -88,11 +88,11 @@ export const useSessionStore = create<SessionState>()(
       isConnected: false,
       error: null,
 
-      createSession: (userId: string) => {
+      createSession: (userId: string, forceNew?: boolean) => {
         const existing = get().currentSession;
         
-        // Idempotent: return existing active session
-        if (existing && existing.userId === userId && existing.status === "active") {
+        // Idempotent: return existing active session unless forced new
+        if (!forceNew && existing && existing.userId === userId && existing.status === "active") {
           logger.info("Returning existing active session", { sessionId: existing.id });
           return existing;
         }

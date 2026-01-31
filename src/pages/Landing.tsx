@@ -370,7 +370,7 @@ const Landing = () => {
               style={{ y: heroParallax }}
             >
               {/* Floating Particles */}
-              {[...Array(8)].map((_, i) => (
+              {Array.from({ length: 8 }).map((_, i) => (
                 <motion.div
                   key={i}
                   className="absolute rounded-full bg-primary/40"
@@ -395,7 +395,7 @@ const Landing = () => {
                 />
               ))}
               {/* Secondary particles with different color */}
-              {[...Array(5)].map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <motion.div
                   key={`secondary-${i}`}
                   className="absolute rounded-full bg-secondary/50"

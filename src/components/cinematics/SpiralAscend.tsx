@@ -1,14 +1,7 @@
-/**
- * Spiral Ascend Cinematic Variant
- * Camera spirals upward with green vortex particles
- */
-
-import { useRef } from 'react';
+/* eslint-disable react/no-unknown-property */
 import { Stars } from '@react-three/drei';
-import { CameraController } from '@/lib/cinematics/CameraController';
-import { ParticleSystem } from '@/lib/cinematics/ParticleSystem';
 import { SPIRAL_ASCEND_CONFIG } from '@/lib/cinematics/configs';
-import type { CameraControllerRef, ParticleSystemRef } from '@/lib/cinematics/types';
+import { CinematicWrapper } from './CinematicWrapper';
 
 interface SpiralAscendProps {
   onComplete?: () => void;
@@ -16,56 +9,14 @@ interface SpiralAscendProps {
 }
 
 export function SpiralAscend({ onComplete, particleCount }: SpiralAscendProps) {
-  const cameraRef = useRef<CameraControllerRef>(null);
-  const particlesRef = useRef<ParticleSystemRef>(null);
-
   const config = SPIRAL_ASCEND_CONFIG;
-  const actualParticleCount = particleCount || config.particles!.count;
 
   return (
-    <group>
-      {/* Camera Animation */}
-      <CameraController
-        ref={cameraRef}
-        path={config.camera}
-        duration={config.duration}
-        onComplete={onComplete}
-        enableShake
-        shakeIntensity={0.3}
-      />
-
-      {/* Vortex Particles */}
-      <ParticleSystem
-        ref={particlesRef}
-        count={actualParticleCount}
-        color={config.particles!.color}
-        size={config.particles!.size}
-        sizeVariation={config.particles!.sizeVariation}
-        speed={config.particles!.speed}
-        speedVariation={config.particles!.speedVariation}
-        lifetime={config.particles!.lifetime}
-        pattern={config.particles!.pattern}
-        patternParams={config.particles!.patternParams}
-        opacity={config.particles!.opacity}
-        blending={config.particles!.blending}
-        loop
-      />
-
-      {/* Lighting */}
-      <ambientLight
-        intensity={config.lighting!.ambient!.intensity}
-        color={config.lighting!.ambient!.color}
-      />
-      {config.lighting!.pointLights!.map((light, i) => (
-        <pointLight
-          key={i}
-          position={[light.position.x, light.position.y, light.position.z]}
-          color={light.color}
-          intensity={light.intensity}
-          distance={light.distance}
-        />
-      ))}
-
+    <CinematicWrapper
+      config={config}
+      onComplete={onComplete}
+      particleCount={particleCount}
+    >
       {/* Background Stars */}
       <Stars
         radius={config.background!.stars!.radius}
@@ -88,6 +39,6 @@ export function SpiralAscend({ onComplete, particleCount }: SpiralAscendProps) {
           opacity={0.8}
         />
       </mesh>
-    </group>
+    </CinematicWrapper>
   );
 }

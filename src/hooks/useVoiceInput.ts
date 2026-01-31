@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /* eslint-disable react-hooks/exhaustive-deps */
 /**
  * useVoiceInput Hook - Fixed for STT "Rap God" Duplication Bug
@@ -81,6 +81,7 @@ function checkVoiceSupport(): {
   if (typeof globalThis === "undefined") {
     return { supported: false, requiresFallback: false, reason: "no_window" };
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
   if (!SpeechRecognition) {
     return { supported: false, requiresFallback: false, reason: "no_speech_api" };
@@ -168,6 +169,19 @@ interface SpeechRecognitionAlternative {
 }
 
 
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+}
+
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
@@ -199,7 +213,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const transcript = (finalTranscript + " " + interimTranscript).trim();
 
   // Refs
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isStartedRef = useRef(false);
   const isIntentionalStop = useRef(false);
 
@@ -365,7 +379,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     try {
       if (shouldPlayFeedback()) {
         const AudioContext =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (globalThis as any).AudioContext ||
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (globalThis as any).webkitAudioContext;
         if (AudioContext) {
           const ctx = new AudioContext();
@@ -548,8 +564,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     onEnd?: () => void;
     onErrorContext: string;
   }) => {
-    const SpeechRecognition =
-      (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) return null;
 
@@ -620,7 +636,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       logger.debug("Permission API not available", { error: permError });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
       setError("Not supported");
       toast.error("Speech recognition not supported");
@@ -635,7 +653,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     try {
       if (shouldPlayFeedback()) {
         const AudioContext =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (globalThis as any).AudioContext ||
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (globalThis as any).webkitAudioContext;
         if (AudioContext) {
           const ctx = new AudioContext();

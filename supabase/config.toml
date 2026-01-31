@@ -4,7 +4,7 @@ project_id = "eqtwatyodujxofrdznen"
 verify_jwt = false
 
 [functions.spiral-ai]
-verify_jwt = false
+verify_jwt = true
 
 [functions.omnilink-health]
 verify_jwt = false

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward, Volume2, VolumeX } from "lucide-react";
@@ -43,6 +43,15 @@ export interface SpiralChatHandle {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SpiralChatProps { }
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -58,12 +67,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const { toast } = useToast();
 
   // Audit Fix: PWA Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   // Audit Fix: Global listener for PWA install
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Optional: Show a toast that app is ready to install
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -155,7 +164,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       if (patterns.length > 0 && patterns[0].confidence > 0.7) {
         toast({
           title: "Pattern Detected",
-          description: `I see a "${patterns[0].name.replace(/-/g, ' ')}" pattern...`,
+          description: `I see a "${patterns[0].name.replaceAll('-', ' ')}" pattern...`,
         });
       }
     },
@@ -251,6 +260,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Initialize session on mount with user ID if authenticated
   useEffect(() => {
+    // FSM/Store Synchronization: Ensure processing state is reset on mount
+    // This prevents "zombie" loading states if the user reloads during generation
+    if (useSessionStore.getState().isProcessing) {
+      useSessionStore.getState().setProcessing(false);
+    }
+
     if (!currentSession) {
       const userId = user?.id || "anonymous";
       const session = createSession(userId);
@@ -766,6 +781,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
               >
                 <Send className="h-4 w-4" />
               </Button>
+            </div>
+            <div className="mt-2 text-center">
+               <p className="text-[10px] text-muted-foreground/60">
+                 System attempts to redact personal info but may not catch everything. Avoid sharing secrets.
+               </p>
             </div>
           </form>
 

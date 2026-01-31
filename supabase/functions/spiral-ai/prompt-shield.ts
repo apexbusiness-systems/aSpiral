@@ -52,34 +52,34 @@ const INJECTION_PATTERNS = {
     ],
   },
 
-  // Role-Playing Manipulation
+  // Role-Playing Manipulation (ReDoS-safe: bounded quantifiers, no nested optionals)
   ROLEPLAY_INJECTION: {
     severity: "HIGH",
     patterns: [
-      /pretend\s*(you('re|are)|to\s*be)\s*(a|an)?\s*(evil|unethical|unrestricted)/gi,
-      /act\s*as\s*(if|though)?\s*(you\s*have)?\s*no\s*(rules?|restrictions?|limits?)/gi,
-      /roleplay\s*as\s*(a|an)?\s*(hacker|criminal|malicious)/gi,
-      /imagine\s*you('re|are)\s*(free|not\s*bound|unrestricted)/gi,
-      /you\s*are\s*(playing|acting\s*as)\s*(a|an)?\s*(different|evil|bad)/gi,
-      /character\s*(mode|setting)\s*[:;]\s*(evil|unrestricted|criminal)/gi,
-      /in\s*this\s*(story|scenario)[,\s]*you\s*(have|are|can)\s*(no|unlimited)/gi,
+      /pretend\s{0,10}(?:you're|you\s{0,5}are|to\s{0,5}be)\s{0,10}(?:a|an)?\s{0,5}(?:evil|unethical|unrestricted)/gi,
+      /act\s{0,5}as\s{0,10}(?:if|though)?\s{0,5}(?:you\s{0,5}have)?\s{0,5}no\s{0,5}(?:rules?|restrictions?|limits?)/gi,
+      /roleplay\s{0,5}as\s{0,10}(?:a|an)?\s{0,5}(?:hacker|criminal|malicious)/gi,
+      /imagine\s{0,5}(?:you're|you\s{0,5}are)\s{0,10}(?:free|not\s{0,5}bound|unrestricted)/gi,
+      /you\s{0,5}are\s{0,10}(?:playing|acting\s{0,5}as)\s{0,10}(?:a|an)?\s{0,5}(?:different|evil|bad)/gi,
+      /character\s{0,5}(?:mode|setting)\s{0,5}[:;]\s{0,5}(?:evil|unrestricted|criminal)/gi,
+      /in\s{0,5}this\s{0,5}(?:story|scenario)[,\s]{0,3}you\s{0,5}(?:have|are|can)\s{0,5}(?:no|unlimited)/gi,
     ],
   },
 
-  // System Prompt Extraction
+  // System Prompt Extraction (ReDoS-safe: bounded quantifiers)
   SYSTEM_PROMPT_LEAK: {
     severity: "CRITICAL",
     patterns: [
-      /what\s*(is|are)\s*your\s*(system\s*)?(prompt|instructions?)/gi,
-      /reveal\s*(your|the)\s*(system|hidden|secret|initial)?\s*(prompt|instructions?|programming)/gi,
-      /show\s*me\s*(your|the)\s*(hidden|system|secret|initial)\s*(prompt|instructions?|programming)/gi,
-      /print\s*(your|the)\s*(system|initial|hidden|secret)?\s*(prompt|instructions?|rules?|programming)/gi,
-      /output\s*(your|the)\s*(initial|system|secret|hidden)\s*(prompt|message|programming)/gi,
-      /repeat\s*(your|the)\s*(system|initial|hidden)\s*(prompt|instructions?|programming)/gi,
-      /what\s*were\s*you\s*told\s*(initially|first|before)/gi,
-      /extract\s*(the|your)\s*(system|initial|hidden)\s*(prompt|programming)/gi,
-      /leak\s*(your|the)\s*(system\s*)?(prompt|instructions?|programming)/gi,
-      /\b(your|the)\s*(hidden|secret)\s*instructions?\b/gi,
+      /what\s{0,5}(?:is|are)\s{0,5}your\s{0,5}(?:system\s{0,5})?(?:prompt|instructions?)/gi,
+      /reveal\s{0,5}(?:your|the)\s{0,5}(?:system|hidden|secret|initial)?\s{0,5}(?:prompt|instructions?|programming)/gi,
+      /show\s{0,5}me\s{0,5}(?:your|the)\s{0,5}(?:hidden|system|secret|initial)\s{0,5}(?:prompt|instructions?|programming)/gi,
+      /print\s{0,5}(?:your|the)\s{0,5}(?:system|initial|hidden|secret)?\s{0,5}(?:prompt|instructions?|rules?|programming)/gi,
+      /output\s{0,5}(?:your|the)\s{0,5}(?:initial|system|secret|hidden)\s{0,5}(?:prompt|message|programming)/gi,
+      /repeat\s{0,5}(?:your|the)\s{0,5}(?:system|initial|hidden)\s{0,5}(?:prompt|instructions?|programming)/gi,
+      /what\s{0,5}were\s{0,5}you\s{0,5}told\s{0,5}(?:initially|first|before)/gi,
+      /extract\s{0,5}(?:the|your)\s{0,5}(?:system|initial|hidden)\s{0,5}(?:prompt|programming)/gi,
+      /leak\s{0,5}(?:your|the)\s{0,5}(?:system\s{0,5})?(?:prompt|instructions?|programming)/gi,
+      /\b(?:your|the)\s{0,5}(?:hidden|secret)\s{0,5}instructions?\b/gi,
     ],
   },
 
@@ -115,19 +115,19 @@ const INJECTION_PATTERNS = {
     ],
   },
 
-  // Indirect Injection (Data Exfiltration)
+  // Indirect Injection (Data Exfiltration) - ReDoS-safe: bounded patterns
   DATA_EXFILTRATION: {
     severity: "CRITICAL",
     patterns: [
-      /send\s*(to|via)\s*(webhook|url|api|endpoint)/gi,
-      /fetch\s*from\s*(url|http|api)/gi,
-      /http[s]?:\/\/[^\s]+/gi, // URLs in prompts
-      /eval\s*\(/gi,
-      /exec\s*\(/gi,
-      /import\s*\(/gi,
-      /require\s*\(/gi,
-      /\$\{.*\}/g, // Template literals
-      /`.*\$\{.*\}.*`/g,
+      /send\s{0,5}(?:to|via)\s{0,5}(?:webhook|url|api|endpoint)/gi,
+      /fetch\s{0,5}from\s{0,5}(?:url|http|api)/gi,
+      /https?:\/\/[^\s]{1,200}/gi, // URLs in prompts (bounded length)
+      /eval\s{0,3}\(/gi,
+      /exec\s{0,3}\(/gi,
+      /import\s{0,3}\(/gi,
+      /require\s{0,3}\(/gi,
+      /\$\{[^}]{0,100}\}/g, // Template literals - bounded to 100 chars
+      /`[^`]{0,500}\$\{[^}]{0,100}\}[^`]{0,500}`/g, // Bounded template string
     ],
   },
 
@@ -342,27 +342,27 @@ function sanitizeInput(input: string): string {
 
   // Remove zero-width characters
   // eslint-disable-next-line no-misleading-character-class
-  sanitized = sanitized.replace(/[\u200B\u200C\u200D\uFEFF\u2060]/g, "");
+  sanitized = sanitized.replaceAll(/[\u200B\u200C\u200D\uFEFF\u2060]/g, "");
 
   // Remove invisible separators
-  sanitized = sanitized.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ");
+  sanitized = sanitized.replaceAll(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ");
 
   // Remove directional override characters
-  sanitized = sanitized.replace(/[\u202A-\u202E\u2066-\u2069]/g, "");
+  sanitized = sanitized.replaceAll(/[\u202A-\u202E\u2066-\u2069]/g, "");
 
   // Normalize multiple spaces/newlines
-  sanitized = sanitized.replace(/\s+/g, " ");
+  sanitized = sanitized.replaceAll(/\s+/g, " ");
 
-  // Remove potential delimiter injections
-  sanitized = sanitized.replace(/```[^`]*```/g, "[CODE_BLOCK_REMOVED]");
-  sanitized = sanitized.replace(/\[\[.*?\]\]/g, "[BRACKET_REMOVED]");
-  sanitized = sanitized.replace(/\{\{.*?\}\}/g, "[BRACE_REMOVED]");
+  // Remove potential delimiter injections (ReDoS-safe: bounded negated character classes)
+  sanitized = sanitized.replaceAll(/```[^`]{0,10000}```/g, "[CODE_BLOCK_REMOVED]");
+  sanitized = sanitized.replaceAll(/\[\[[^\]]{0,1000}\]\]/g, "[BRACKET_REMOVED]");
+  sanitized = sanitized.replaceAll(/\{\{[^}]{0,1000}\}\}/g, "[BRACE_REMOVED]");
 
   // Remove URLs (prevent exfiltration)
-  sanitized = sanitized.replace(/https?:\/\/[^\s]+/gi, "[URL_REMOVED]");
+  sanitized = sanitized.replaceAll(/https?:\/\/[^\s]{1,500}/gi, "[URL_REMOVED]");
 
   // Limit consecutive repeated characters (anti-abuse)
-  sanitized = sanitized.replace(/(.)\1{10,}/g, "$1$1$1");
+  sanitized = sanitized.replaceAll(/(.)\1{10,}/g, "$1$1$1");
 
   return sanitized.trim();
 }

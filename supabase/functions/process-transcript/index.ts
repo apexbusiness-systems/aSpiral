@@ -212,8 +212,13 @@ NEVER return more than 5 entities.`,
   const content = data.choices?.[0]?.message?.content;
   
   try {
-    const jsonMatch = content?.match(/\{[\s\S]*\}/);
-    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+    // ReDoS-safe: Extract JSON using linear-time string search instead of regex
+    const startIdx = content?.indexOf('{') ?? -1;
+    const endIdx = content?.lastIndexOf('}') ?? -1;
+    const jsonStr = (startIdx !== -1 && endIdx > startIdx)
+      ? content.slice(startIdx, endIdx + 1)
+      : content;
+    const parsed = JSON.parse(jsonStr);
     return (parsed.entities || []).slice(0, HARD_ENTITY_CAP);
   } catch {
     return [];
@@ -266,8 +271,13 @@ OUTPUT JSON: {"question": "...", "response": "brief acknowledgment"}`,
   const content = data.choices?.[0]?.message?.content;
   
   try {
-    const jsonMatch = content?.match(/\{[\s\S]*\}/);
-    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+    // ReDoS-safe: Extract JSON using linear-time string search instead of regex
+    const startIdx = content?.indexOf('{') ?? -1;
+    const endIdx = content?.lastIndexOf('}') ?? -1;
+    const jsonStr = (startIdx !== -1 && endIdx > startIdx)
+      ? content.slice(startIdx, endIdx + 1)
+      : content;
+    const parsed = JSON.parse(jsonStr);
     return { 
       question: parsed.question || "What's grinding?", 
       response: parsed.response || "Got it." 

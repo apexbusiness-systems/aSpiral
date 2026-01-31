@@ -420,15 +420,23 @@ export function exportSessionToCSV(data: SessionExportData): void {
     [''],
     ['MESSAGES'],
     ['Role', 'Content', 'Timestamp'],
-    ...messages.map(m => [
-      m.role,
-      m.content.replace(/"/g, '""'),
-      format(new Date(m.timestamp), 'yyyy-MM-dd HH:mm:ss'),
-    ]),
+    ...messages.map(m => {
+      const escapeCsvCell = (result: string): string => {
+        if (result.includes(",") || result.includes('"') || result.includes("\n")) {
+          return `"${result.replaceAll('"', '""')}"`;
+        }
+        return result;
+      };
+      return [
+        escapeCsvCell(m.role),
+        escapeCsvCell(m.content),
+        escapeCsvCell(format(new Date(m.timestamp), 'yyyy-MM-dd HH:mm:ss')),
+      ];
+    }),
   ];
 
   const csvContent = rows
-    .map(row => row.map(cell => `"${cell}"`).join(','))
+    .map(row => row.join(','))
     .join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

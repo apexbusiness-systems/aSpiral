@@ -34,3 +34,19 @@ export async function validateAuth(req: Request, supabase: SupabaseClient): Prom
 
     return null;
 }
+
+export async function verifySessionOwnership(
+    supabase: SupabaseClient,
+    sessionId: string,
+    userId: string
+) {
+    const { data: session, error } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return session;
+}

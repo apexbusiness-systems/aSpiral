@@ -49,9 +49,12 @@ const ResponseSchema = z.object({
 // =============================================================================
 
 const PII_PATTERNS = {
-  email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  phone: /(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g,
-  ssn: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
+  // ReDoS-safe: bounded quantifiers, requires at least 1 domain char (matching index.ts)
+  email: /[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(?:\.[a-zA-Z]{2,12})+/g,
+  // Phone numbers (various formats) - matching index.ts
+  phone: /(?:\+?1[-.\\s]?)?\(?\d{3}\)?[-.\\s]?\d{3}[-.\\s]?\d{4}/g,
+  // SSN - matching index.ts
+  ssn: /\b\d{3}-?\d{2}-?\d{4}\b/g,
   creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
   ipAddress: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
 };

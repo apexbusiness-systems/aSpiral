@@ -190,11 +190,13 @@ describe('TTS Sentence Chunking', () => {
   });
 });
 
-// Helper function that mirrors the implementation
+// Helper function that mirrors the implementation (ReDoS-safe: linear time split)
 function splitIntoSentences(text: string): string[] {
-  const sentences = text.match(/(?:[^.!?]+[.!?]+[\s]?)|(?:[^.!?]+$)/g);
-  if (!sentences) return [text];
-  return sentences.map(s => s.trim()).filter(s => s.length > 0);
+  if (!text) return [text];
+  // Split on sentence-ending punctuation followed by space or end of string
+  // This is ReDoS-safe as it uses split with a simple pattern, not nested quantifiers
+  const parts = text.split(/(?<=[.!?])\s+/);
+  return parts.map(s => s.trim()).filter(s => s.length > 0);
 }
 
 // ============================================================================

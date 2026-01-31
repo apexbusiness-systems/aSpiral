@@ -127,11 +127,16 @@ Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`,
       throw new Error("No content in response");
     }
 
-    // Parse breakthrough
+    // Parse breakthrough (ReDoS-safe: uses indexOf instead of regex)
     let breakthrough: { friction: string; grease: string; insight: string };
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      breakthrough = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      // Extract JSON using linear-time string search to avoid ReDoS
+      const startIdx = content.indexOf('{');
+      const endIdx = content.lastIndexOf('}');
+      const jsonStr = (startIdx !== -1 && endIdx > startIdx) 
+        ? content.slice(startIdx, endIdx + 1) 
+        : content;
+      breakthrough = JSON.parse(jsonStr);
     } catch {
       console.error("[GENERATE-BREAKTHROUGH] Parse error, using fallback");
       breakthrough = {

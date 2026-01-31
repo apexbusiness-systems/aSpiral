@@ -59,9 +59,9 @@ function detectInjection(text: string): { blocked: boolean; reason?: string } {
 
 function sanitizeInput(text: string): string {
   return text
-    .replace(/[\u200B-\u200D\uFEFF\u2060]/g, '') // Zero-width chars
-    .replace(/[\u202A-\u202E\u2066-\u2069]/g, '') // Direction overrides
-    .replace(/\s+/g, ' ')
+    .replaceAll(/[\u200B-\u200D\uFEFF\u2060]/g, '') // Zero-width chars
+    .replaceAll(/[\u202A-\u202E\u2066-\u2069]/g, '') // Direction overrides
+    .replaceAll(/\s+/g, ' ')
     .trim()
     .slice(0, 5000); // Hard limit
 }

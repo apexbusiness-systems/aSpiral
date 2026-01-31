@@ -434,8 +434,8 @@ export function trackCinematicError(data: CinematicErrorData) {
   try {
     // Sanitize error message to remove file paths
     const sanitizedMessage = data.errorMessage
-      ?.replace(/file:\/\/[^\s]+/g, '[path]')
-      ?.replace(/https?:\/\/[^\s]+/g, '[url]')
+      ?.replaceAll(/file:\/\/[^\s]+/g, '[path]')
+      ?.replaceAll(/https?:\/\/[^\s]+/g, '[url]')
       ?.slice(0, 500);
 
     posthog.capture('cinematic_error', {

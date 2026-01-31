@@ -20,6 +20,10 @@ const corsHeaders = {
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Fallback Configuration
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
 // Production configuration
 const AI_TIMEOUT_MS = 30000; // 30 second timeout for AI gateway
 const ENABLE_DETAILED_ERRORS = Deno.env.get("ENABLE_DETAILED_ERRORS") === "true";
@@ -68,18 +72,24 @@ type ValidatedResponse = z.infer<typeof ResponseSchema>;
 // =============================================================================
 
 const PII_PATTERNS = {
-  // Email addresses
-  email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  // Phone numbers (various formats)
-  phone: /(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g,
-  // SSN
-  ssn: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
+  // Email addresses (ReDoS-safe: bounded quantifiers, requires at least 1 domain char)
+  email: /[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(?:\.[a-zA-Z]{2,12})+/g,
+  // Phone numbers (various formats) - simplified, no optional groups that match empty
+  phone: /(?:\+?1[-.\\s]?)?\(?\d{3}\)?[-.\\s]?\d{3}[-.\\s]?\d{4}/g,
+  // SSN - use \d and simplified character class
+  ssn: /\b\d{3}-?\d{2}-?\d{4}\b/g,
   // Credit card numbers
-  creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
+  creditCard: /\b(?:\d{4}[-\\s]?){3}\d{4}\b/g,
   // IP addresses
   ipAddress: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
 };
 
+/**
+ * Redacts PII from text using regex patterns.
+ * NOTE: This is a "Best Effort" redaction. It may miss context-dependent PII 
+ * (e.g. names in narrative flow) or non-standard formats.
+ * For medical/enterprise use, replace with Google DLP or AWS Comprehend.
+ */
 function redactPII(text: string): { redacted: string; piiFound: string[] } {
   const piiFound: string[] = [];
   let redacted = text;
@@ -143,6 +153,37 @@ async function callAIWithValidation(
         }),
         signal: controller.signal,
       });
+
+      // Gateway failure check (5xx or 429)
+      if (!response.ok && (response.status >= 500 || response.status === 429)) {
+        throw new Error(`Primary gateway failed: ${response.status}`);
+      }
+
+    } catch (primaryError) {
+       console.warn(`[SPIRAL-AI] ⚠️ Primary Gateway Failed: ${(primaryError as Error).message}`);
+       
+       // Fallback Logic
+       if (OPENAI_API_KEY) {
+          console.log("[SPIRAL-AI] 🔀 Switching to Fallback Provider (OpenAI)");
+          response = await fetch(OPENAI_API_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${OPENAI_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-4o-mini", // Cost-effective fallback
+              messages: [
+                { role: "system", content: prompt },
+                { role: "user", content: userContent },
+              ],
+            }),
+            signal: controller.signal,
+          });
+       } else {
+         // No fallback available, rethrow
+         throw primaryError;
+       }
     } finally {
       clearTimeout(timeoutId);
     }
@@ -158,11 +199,15 @@ async function callAIWithValidation(
       throw new Error("No content in AI response");
     }
 
-    // Parse JSON from response
+    // Parse JSON from response (ReDoS-safe: uses indexOf instead of regex)
     let parsed: unknown;
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      const startIdx = content.indexOf('{');
+      const endIdx = content.lastIndexOf('}');
+      const jsonStr = (startIdx !== -1 && endIdx > startIdx)
+        ? content.slice(startIdx, endIdx + 1)
+        : content;
+      parsed = JSON.parse(jsonStr);
     } catch {
       lastError = new z.ZodError([{
         code: "custom",

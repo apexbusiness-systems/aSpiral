@@ -1,10 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
-};
+import { corsHeaders } from "../_shared/cors.ts";
+import { validateAuth } from "../_shared/auth.ts";
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,57 +15,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check for API key or JWT auth
-    const apiKey = req.headers.get('x-api-key');
-    const authHeader = req.headers.get('authorization');
-    
-    let userId: string | null = null;
+    const userId = await validateAuth(req, supabase);
 
-    if (apiKey) {
-      // Validate API key
-      const keyHash = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode(apiKey)
-      );
-      const hashHex = Array.from(new Uint8Array(keyHash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-
-      const { data: keyData, error: keyError } = await supabase
-        .from('api_keys')
-        .select('user_id')
-        .eq('key_hash', hashHex)
-        .maybeSingle();
-
-      if (keyError || !keyData) {
-        console.error('Invalid API key:', keyError);
-        return new Response(JSON.stringify({ error: 'Invalid API key' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      userId = keyData.user_id;
-
-      // Update last_used_at
-      await supabase
-        .from('api_keys')
-        .update({ last_used_at: new Date().toISOString() })
-        .eq('key_hash', hashHex);
-
-    } else if (authHeader) {
-      // JWT auth
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (error || !user) {
-        return new Response(JSON.stringify({ error: 'Invalid token' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      userId = user.id;
-    } else {
+    if (!userId) {
       return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -93,8 +44,8 @@ serve(async (req) => {
         });
       } else {
         // List sessions
-        const limit = parseInt(url.searchParams.get('limit') || '50');
-        const offset = parseInt(url.searchParams.get('offset') || '0');
+        const limit = Number.parseInt(url.searchParams.get('limit') || '50');
+        const offset = Number.parseInt(url.searchParams.get('offset') || '0');
 
         const { data, error, count } = await supabase
           .from('sessions')

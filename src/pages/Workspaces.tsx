@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -75,7 +75,7 @@ const Workspaces = () => {
     setError(null);
 
     try {
-      const db = supabase as any;
+      const db = supabase;
 
       // Get workspaces where user is a member
       const { data: memberData, error: memberError } = await db
@@ -92,7 +92,7 @@ const Workspaces = () => {
         }
       }
 
-      const workspaceIds = memberData?.map((m: any) => m.workspace_id) || [];
+      const workspaceIds = memberData?.map((m) => m.workspace_id) || [];
 
       if (workspaceIds.length > 0) {
         const { data: workspacesData, error: workspacesError } = await db
@@ -159,7 +159,7 @@ const Workspaces = () => {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      const db = supabase as any;
+      const db = supabase;
       const { data: workspace, error: workspaceError } = await db
         .from('workspaces')
         .insert({
@@ -187,7 +187,7 @@ const Workspaces = () => {
       setNewWorkspaceName('');
       setDialogOpen(false);
       loadWorkspaces();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating workspace:', err);
       const normalized = normalizeError(err);
       toast({

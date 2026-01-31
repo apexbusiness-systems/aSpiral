@@ -20,8 +20,8 @@ export const SilentSentinel = {
       }
 
       const now = Date.now();
-      const lastBoot = parseInt(localStorage.getItem(SENTINEL_KEYS.LAST_BOOT) || '0', 10);
-      const crashCount = parseInt(localStorage.getItem(SENTINEL_KEYS.CRASH_COUNT) || '0', 10);
+      const lastBoot = Number.parseInt(localStorage.getItem(SENTINEL_KEYS.LAST_BOOT) || '0', 10);
+      const crashCount = Number.parseInt(localStorage.getItem(SENTINEL_KEYS.CRASH_COUNT) || '0', 10);
 
       if (now - lastBoot < BOOT_LOOP_WINDOW_MS) {
         const newCount = crashCount + 1;

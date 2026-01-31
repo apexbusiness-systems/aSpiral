@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,55 +8,44 @@ import { useToast } from '@/hooks/use-toast';
 import { normalizeError, type NormalizedError } from '@/lib/normalizeError';
 import {
   ArrowLeft,
-  BarChart3,
-  Users,
-  Sparkles,
-  MessageSquare,
-  TrendingUp,
   Calendar,
+  Sparkles,
+  TrendingUp,
+  MessageSquare,
   Loader2,
   RefreshCw,
   AlertCircle,
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
 import { format, subDays, startOfDay } from 'date-fns';
+import { DailyStats, UsageStats, EntityTypeData } from '@/types/dashboard';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { ActivityChart } from '@/components/dashboard/ActivityChart';
+import { EntityPieChart } from '@/components/dashboard/EntityPieChart';
 
-interface DailyStats {
-  date: string;
-  sessions: number;
-  breakthroughs: number;
-  entities: number;
+interface SessionData {
+  id: string;
+  created_at: string;
+  user_id: string;
 }
 
-interface UsageStats {
-  totalSessions: number;
-  totalBreakthroughs: number;
-  totalEntities: number;
-  totalMessages: number;
-  activeUsers: number;
+interface BreakthroughData {
+  id: string;
+  created_at: string;
+  session_id: string;
 }
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+interface EntityData {
+  id: string;
+  type: string;
+  created_at: string;
+  session_id: string;
+}
 
-/**
- * Default stats for first-run / empty states.
- * These are NOT errors - zero is a valid state.
- */
+interface MessageData {
+  id: string;
+  session_id: string;
+}
+
 const EMPTY_USAGE_STATS: UsageStats = {
   totalSessions: 0,
   totalBreakthroughs: 0,
@@ -68,6 +55,7 @@ const EMPTY_USAGE_STATS: UsageStats = {
 };
 
 const AdminDashboard = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -78,7 +66,7 @@ const AdminDashboard = () => {
   const [error, setError] = useState<NormalizedError | null>(null);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [usageStats, setUsageStats] = useState<UsageStats>(EMPTY_USAGE_STATS);
-  const [entityTypes, setEntityTypes] = useState<{ name: string; value: number }[]>([]);
+  const [entityTypes, setEntityTypes] = useState<EntityTypeData[]>([]);
 
   const loadStats = useCallback(async (isRetry = false) => {
     if (isRetry) {
@@ -89,11 +77,12 @@ const AdminDashboard = () => {
     setError(null);
 
     try {
-      // Cast supabase to any to bypass strict typing for tables not yet in schema
+      // Use unknown casting to bypass potential missing table types in generated client
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = supabase as any;
 
       // Get sessions
-      const { data: sessions, error: sessionsError } = await db
+      const { data: sessionsData, error: sessionsError } = await db
         .from('sessions')
         .select('id, created_at, user_id')
         .eq('user_id', user!.id);
@@ -107,7 +96,8 @@ const AdminDashboard = () => {
         }
       }
 
-      const sessionIds = sessions?.map((s: any) => s.id) || [];
+      const sessions = (sessionsData || []) as SessionData[];
+      const sessionIds = sessions.map((s) => s.id);
 
       // Get other stats - use Promise.allSettled for partial rendering
       const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.allSettled([
@@ -118,23 +108,23 @@ const AdminDashboard = () => {
 
       // Extract data, treating errors as empty arrays (partial rendering)
       const breakthroughsData = breakthroughsRes.status === 'fulfilled'
-        ? breakthroughsRes.value.data || []
+        ? (breakthroughsRes.value.data || []) as BreakthroughData[]
         : [];
       const entitiesData = entitiesRes.status === 'fulfilled'
-        ? entitiesRes.value.data || []
+        ? (entitiesRes.value.data || []) as EntityData[]
         : [];
       const messagesData = messagesRes.status === 'fulfilled'
-        ? messagesRes.value.data || []
+        ? (messagesRes.value.data || []) as MessageData[]
         : [];
 
       // Filter to user's sessions
-      const userBreakthroughs = breakthroughsData.filter((b: any) => sessionIds.includes(b.session_id));
-      const userEntities = entitiesData.filter((e: any) => sessionIds.includes(e.session_id));
-      const userMessages = messagesData.filter((m: any) => sessionIds.includes(m.session_id));
+      const userBreakthroughs = breakthroughsData.filter((b) => sessionIds.includes(b.session_id));
+      const userEntities = entitiesData.filter((e) => sessionIds.includes(e.session_id));
+      const userMessages = messagesData.filter((m) => sessionIds.includes(m.session_id));
 
       // Calculate usage stats - zeros are valid for first-run
       setUsageStats({
-        totalSessions: sessions?.length || 0,
+        totalSessions: sessions.length,
         totalBreakthroughs: userBreakthroughs.length,
         totalEntities: userEntities.length,
         totalMessages: userMessages.length,
@@ -143,7 +133,7 @@ const AdminDashboard = () => {
 
       // Calculate entity types
       const typeCounts: Record<string, number> = {};
-      userEntities.forEach((e: any) => {
+      userEntities.forEach((e) => {
         typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
       });
       setEntityTypes(Object.entries(typeCounts).map(([name, value]) => ({ name, value })));
@@ -160,19 +150,19 @@ const AdminDashboard = () => {
         };
       });
 
-      (sessions || []).forEach((s: any) => {
+      sessions.forEach((s) => {
         const sessionDate = startOfDay(new Date(s.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === sessionDate.getTime());
         if (dayEntry) dayEntry.sessions++;
       });
 
-      userBreakthroughs.forEach((b: any) => {
+      userBreakthroughs.forEach((b) => {
         const bDate = startOfDay(new Date(b.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === bDate.getTime());
         if (dayEntry) dayEntry.breakthroughs++;
       });
 
-      userEntities.forEach((e: any) => {
+      userEntities.forEach((e) => {
         const eDate = startOfDay(new Date(e.created_at));
         const dayEntry = last7Days.find(d => d.dateObj.getTime() === eDate.getTime());
         if (dayEntry) dayEntry.entities++;
@@ -231,20 +221,6 @@ const AdminDashboard = () => {
   const handleRetry = () => {
     loadStats(true);
   };
-
-  const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color: string }) => (
-    <div className="glass-card p-6">
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
-          <Icon className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
-        </div>
-      </div>
-    </div>
-  );
 
   // Loading state
   if (isLoading) {
@@ -346,94 +322,8 @@ const AdminDashboard = () => {
 
         {/* Charts */}
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Activity Chart */}
-          <div className="glass-card p-6">
-            <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Activity (Last 7 Days)
-            </h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={dailyStats}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="sessions"
-                  stackId="1"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary) / 0.3)"
-                  name="Sessions"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="breakthroughs"
-                  stackId="1"
-                  stroke="hsl(var(--accent))"
-                  fill="hsl(var(--accent) / 0.3)"
-                  name="Breakthroughs"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Entity Types */}
-          <div className="glass-card p-6">
-            <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Entity Types
-            </h3>
-            {entityTypes.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={entityTypes}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {entityTypes.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                No entity data yet
-              </div>
-            )}
-            {entityTypes.length > 0 && (
-              <div className="flex flex-wrap gap-3 mt-4 justify-center">
-                {entityTypes.map((type, index) => (
-                  <div key={type.name} className="flex items-center gap-2 text-sm">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                    <span className="text-muted-foreground">{type.name}: {type.value}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ActivityChart data={dailyStats} />
+          <EntityPieChart data={entityTypes} />
         </div>
       </div>
     </div>

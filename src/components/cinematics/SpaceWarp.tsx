@@ -1,14 +1,8 @@
-/**
- * Space Warp Cinematic Variant
- * Camera accelerates through light tunnel with star streaks
- */
-
+/* eslint-disable react/no-unknown-property */
 import { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { CameraController } from '@/lib/cinematics/CameraController';
-import { ParticleSystem } from '@/lib/cinematics/ParticleSystem';
 import { SPACE_WARP_CONFIG } from '@/lib/cinematics/configs';
-import type { CameraControllerRef, ParticleSystemRef } from '@/lib/cinematics/types';
+import { CinematicWrapper } from './CinematicWrapper';
 import * as THREE from 'three';
 import { easeOutExpo } from '@/lib/cinematics/easing';
 
@@ -18,13 +12,10 @@ interface SpaceWarpProps {
 }
 
 export function SpaceWarp({ onComplete, particleCount }: SpaceWarpProps) {
-  const cameraRef = useRef<CameraControllerRef>(null);
-  const particlesRef = useRef<ParticleSystemRef>(null);
   const tunnelRef = useRef<THREE.Group>(null);
   const [startTime] = useState(() => performance.now());
 
   const config = SPACE_WARP_CONFIG;
-  const actualParticleCount = particleCount || config.particles!.count;
 
   // Rotate tunnel
   useFrame(() => {
@@ -38,32 +29,11 @@ export function SpaceWarp({ onComplete, particleCount }: SpaceWarpProps) {
   });
 
   return (
-    <group>
-      {/* Camera Animation */}
-      <CameraController
-        ref={cameraRef}
-        path={config.camera}
-        duration={config.duration}
-        onComplete={onComplete}
-      />
-
-      {/* Star Streak Particles */}
-      <ParticleSystem
-        ref={particlesRef}
-        count={actualParticleCount}
-        color={config.particles!.color}
-        size={config.particles!.size}
-        sizeVariation={config.particles!.sizeVariation}
-        speed={config.particles!.speed}
-        speedVariation={config.particles!.speedVariation}
-        lifetime={config.particles!.lifetime}
-        pattern={config.particles!.pattern}
-        patternParams={config.particles!.patternParams}
-        opacity={config.particles!.opacity}
-        blending={config.particles!.blending}
-        loop
-      />
-
+    <CinematicWrapper
+      config={config}
+      onComplete={onComplete}
+      particleCount={particleCount}
+    >
       {/* Light Tunnel */}
       <group ref={tunnelRef}>
         {/* Tunnel rings */}
@@ -99,21 +69,6 @@ export function SpaceWarp({ onComplete, particleCount }: SpaceWarpProps) {
         </mesh>
       </group>
 
-      {/* Lighting */}
-      <ambientLight
-        intensity={config.lighting!.ambient!.intensity}
-        color={config.lighting!.ambient!.color}
-      />
-      {config.lighting!.pointLights!.map((light, i) => (
-        <pointLight
-          key={i}
-          position={[light.position.x, light.position.y, light.position.z]}
-          color={light.color}
-          intensity={light.intensity}
-          distance={light.distance}
-        />
-      ))}
-
       {/* Central Destination Point */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[0.5, 16, 16]} />
@@ -124,6 +79,6 @@ export function SpaceWarp({ onComplete, particleCount }: SpaceWarpProps) {
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-    </group>
+    </CinematicWrapper>
   );
 }

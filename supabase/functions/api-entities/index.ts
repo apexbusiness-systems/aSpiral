@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { validateAuth } from "../_shared/auth.ts";
+import { validateAuth, verifySessionOwnership } from "../_shared/auth.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 serve(async (req) => {
@@ -33,12 +33,8 @@ serve(async (req) => {
     }
 
     // Verify session ownership
-    const { data: session } = await supabase
-      .from('sessions')
-      .select('id')
-      .eq('id', sessionId)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Verify session ownership
+    const session = await verifySessionOwnership(supabase, sessionId!, userId!);
 
     if (!session) {
       return new Response(JSON.stringify({ error: 'Session not found' }), {

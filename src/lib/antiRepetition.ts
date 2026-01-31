@@ -44,7 +44,7 @@ export class AntiRepetitionEngine {
     return question
       .toLowerCase()
       .replace(/\b(you|your|that|this|it|the|a|an)\b/g, "X")
-      .replace(/[^a-z\s]/g, "")
+      .replaceAll(/[^a-z\s]/g, "")
       .split(" ")
       .filter((w) => w.length > 2)
       .slice(0, 5)
