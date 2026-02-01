@@ -105,7 +105,7 @@ const mockAudioElement = {
 // Mock global objects
 global.AudioContext = vi.fn().mockImplementation(() => mockAudioContext);
 // Coerce to any to avoid type mismatch with partial mock
-global.window = { ...global.window, AudioContext: global.AudioContext } as any;
+global.window = { ...global.window, AudioContext: global.AudioContext };
 global.Audio = vi.fn().mockImplementation(() => mockAudioElement);
 global.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
 global.URL.revokeObjectURL = vi.fn();
@@ -123,7 +123,7 @@ describe('Chaos Battery: AudioSession Resilience', () => {
 
     it('CHAOS-001: Should handle rapid-fire listening state toggles without deadlock', async () => {
         const iterations = 100;
-        const errors: any[] = [];
+        const errors: Error[] = [];
 
         // Register a mock controller
         const mockController = {
@@ -138,7 +138,7 @@ describe('Chaos Battery: AudioSession Resilience', () => {
             try {
                 // Randomize between speaking, listening, and processing
                 // Note: updateListeningState takes AudioSessionStatus
-                const backends: any[] = ['none', 'openai', 'webSpeech'];
+                const backends: string[] = ['none', 'openai', 'webSpeech'];
                 const randomBackend = backends[Math.floor(Math.random() * backends.length)];
                 const isSpeaking = Math.random() > 0.5;
                 const isListening = Math.random() > 0.5;
@@ -166,7 +166,7 @@ describe('Chaos Battery: AudioSession Resilience', () => {
 
     it('CHAOS-002: Should recover from massive concurrent audio playback requests', async () => {
         const concurrentRequests = 50;
-        const promises: Promise<any>[] = [];
+        const promises: Promise<void | string>[] = [];
 
         for (let i = 0; i < concurrentRequests; i++) {
             promises.push(
