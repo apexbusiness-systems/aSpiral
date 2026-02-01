@@ -376,6 +376,125 @@ function generateRequestId(): string {
 }
 
 // =============================================================================
+// HELPER FUNCTIONS FOR ERROR RESPONSES
+// =============================================================================
+
+function createErrorResponse(status: number, body: unknown, additionalHeaders: Record<string, string> = {}): Response {
+  return new Response(
+    JSON.stringify(body),
+    {
+      status,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        ...additionalHeaders,
+      },
+    }
+  );
+}
+
+function handleValidationError(errors: unknown[]): Response {
+  return createErrorResponse(400, {
+    error: "Invalid request format",
+    details: errors?.map((e: { message: string }) => e.message),
+  });
+}
+
+function handleInjectionBlock(): Response {
+  return createErrorResponse(200, {
+    entities: [],
+    connections: [],
+    question: INJECTION_RESPONSES.BLOCKED.suggestion,
+    response: INJECTION_RESPONSES.BLOCKED.message,
+    blocked: true,
+    category: "INJECTION_ATTEMPT",
+  }, { "X-Security-Block": "INJECTION" });
+}
+
+function handleAnomalyDetection(): Response {
+  return createErrorResponse(429, {
+    error: INJECTION_RESPONSES.RATE_ANOMALY.message,
+    retryAfter: INJECTION_RESPONSES.RATE_ANOMALY.retryAfter,
+  }, { "Retry-After": "60" });
+}
+
+function handleRateLimit(rateLimitResult: RateLimitResult): Response {
+  return createErrorResponse(429, {
+    error: SAFE_RESPONSES.RATE_LIMITED.message,
+    retryAfter: rateLimitResult.retryAfterSeconds,
+    upgradePrompt: rateLimitResult.upgradePrompt,
+  }, {
+    "Retry-After": String(rateLimitResult.retryAfterSeconds || 60),
+    "X-RateLimit-Limit": String(rateLimitResult.limits.requestsPerMinute),
+    "X-RateLimit-Remaining": String(Math.max(0, rateLimitResult.limits.requestsPerMinute - rateLimitResult.currentUsage.minute)),
+  });
+}
+
+function handleModerationBlock(moderationResult: ModerationResult): Response {
+  // Return appropriate safe response
+  if (moderationResult.action === "REDIRECT_RESOURCES") {
+    return createErrorResponse(200, {
+      error: SAFE_RESPONSES.REDIRECT_CRISIS.message,
+      resources: moderationResult.resources,
+      blocked: true,
+      category: "CRISIS_SUPPORT",
+    });
+  }
+
+  let safeResponse = SAFE_RESPONSES.BLOCKED_GENERAL;
+  if (moderationResult.category?.includes("VIOLENCE")) {
+    safeResponse = SAFE_RESPONSES.BLOCKED_VIOLENCE;
+  } else if (moderationResult.category?.includes("ILLEGAL") ||
+             moderationResult.category?.includes("DRUG") ||
+             moderationResult.category?.includes("CRIME")) {
+    safeResponse = SAFE_RESPONSES.BLOCKED_ILLEGAL;
+  }
+
+  return createErrorResponse(200, {
+    entities: [],
+    connections: [],
+    question: safeResponse.suggestion || "",
+    response: safeResponse.message,
+    blocked: true,
+    category: moderationResult.category,
+  }, {
+    "X-Content-Blocked": "true",
+    "X-Block-Category": moderationResult.category || "POLICY_VIOLATION",
+  });
+}
+
+function buildContextInfo(
+  sessionContext: {
+    entities?: Array<{ type: string; label: string }>;
+    conversationHistory?: string[];
+    detectedPatterns?: Array<{ name: string; confidence: number }>;
+  } | undefined,
+  stagePrompt: string | undefined,
+  questionsAsked: number,
+  shouldBreakthrough: boolean,
+  MAX_QUESTIONS: number
+): string {
+  let contextInfo = "";
+  if (sessionContext?.entities?.length) {
+    contextInfo += `\nExisting entities (don't duplicate): ${sessionContext.entities.map(e => e.label).join(", ")}`;
+  }
+  if (sessionContext?.conversationHistory?.length) {
+    const sanitizedHistory = sessionContext.conversationHistory.map(h => redactPII(h).redacted);
+    contextInfo += `\nConversation:\n${sanitizedHistory.slice(-4).join("\n")}`;
+  }
+  if (sessionContext?.detectedPatterns?.length) {
+    contextInfo += `\nPatterns (use for insight): ${sessionContext.detectedPatterns.map(p => p.name).join(", ")}`;
+  }
+  if (stagePrompt && !shouldBreakthrough) {
+    contextInfo += `\n\nSTAGE: ${stagePrompt}`;
+  }
+  if (questionsAsked === MAX_QUESTIONS - 1 && !shouldBreakthrough) {
+    contextInfo += `\n\n⚠️ LAST QUESTION - make it count.`;
+  }
+  return contextInfo;
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
@@ -423,13 +542,7 @@ serve(async (req) => {
     if (!inputValidation.success) {
       console.error("[SPIRAL-AI] ❌ Input validation failed:", inputValidation.errors);
       complianceLogger.log("VALIDATION_FAILED", { errors: inputValidation.errors });
-      return new Response(
-        JSON.stringify({ 
-          error: "Invalid request format",
-          details: inputValidation.errors?.map(e => e.message),
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return handleValidationError(inputValidation.errors || []);
     }
 
     const { 
@@ -465,25 +578,8 @@ serve(async (req) => {
         riskScore: injectionResult.riskScore,
         threats: injectionResult.threats.slice(0, 3).map(t => t.category),
       });
-      
-      return new Response(
-        JSON.stringify({
-          entities: [],
-          connections: [],
-          question: INJECTION_RESPONSES.BLOCKED.suggestion,
-          response: INJECTION_RESPONSES.BLOCKED.message,
-          blocked: true,
-          category: "INJECTION_ATTEMPT",
-        }),
-        { 
-          status: 200, 
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "X-Security-Block": "INJECTION",
-          } 
-        }
-      );
+
+      return handleInjectionBlock();
     }
 
     // =======================================================================
@@ -494,21 +590,7 @@ serve(async (req) => {
     if (anomalyResult.isAnomaly) {
       console.warn(`[SPIRAL-AI] 🔍 Anomaly detected: ${anomalyResult.reason}`, { userId });
       complianceLogger.log("ANOMALY_DETECTED", { reason: anomalyResult.reason });
-      
-      return new Response(
-        JSON.stringify({
-          error: INJECTION_RESPONSES.RATE_ANOMALY.message,
-          retryAfter: INJECTION_RESPONSES.RATE_ANOMALY.retryAfter,
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "Retry-After": "60",
-          } 
-        }
-      );
+      return handleAnomalyDetection();
     }
 
     // =======================================================================
@@ -527,24 +609,8 @@ serve(async (req) => {
         tier: userTier,
         usage: rateLimitResult.currentUsage,
       });
-      
-      return new Response(
-        JSON.stringify({
-          error: SAFE_RESPONSES.RATE_LIMITED.message,
-          retryAfter: rateLimitResult.retryAfterSeconds,
-          upgradePrompt: rateLimitResult.upgradePrompt,
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "Retry-After": String(rateLimitResult.retryAfterSeconds || 60),
-            "X-RateLimit-Limit": String(rateLimitResult.limits.requestsPerMinute),
-            "X-RateLimit-Remaining": String(Math.max(0, rateLimitResult.limits.requestsPerMinute - rateLimitResult.currentUsage.minute)),
-          } 
-        }
-      );
+
+      return handleRateLimit(rateLimitResult);
     }
 
     // =======================================================================
@@ -591,53 +657,13 @@ serve(async (req) => {
         severity: moderationResult.severity,
         action: moderationResult.action,
       });
-      
+
       complianceLogger.log("BLOCKED_CONTENT", {
         moderationCategory: moderationResult.category,
         moderationSeverity: moderationResult.severity,
       });
-      
-      // Return appropriate safe response
-      let safeResponse = SAFE_RESPONSES.BLOCKED_GENERAL;
-      if (moderationResult.action === "REDIRECT_RESOURCES") {
-        return new Response(
-          JSON.stringify({
-            error: SAFE_RESPONSES.REDIRECT_CRISIS.message,
-            resources: moderationResult.resources,
-            blocked: true,
-            category: "CRISIS_SUPPORT",
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      if (moderationResult.category?.includes("VIOLENCE")) {
-        safeResponse = SAFE_RESPONSES.BLOCKED_VIOLENCE;
-      } else if (moderationResult.category?.includes("ILLEGAL") || 
-                 moderationResult.category?.includes("DRUG") ||
-                 moderationResult.category?.includes("CRIME")) {
-        safeResponse = SAFE_RESPONSES.BLOCKED_ILLEGAL;
-      }
-      
-      return new Response(
-        JSON.stringify({
-          entities: [],
-          connections: [],
-          question: safeResponse.suggestion || "",
-          response: safeResponse.message,
-          blocked: true,
-          category: moderationResult.category,
-        }),
-        { 
-          status: 200, // Return 200 with safe response, not error
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "X-Content-Blocked": "true",
-            "X-Block-Category": moderationResult.category || "POLICY_VIOLATION",
-          } 
-        }
-      );
+
+      return handleModerationBlock(moderationResult);
     }
     
     // =======================================================================
@@ -680,24 +706,7 @@ serve(async (req) => {
     });
 
     // Build context
-    let contextInfo = "";
-    if (sessionContext?.entities?.length) {
-      contextInfo += `\nExisting entities (don't duplicate): ${sessionContext.entities.map(e => e.label).join(", ")}`;
-    }
-    if (sessionContext?.conversationHistory?.length) {
-      // Redact PII from conversation history too
-      const sanitizedHistory = sessionContext.conversationHistory.map(h => redactPII(h).redacted);
-      contextInfo += `\nConversation:\n${sanitizedHistory.slice(-4).join("\n")}`;
-    }
-    if (sessionContext?.detectedPatterns?.length) {
-      contextInfo += `\nPatterns (use for insight): ${sessionContext.detectedPatterns.map(p => p.name).join(", ")}`;
-    }
-    if (stagePrompt && !shouldBreakthrough) {
-      contextInfo += `\n\nSTAGE: ${stagePrompt}`;
-    }
-    if (questionsAsked === MAX_QUESTIONS - 1 && !shouldBreakthrough) {
-      contextInfo += `\n\n⚠️ LAST QUESTION - make it count.`;
-    }
+    const contextInfo = buildContextInfo(sessionContext, stagePrompt, questionsAsked, shouldBreakthrough, MAX_QUESTIONS);
 
     const systemPrompt = shouldBreakthrough 
       ? BREAKTHROUGH_PROMPT + contextInfo 

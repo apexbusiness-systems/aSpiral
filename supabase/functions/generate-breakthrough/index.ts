@@ -16,6 +16,40 @@ interface BreakthroughRequest {
   userContext?: string;
 }
 
+interface Breakthrough {
+  friction: string;
+  grease: string;
+  insight: string;
+}
+
+function buildPatternHints(detectedPatterns: Array<{ name: string; confidence: number; insight?: string }>): string {
+  if (detectedPatterns.length === 0) return "";
+  return `\n\nDETECTED PATTERNS (use these!):\n${detectedPatterns.map(p =>
+    `- ${p.name}${p.insight ? `: ${p.insight}` : ''}`
+  ).join("\n")}`;
+}
+
+function parseBreakthrough(content: string): Breakthrough {
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+  } catch {
+    console.error("[GENERATE-BREAKTHROUGH] Parse error, using fallback");
+    return {
+      friction: "Something is pulling you in two directions",
+      grease: "Take the smallest possible first step",
+      insight: "The answer is already in you. You just needed to hear it out loud.",
+    };
+  }
+}
+
+function createErrorResponse(status: number, message: string): Response {
+  return new Response(
+    JSON.stringify({ error: message }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
 serve(async (req) => {
   const startTime = Date.now();
 
@@ -31,12 +65,7 @@ serve(async (req) => {
     const body: BreakthroughRequest = await req.json();
     const { conversationHistory, detectedPatterns = [], userContext } = body;
 
-    // Build pattern hints
-    const patternHints = detectedPatterns.length > 0
-      ? `\n\nDETECTED PATTERNS (use these!):\n${detectedPatterns.map(p => 
-          `- ${p.name}${p.insight ? `: ${p.insight}` : ''}`
-        ).join("\n")}`
-      : "";
+    const patternHints = buildPatternHints(detectedPatterns);
 
     console.log("[GENERATE-BREAKTHROUGH] Starting:", {
       historyLength: conversationHistory.length,
@@ -103,20 +132,14 @@ Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`,
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[GENERATE-BREAKTHROUGH] AI error:", response.status, errorText);
-      
+
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return createErrorResponse(429, "Rate limit exceeded. Try again shortly.");
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return createErrorResponse(402, "AI credits exhausted.");
       }
-      
+
       throw new Error("AI service error");
     }
 

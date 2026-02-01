@@ -90,6 +90,11 @@ export function useEntities() {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
             scheduleEntityReveal(entity.id, delay);
         });
+
+        // Cleanup timeouts on unmount or dependency change
+        return () => {
+            timeoutIds.forEach(clearTimeout);
+        };
     }, [entities, profile, invalidate]);
 
     return {
