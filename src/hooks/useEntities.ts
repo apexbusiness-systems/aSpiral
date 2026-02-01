@@ -77,14 +77,20 @@ export function useEntities() {
         setVisibleEntityIds(initial);
         invalidate();
 
-        // Staggered rest
-        sorted.slice(visibleLimit).forEach((entity, index) => {
+        // Schedule staggered rest
+        const remainingEntities = sorted.slice(visibleLimit);
+        const timeoutIds = remainingEntities.map((entity, index) => {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
-            setTimeout(() => {
+            return setTimeout(() => {
                 setVisibleEntityIds(prev => new Set([...prev, entity.id]));
                 invalidate();
             }, delay);
         });
+
+        // Cleanup timeouts on unmount or dependency change
+        return () => {
+            timeoutIds.forEach(clearTimeout);
+        };
     }, [entities, profile, invalidate]);
 
     return {

@@ -113,7 +113,7 @@ const AdminDashboard = () => {
         }
       }
 
-      const sessionIds = sessions?.map((s) => s.id) || [];
+      const sessionIds = new Set(sessions?.map((s) => s.id) || []);
 
       // Get other stats - use Promise.allSettled for partial rendering
       const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.allSettled([
@@ -134,9 +134,9 @@ const AdminDashboard = () => {
         : [];
 
       // Filter to user's sessions
-      const userBreakthroughs = breakthroughsData.filter((b) => sessionIds.includes(b.session_id || ''));
-      const userEntities = entitiesData.filter((e) => sessionIds.includes(e.session_id || ''));
-      const userMessages = messagesData.filter((m) => sessionIds.includes(m.session_id || ''));
+      const userBreakthroughs = breakthroughsData.filter((b) => sessionIds.has(b.session_id || ''));
+      const userEntities = entitiesData.filter((e) => sessionIds.has(e.session_id || ''));
+      const userMessages = messagesData.filter((m) => sessionIds.has(m.session_id || ''));
 
       // Calculate usage stats - zeros are valid for first-run
       setUsageStats({
