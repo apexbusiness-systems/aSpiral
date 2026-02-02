@@ -1,13 +1,18 @@
 ```
-           _____       _           _
-   ____   / ___/____  (_)________ | |
-  / __ \  \__ \/ __ \/ / ___/ __ \| |
- / /_/ / ___/ / /_/ / / /  / /_/ /| |
- \__,_/ /____/ .___/_/_/   \__,_/ |_|
-            /_/
+  █████╗ ███████╗██████╗ ██╗██████╗  █████╗ ██╗
+ ██╔══██╗██╔════╝██╔══██╗██║██╔══██╗██╔══██╗██║
+ ███████║███████╗██████╔╝██║██████╔╝███████║██║
+ ██╔══██║╚════██║██╔═══╝ ██║██╔══██╗██╔══██║██║
+ ██║  ██║███████║██║     ██║██║  ██║██║  ██║███████╗
+ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
 ```
 
-# aSpiral - Transform Confusion into Clarity
+**TRANSFORM CONFUSION INTO CLARITY.**  
+_Voice-First • Cinematic • Intelligent_
+
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square) ![Security](https://img.shields.io/badge/security-zero--trust-blue?style=flat-square) ![Quality](https://img.shields.io/badge/sonarqube-A-success?style=flat-square) ![License](https://img.shields.io/badge/license-Proprietary-orange?style=flat-square)
+
+---
 
 **aSpiral** is a voice-first AI coaching platform that visualizes your thoughts and guides you to breakthrough clarity through immersive 3D cinematic experiences.
 
