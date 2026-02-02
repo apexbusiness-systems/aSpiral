@@ -1,3 +1,12 @@
+```
+           _____       _           _
+   ____   / ___/____  (_)________ | |
+  / __ \  \__ \/ __ \/ / ___/ __ \| |
+ / /_/ / ___/ / /_/ / / /  / /_/ /| |
+ \__,_/ /____/ .___/_/_/   \__,_/ |_|
+            /_/
+```
+
 # aSpiral - Transform Confusion into Clarity
 
 **aSpiral** is a voice-first AI coaching platform that visualizes your thoughts and guides you to breakthrough clarity through immersive 3D cinematic experiences.
@@ -5,6 +14,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 22.x or later ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 - npm or yarn
 
@@ -38,6 +48,7 @@ npm run build:production
 ## 🏗️ Architecture
 
 ### Core Technologies
+
 - **Frontend**: React 18 + TypeScript + Vite
 - **Styling**: Tailwind CSS + shadcn/ui components
 - **3D Rendering**: Three.js + React Three Fiber
@@ -47,6 +58,7 @@ npm run build:production
 - **Deployment**: Capacitor (iOS/Android) + PWA
 
 ### Key Features
+
 - **Voice-First Interface**: Speech-to-text and text-to-speech integration
 - **Cinematic Breakthroughs**: 35+ procedural 3D visual experiences
 - **Multi-Language Support**: i18n with 5 languages (EN, ES, FR, DE, JA)
@@ -56,11 +68,13 @@ npm run build:production
 ## 🧪 Testing & Quality
 
 ### Test Suite Status
+
 - **Coverage**: 20 test files, 303 individual tests
 - **Pass Rate**: 100% (All tests passing)
 - **Quality Grade**: SonarQube Grade A (Maintainability)
 
 ### Validation Pipeline
+
 ```sh
 # Run comprehensive validation
 npm run validate
@@ -68,7 +82,9 @@ npm run validate
 ```
 
 ### Build Integrity
+
 The project includes hardened build processes with:
+
 - Pre-commit hooks for code quality
 - Automated validation scripts
 - Production build verification
@@ -77,9 +93,11 @@ The project includes hardened build processes with:
 ## 📚 Documentation
 
 ### Production Launch
+
 - **[🚀 Launch Readiness Report](LAUNCH_READINESS.md)** - Comprehensive production audit and launch approval
 
 ### Core Documentation
+
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Technical roadmap and architecture
 - [Production Status](docs/PRODUCTION_STATUS.md) - Current deployment status
 - [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
@@ -88,6 +106,7 @@ The project includes hardened build processes with:
 - [Audit Report](docs/CI_RESCUE_WALKTHROUGH.md) - CI/CD hardening and rescue log
 
 ### Setup Guides
+
 - [Supabase Setup](SUPABASE_SETUP.md) - Backend configuration
 - [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md) - Production deployment
 - [Bootstrap Guide](docs/bootstrap.md) - New environment setup
@@ -95,6 +114,7 @@ The project includes hardened build processes with:
 ## 🔧 Development
 
 ### Available Scripts
+
 ```json
 {
   "dev": "Start development server",
@@ -112,6 +132,7 @@ The project includes hardened build processes with:
 ```
 
 ### Code Quality Standards
+
 - **TypeScript**: Strict mode enabled
 - **ESLint**: Zero warnings/errors
 - **SonarQube**: Grade A maintainability
@@ -121,11 +142,13 @@ The project includes hardened build processes with:
 ## 🚀 Deployment
 
 ### Production Build
+
 ```sh
 npm run build:production
 ```
 
 ### Mobile Deployment
+
 ```sh
 # iOS
 npm run build
@@ -139,6 +162,7 @@ npx cap open android
 ```
 
 ### PWA Deployment
+
 The app is automatically configured as a Progressive Web App and can be installed from any modern browser.
 
 ## 🤝 Contributing
@@ -151,6 +175,7 @@ The app is automatically configured as a Progressive Web App and can be installe
 6. Create a Pull Request
 
 ### Code Standards
+
 - All commits must pass `npm run validate`
 - Tests must maintain 100% pass rate
 - Code must maintain SonarQube Grade A
@@ -163,6 +188,7 @@ Copyright © 2024-2026 Apex Business Systems. All rights reserved.
 ## 🆘 Support
 
 For technical support or questions:
+
 - Create an issue in this repository
 - Contact the development team
 - Check the [documentation](docs/) for common solutions
