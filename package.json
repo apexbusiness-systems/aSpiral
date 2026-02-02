@@ -21,6 +21,7 @@
     "validate": "npm run typecheck && npm run lint && npm run test",
     "precommit": "npm run validate",
     "prepush": "npm run validate && npm run build",
+    "armageddon": "python scripts/run_voice_tests.py",
     "security:audit": "npm audit --audit-level=high"
   },
   "dependencies": {
