@@ -21,6 +21,11 @@ interface DebugEvent {
   data?: Record<string, unknown>;
 }
 
+function mergeAndTrimEvents(existing: DebugEvent[], incoming: DebugEvent[]): DebugEvent[] {
+  const filtered = existing.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio'));
+  return [...filtered, ...incoming].sort((a, b) => a.timestamp - b.timestamp).slice(-50);
+}
+
 export function VoiceDebugPanel() {
   const isDev = import.meta.env.DEV;
   const [isVisible, setIsVisible] = useState(false);
@@ -57,10 +62,7 @@ export function VoiceDebugPanel() {
     if (!isVisible || !isDev) return;
 
     const unsubscribeTTS = subscribeToTTSDebug((ttsEvents) => {
-      setEvents(prev => {
-        const filtered = prev.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio'));
-        return [...filtered, ...ttsEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50);
-      });
+      setEvents(prev => mergeAndTrimEvents(prev, ttsEvents));
     });
 
     return () => {
