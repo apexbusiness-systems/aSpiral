@@ -6,8 +6,7 @@ import type { Message } from "@/lib/types";
 
 const logger = createLogger("useChat");
 
-// Use environment variable for Supabase URL, fallback for backward compatibility
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://eqtwatyodujxofrdznen.supabase.co";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const CHAT_URL = `${SUPABASE_URL}/functions/v1/chat`;
 
 interface UseChatOptions {

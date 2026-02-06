@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { useState, useRef, ReactNode } from "react";
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";

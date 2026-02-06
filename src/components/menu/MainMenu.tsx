@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { useState, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +22,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { ConfirmationModal } from "./ConfirmationModal";
 
 interface MainMenuProps {
@@ -367,7 +368,12 @@ export function MainMenu({
                   <MenuAction
                     icon={Keyboard}
                     label="Keyboard Shortcuts"
-                    onClick={() => { }}
+                    onClick={() => {
+                      toast.info(
+                        "Space = Pause/Resume | B = Breakthrough | E = Export | H = History | Esc = Stop | Ctrl+S = Save | Ctrl+R = Restart | ? = Help",
+                        { duration: 8000 }
+                      );
+                    }}
                   />
                 </div>
               </div>
@@ -397,27 +403,6 @@ export function MainMenu({
                 </div>
               )}
             </div>
-
-            {/* Audit Fix: PWA Static CTA Section */}
-            {(installPwa || (/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream)) && (
-              <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-white/10">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                  <Smartphone size={16} />
-                  Install App
-                </h3>
-                {installPwa ? (
-                  <MenuAction
-                    icon={Download}
-                    label="Add to Home Screen"
-                    onClick={installPwa}
-                  />
-                ) : (/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream) ? (
-                  <p className="text-xs text-muted-foreground">
-                    Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
-                  </p>
-                ) : null}
-              </div>
-            )}
 
             {/* Footer */}
             <div className="p-6 border-t border-border/50 text-center">

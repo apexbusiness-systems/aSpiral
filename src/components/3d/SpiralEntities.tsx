@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useThree } from "@react-three/fiber";
 import { AdaptiveEntity } from "./AdaptiveEntity";
 import { ConnectionLine } from "./ConnectionLine";
@@ -26,7 +26,7 @@ export function SpiralEntities() {
   const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
 
-  const entities = currentSession?.entities || [];
+  const entities = useMemo(() => currentSession?.entities || [], [currentSession?.entities]);
   const connections = currentSession?.connections || [];
 
   // Handle position updates from physics worker

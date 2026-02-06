@@ -54,3 +54,15 @@ android/build/
 capacitor.config.ts.bak
 node_modules
 coverage
+
+# Build/lint/test output files (never commit)
+*_output.txt
+*_results.txt
+*_failures.txt
+*_check.txt
+lint_*.txt
+lint_*.json
+test-results.json
+build_output.txt
+errors.md
+temp_repo/

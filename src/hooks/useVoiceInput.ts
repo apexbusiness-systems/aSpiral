@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 /* eslint-disable react-hooks/exhaustive-deps */
 /**
  * useVoiceInput Hook - Fixed for STT "Rap God" Duplication Bug

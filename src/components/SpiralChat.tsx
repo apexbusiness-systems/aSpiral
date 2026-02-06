@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward, Volume2, VolumeX } from "lucide-react";
@@ -40,7 +40,7 @@ export interface SpiralChatHandle {
   openSettings: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+ 
 interface SpiralChatProps { }
 
 export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref) => {
