@@ -40,7 +40,7 @@ import type { EntityType, EntityMetadata, Entity } from "@/lib/types";
 
 const logger = createLogger("useSpiralAI");
 
-const SPIRAL_AI_URL = "https://eqtwatyodujxofrdznen.supabase.co/functions/v1/spiral-ai";
+const SPIRAL_AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/spiral-ai`;
 
 // Hard cap: 3 questions max
 const MAX_QUESTIONS = 3;
@@ -444,19 +444,21 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }, 50);
         }
 
-        // FAILSAFE: If readyForBreakthrough but server returned a question, ignore it and force breakthrough
+        // FAILSAFE: If readyForBreakthrough but server returned a question,
+        // use any existing breakthrough data from prior responses, or skip the question
         if (fastTrackRef.current.readyForBreakthrough && data.question) {
-           logger.warn("Server returned question despite breakthrough ready - forcing breakthrough locally");
-           
-           // Mock a basic breakthrough data if none exists
-           const forcedData: BreakthroughData = {
-               friction: "The tension between your goals and your fears",
-               grease: "Trusting your own intuition",
-               insight: "You already know the answer, you just need to act."
-           };
-           
-           forceBreakthrough(forcedData);
-           sendEvent({ type: "RESPONSE_COMPLETE" }); // Reset FSM
+           logger.warn("Server returned question despite breakthrough ready - using accumulated data");
+
+           // Use breakthrough data from THIS response if available, otherwise from accumulated session
+           if (data.friction || data.grease || data.insight) {
+             const accumulatedData: BreakthroughData = {
+               friction: data.friction || "",
+               grease: data.grease || "",
+               insight: data.insight || "",
+             };
+             forceBreakthrough(accumulatedData);
+           }
+           sendEvent({ type: "RESPONSE_COMPLETE" });
            return data;
         }
 

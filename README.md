@@ -74,7 +74,7 @@ npm run build:production
 
 ### Test Suite Status
 
-- **Coverage**: 20 test files, 303 individual tests
+- **Coverage**: 12 test suites, 172 individual tests
 - **Pass Rate**: 100% (All tests passing)
 - **Quality Grade**: SonarQube Grade A (Maintainability)
 
@@ -103,12 +103,12 @@ The project includes hardened build processes with:
 
 ### Core Documentation
 
+- [Feature Registry](docs/FEATURE_REGISTRY.md) - Complete feature inventory and status
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Technical roadmap and architecture
 - [Production Status](docs/PRODUCTION_STATUS.md) - Current deployment status
 - [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
 - [Security Review](docs/SECURITY_REVIEW.md) - Security audit results
 - [Code Review](docs/CODE_REVIEW.md) - Code quality guidelines
-- [Audit Report](docs/CI_RESCUE_WALKTHROUGH.md) - CI/CD hardening and rescue log
 
 ### Setup Guides
 
@@ -138,8 +138,8 @@ The project includes hardened build processes with:
 
 ### Code Quality Standards
 
-- **TypeScript**: Strict mode enabled
-- **ESLint**: Zero warnings/errors
+- **TypeScript**: Zero type errors
+- **ESLint**: Zero errors (warnings for shadcn/ui patterns)
 - **SonarQube**: Grade A maintainability
 - **Testing**: 100% pass rate required
 - **Build**: Zero failures in CI/CD

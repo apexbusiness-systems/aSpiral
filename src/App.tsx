@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,22 +18,24 @@ import PremiumSplash from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { unlockAudioFromGesture } from "@/lib/audioSession";
 
-// Pages
+// Eagerly loaded pages (critical path)
 import Landing from "./pages/Landing";
-import HowItWorks from "./pages/HowItWorks";
-import Story from "./pages/Story";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Sessions from "./pages/Sessions";
-import Workspaces from "./pages/Workspaces";
-import ApiKeys from "./pages/ApiKeys";
-import AdminDashboard from "./pages/AdminDashboard";
-import NotificationTest from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
-import VoiceYourChaos from "./pages/steps/VoiceYourChaos";
-import WatchItVisualize from "./pages/steps/WatchItVisualize";
-import AnswerQuestions from "./pages/steps/AnswerQuestions";
-import GetBreakthrough from "./pages/steps/GetBreakthrough";
+
+// Lazy-loaded pages (code-split for smaller initial bundle)
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const Story = lazy(() => import("./pages/Story"));
+const Index = lazy(() => import("./pages/Index"));
+const Sessions = lazy(() => import("./pages/Sessions"));
+const Workspaces = lazy(() => import("./pages/Workspaces"));
+const ApiKeys = lazy(() => import("./pages/ApiKeys"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const NotificationTest = lazy(() => import("./pages/NotificationTest"));
+const VoiceYourChaos = lazy(() => import("./pages/steps/VoiceYourChaos"));
+const WatchItVisualize = lazy(() => import("./pages/steps/WatchItVisualize"));
+const AnswerQuestions = lazy(() => import("./pages/steps/AnswerQuestions"));
+const GetBreakthrough = lazy(() => import("./pages/steps/GetBreakthrough"));
 
 const queryClient = new QueryClient();
 
@@ -143,6 +145,7 @@ const App = () => {
             <HashRouter>
               <StandaloneModeRedirect />
               <DebugOverlay />
+              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
@@ -157,9 +160,10 @@ const App = () => {
                 <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
                 <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/notification-test" element={<NotificationTest />} />
+                {import.meta.env.DEV && <Route path="/notification-test" element={<NotificationTest />} />}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </HashRouter>
           </TooltipProvider>
         </AuthProvider>

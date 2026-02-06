@@ -1,21 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Voice Debug Panel
- * 
+ *
  * Minimal on-screen debug overlay to verify STT and TTS fixes.
  * Shows real-time voice pipeline events for debugging.
- * 
+ *
  * Toggle with ?voiceDebug=1 in URL or by pressing Ctrl+Shift+V
+ * Only available in development mode.
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bug, X, Trash2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// Voice debug functions removed - useVoiceInput doesn't export these
-// Stubbing them for now until proper debug exports are added
-const subscribeToVoiceDebug = (cb: (events: any[]) => void) => { cb([]); return () => { }; };
-const clearVoiceDebugBuffer = () => { };
 import { subscribeToTTSDebug } from "@/hooks/useTextToSpeech";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 
@@ -26,6 +22,7 @@ interface DebugEvent {
 }
 
 export function VoiceDebugPanel() {
+  const isDev = import.meta.env.DEV;
   const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [events, setEvents] = useState<DebugEvent[]>([]);
@@ -34,14 +31,16 @@ export function VoiceDebugPanel() {
 
   // Check URL param on mount
   useEffect(() => {
+    if (!isDev) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('voiceDebug') === '1') {
       setIsVisible(true);
     }
-  }, []);
+  }, [isDev]);
 
-  // Keyboard shortcut: Ctrl+Shift+V
+  // Keyboard shortcut: Ctrl+Shift+V (dev only)
   useEffect(() => {
+    if (!isDev) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === 'V') {
         e.preventDefault();
@@ -51,33 +50,25 @@ export function VoiceDebugPanel() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isDev]);
 
-  // Subscribe to both STT and TTS debug events
+  // Subscribe to TTS debug events
   useEffect(() => {
-    if (!isVisible) return;
-
-    // Merge both event streams
-    let allEvents: DebugEvent[] = [];
-
-    const unsubscribeSTT = subscribeToVoiceDebug((sttEvents) => {
-      allEvents = [...allEvents.filter(e => !e.type.startsWith('stt') && !e.type.startsWith('listener')), ...sttEvents];
-      setEvents([...allEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50));
-    });
+    if (!isVisible || !isDev) return;
 
     const unsubscribeTTS = subscribeToTTSDebug((ttsEvents) => {
-      allEvents = [...allEvents.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio')), ...ttsEvents];
-      setEvents([...allEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50));
+      setEvents(prev => {
+        const filtered = prev.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio'));
+        return [...filtered, ...ttsEvents].sort((a, b) => a.timestamp - b.timestamp).slice(-50);
+      });
     });
 
     return () => {
-      unsubscribeSTT();
       unsubscribeTTS();
     };
-  }, [isVisible]);
+  }, [isVisible, isDev]);
 
   const handleClear = useCallback(() => {
-    clearVoiceDebugBuffer();
     setEvents([]);
   }, []);
 
@@ -117,7 +108,7 @@ export function VoiceDebugPanel() {
     return 'text-gray-400';
   };
 
-  if (!isVisible) return null;
+  if (!isDev || !isVisible) return null;
 
   return (
     <AnimatePresence>

@@ -189,6 +189,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
       toast.error('Voice playback failed', { description: err.message });
       onError?.(err);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- forceWebSpeech and volume are stable refs
   }, [voice, speed, fallbackToWebSpeech, onStart, onEnd, onError]);
 
   // Cleanup on unmount

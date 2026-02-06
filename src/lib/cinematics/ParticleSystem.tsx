@@ -76,6 +76,7 @@ export const ParticleSystem = forwardRef<ParticleSystemRef, ParticleSystemProps>
       }
 
       updateInstancedMesh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateInstancedMesh is stable
     }, [count, pattern, patternParams, colors, size, sizeVariation, speed, speedVariation, lifetime]);
 
     // Expose control methods

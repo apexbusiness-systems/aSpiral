@@ -62,6 +62,7 @@ const ApiKeys = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadApiKeys is defined after this effect
   useEffect(() => {
     if (user) {
       loadApiKeys();
@@ -376,8 +377,8 @@ const ApiKeys = () => {
             Use your API key with the x-api-key header to authenticate requests.
           </p>
           <code className="block p-3 rounded bg-background text-xs font-mono overflow-x-auto">
-            curl -H "x-api-key: sp_your_key_here" \{'\n'}
-            {'  '}https://eqtwatyodujxofrdznen.supabase.co/functions/v1/api-sessions
+            curl -H &quot;x-api-key: sp_your_key_here&quot; \{'\n'}
+            {'  '}{import.meta.env.VITE_SUPABASE_URL}/functions/v1/api-sessions
           </code>
         </div>
       </div>

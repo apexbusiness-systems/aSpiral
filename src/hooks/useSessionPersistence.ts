@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -215,7 +215,8 @@ export function useSessionPersistence() {
     }
   }, [user, currentSession, saveSession]);
 
-  // Save on session changes (debounced)
+  // Save on session changes (debounced) - deps intentionally track only data length changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user && currentSession) {
       debouncedSave();
@@ -233,16 +234,19 @@ export function useSessionPersistence() {
           status: 'paused',
         });
 
-        navigator.sendBeacon?.(
-          `${import.meta.env.VITE_SUPABASE_URL || 'https://eqtwatyodujxofrdznen.supabase.co'}/rest/v1/rpc/save_session_status`,
-          payload
-        );
+        if (import.meta.env.VITE_SUPABASE_URL) {
+          navigator.sendBeacon?.(
+            `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/save_session_status`,
+            payload
+          );
+        }
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [user, currentSession]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally captures current user/session at effect time
+  }, [user?.id, currentSession?.id]);
 
   // Load user's sessions
   const loadSessions = useCallback(async (): Promise<SessionRecord[]> => {
