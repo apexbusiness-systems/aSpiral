@@ -14,7 +14,11 @@
  * - PII-free logging
  * - Geographic compliance routing
  * - Incident escalation
+ * - DURABLE PERSISTENCE (via ComplianceLogWriter)
+ * - TIME-BOXED FLUSH (never blocks main request)
  */
+
+import type { ComplianceLogWriter, ComplianceEventRecord, ComplianceRunRecord } from "./compliance-store.ts";
 
 // =============================================================================
 // JURISDICTION CONFIGURATION
@@ -231,12 +235,121 @@ export class ComplianceLogger {
   private jurisdiction: JurisdictionConfig;
   private requestId: string;
   private startTime: number;
+  
+  // Durable writer (optional)
+  private writer: ComplianceLogWriter | null = null;
+  private context: { sessionHash: string; userHash?: string; userTier?: string } = {
+    sessionHash: "unknown",
+  };
 
   constructor(requestId: string, jurisdictionCode: string = "DEFAULT") {
     this.requestId = requestId;
     this.jurisdiction = JURISDICTIONS[jurisdictionCode] || JURISDICTIONS.DEFAULT;
     this.startTime = Date.now();
   }
+
+  // =============================================================================
+  // DURABLE WRITER INTEGRATION
+  // =============================================================================
+
+  /**
+   * Attach a durable writer for persistent logging
+   */
+  attachWriter(writer: ComplianceLogWriter): void {
+    this.writer = writer;
+  }
+
+  /**
+   * Set context for all subsequent logs (session/user hashes, tier)
+   */
+  setContext(ctx: { sessionHash: string; userHash?: string; userTier?: string }): void {
+    this.context = { ...this.context, ...ctx };
+    if (this.writer) {
+      this.writer.setContext(ctx);
+    }
+  }
+
+  /**
+   * Write run start record (STARTED status)
+   * Should be called early, before any LLM/network operations
+   * NEVER throws - failures are logged but isolated
+   */
+  async writeRunStart(): Promise<void> {
+    if (!this.writer) {
+      return;
+    }
+
+    try {
+      await this.writer.writeRunStart({
+        request_id: this.requestId,
+        jurisdiction: this.jurisdiction.code,
+        status: "STARTED",
+        session_hash: this.context.sessionHash,
+        user_hash: this.context.userHash,
+        user_tier: this.context.userTier,
+      });
+    } catch (err) {
+      console.error("[COMPLIANCE-LOGGER] writeRunStart error (isolated):", err);
+    }
+  }
+
+  /**
+   * Finalize run with final status
+   * NEVER throws - failures are logged but isolated
+   */
+  async finalizeRun(params: {
+    status: "SUCCESS" | "BLOCKED" | "ERROR";
+    blocked?: boolean;
+    escalated?: boolean;
+    errorCode?: string;
+    errorMessage?: string;
+  }): Promise<void> {
+    if (!this.writer) {
+      return;
+    }
+
+    try {
+      const summary = this.getSummary();
+      await this.writer.writeRunSummary({
+        request_id: this.requestId,
+        jurisdiction: this.jurisdiction.code,
+        status: params.status,
+        total_events: summary.totalEvents,
+        blocked: params.blocked ?? summary.blocked,
+        escalated: params.escalated ?? summary.escalated,
+        total_time_ms: summary.totalTimeMs,
+        session_hash: this.context.sessionHash,
+        user_hash: this.context.userHash,
+        user_tier: this.context.userTier,
+        error_code: params.errorCode,
+        error_message: params.errorMessage,
+        completed_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[COMPLIANCE-LOGGER] finalizeRun error (isolated):", err);
+    }
+  }
+
+  /**
+   * Flush all pending writes with time-box
+   * Uses Promise.race to ensure we don't block the main request
+   * NEVER throws - failures are logged but isolated
+   */
+  async flush(maxWaitMs: number = 500): Promise<void> {
+    if (!this.writer || !this.writer.flush) {
+      return;
+    }
+
+    try {
+      await this.writer.flush(maxWaitMs);
+    } catch (err) {
+      console.error("[COMPLIANCE-LOGGER] flush error (isolated):", err);
+    }
+  }
+
+  // =============================================================================
+  // CORE LOGGING
+  // =============================================================================
 
   // Hash sensitive identifiers
   private hashIdentifier(id: string): string {
@@ -259,15 +372,19 @@ export class ComplianceLogger {
     eventType: AuditEventType,
     details: Partial<ComplianceAuditLog> = {}
   ): void {
+    const eventId = this.generateEventId();
+    const timestamp = new Date().toISOString();
+    const processingTimeMs = Date.now() - this.startTime;
+
     const entry: ComplianceAuditLog = {
-      eventId: this.generateEventId(),
+      eventId,
       requestId: this.requestId,
-      sessionHash: details.sessionHash || "unknown",
+      sessionHash: details.sessionHash || this.context.sessionHash || "unknown",
       eventType,
-      timestamp: new Date().toISOString(),
+      timestamp,
       jurisdiction: this.jurisdiction.code,
       applicableRegulations: this.jurisdiction.regulations,
-      processingTimeMs: Date.now() - this.startTime,
+      processingTimeMs,
       ...details,
     };
 
@@ -281,8 +398,50 @@ export class ComplianceLogger {
       ...this.sanitizeForConsole(details),
     });
 
+    // Write to durable storage (async, non-blocking)
+    if (this.writer) {
+      const eventRecord: ComplianceEventRecord = {
+        request_id: this.requestId,
+        event_id: eventId,
+        event_type: eventType,
+        event_ts: timestamp,
+        jurisdiction: this.jurisdiction.code,
+        applicable_regulations: this.jurisdiction.regulations,
+        session_hash: entry.sessionHash,
+        processing_time_ms: processingTimeMs,
+        payload: this.sanitizePayload(details),
+      };
+
+      // Fire-and-forget (errors handled internally by writer)
+      this.writer.writeEvent(eventRecord).catch((err) => {
+        console.error("[COMPLIANCE-LOGGER] writeEvent error (isolated):", err);
+      });
+    }
+
     // Check for escalation triggers
     this.checkEscalation(entry);
+  }
+
+  private sanitizePayload(details: Partial<ComplianceAuditLog>): Record<string, unknown> {
+    const payload: Record<string, unknown> = {};
+    
+    // Only include safe fields in payload
+    const safeFields = [
+      "contentLength", "containsPII", "piiTypesFound",
+      "moderationDecision", "moderationCategory", "moderationSeverity",
+      "rateLimitStatus", "currentUsage",
+      "errorCode", // errorMessage may contain sensitive info
+      "escalated", "escalationReason",
+      "warnings", "riskScore", "threatCount", "blocked", "reason"
+    ];
+
+    for (const field of safeFields) {
+      if (field in details) {
+        payload[field] = details[field as keyof ComplianceAuditLog];
+      }
+    }
+
+    return payload;
   }
 
   private getLogLevel(eventType: AuditEventType): "log" | "warn" | "error" {
@@ -365,7 +524,7 @@ export class ComplianceLogger {
       requestId: this.requestId,
       jurisdiction: this.jurisdiction.code,
       totalEvents: this.logs.length,
-      blocked: this.logs.some(l => l.moderationDecision === "BLOCKED"),
+      blocked: this.logs.some(l => l.moderationDecision === "BLOCKED" || l.blocked),
       escalated: this.logs.some(l => l.escalated),
       totalTimeMs: Date.now() - this.startTime,
     };
