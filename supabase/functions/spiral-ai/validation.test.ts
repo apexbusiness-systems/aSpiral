@@ -6,7 +6,7 @@
  */
 
 import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
 
 // Import from shared modules
 import { 
@@ -16,7 +16,7 @@ import {
   getTierLimits,
   TIER_LIMITS 
 } from "./ai-schema.ts";
-import { redactPII, PII_PATTERNS } from "./pii-redactor.ts";
+import { redactPII } from "./pii-redactor.ts";
 
 // =============================================================================
 // ENTITY SCHEMA TESTS

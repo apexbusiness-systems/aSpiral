@@ -15,14 +15,14 @@ export const PII_PATTERNS: Record<string, RegExp> = {
   // Standard email addresses
   email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
   
-  // Phone numbers (various formats)
-  phone: /(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g,
+  // Phone numbers (various formats) - Fixed: use \d, require at least one separator char
+  phone: /(?:\+1[-.\s])?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g,
   
-  // Social Security Numbers
-  ssn: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
+  // Social Security Numbers - Fixed: use \d, simplified hyphen class
+  ssn: /\b\d{3}-?\d{2}-?\d{4}\b/g,
   
   // Credit card numbers
-  creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
+  creditCard: /\b(?:\d{4}[-.\s]?){3}\d{4}\b/g,
   
   // IP addresses
   ipAddress: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
@@ -38,19 +38,17 @@ export const PII_PATTERNS: Record<string, RegExp> = {
  * - "j[dot]doe(at)gmail[dot]com"
  * - "j (dot) doe (at) gmail (dot) com"
  */
+// Simplified obfuscated email patterns to reduce complexity (SonarQube S5852)
+// Each pattern targets a specific obfuscation style
 export const OBFUSCATED_EMAIL_PATTERNS: RegExp[] = [
-  // Pattern: word + (dot/.) + word + (at/@) + word + (dot/.) + tld
-  // Matches: "j dot doe at gmail dot com", "john.doe at example.org"
-  /\b[a-zA-Z0-9]+\s*(?:\[?\s*(?:dot|\.)\s*\]?\s*[a-zA-Z0-9]+)+\s*(?:\[?\s*(?:at|@)\s*\]?)\s*[a-zA-Z0-9]+\s*(?:\[?\s*(?:dot|\.)\s*\]?\s*[a-zA-Z]{2,})+\b/gi,
+  // Pattern 1: "user dot name at domain dot com" (word boundaries, simple)
+  /\b\w+\s+dot\s+\w+\s+at\s+\w+\s+dot\s+\w{2,}\b/gi,
   
-  // Pattern with parentheses: "j (dot) doe (at) gmail (dot) com"
-  /\b[a-zA-Z0-9]+\s*(?:\(\s*(?:dot|\.)\s*\)\s*[a-zA-Z0-9]+)+\s*(?:\(\s*(?:at|@)\s*\))\s*[a-zA-Z0-9]+\s*(?:\(\s*(?:dot|\.)\s*\)\s*[a-zA-Z]{2,})+\b/gi,
+  // Pattern 2: "user[dot]name[at]domain[dot]com" (bracket style)
+  /\b\w+\[dot\]\w+\[at\]\w+\[dot\]\w{2,}\b/gi,
   
-  // Pattern with brackets: "j[dot]doe[at]gmail[dot]com"
-  /\b[a-zA-Z0-9]+(?:\[\s*(?:dot|\.)\s*\][a-zA-Z0-9]+)+\[\s*(?:at|@)\s*\][a-zA-Z0-9]+(?:\[\s*(?:dot|\.)\s*\][a-zA-Z]{2,})+\b/gi,
-  
-  // Pattern: explicit "at" or "@" with domain words
-  /\b[a-zA-Z0-9.]+\s+at\s+[a-zA-Z0-9]+\s+dot\s+[a-zA-Z]{2,}\b/gi,
+  // Pattern 3: "user(dot)name(at)domain(dot)com" (parentheses style)  
+  /\b\w+\(dot\)\w+\(at\)\w+\(dot\)\w{2,}\b/gi,
 ];
 
 // =============================================================================
