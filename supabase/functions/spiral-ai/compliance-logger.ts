@@ -18,7 +18,7 @@
  * - TIME-BOXED FLUSH (never blocks main request)
  */
 
-import type { ComplianceLogWriter, ComplianceEventRecord, ComplianceRunRecord } from "./compliance-store.ts";
+import type { ComplianceLogWriter, ComplianceEventRecord } from "./compliance-store.ts";
 
 // =============================================================================
 // JURISDICTION CONFIGURATION
