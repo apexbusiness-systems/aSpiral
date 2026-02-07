@@ -52,6 +52,39 @@ async function hashSHA256(input: string): Promise<string> {
 
 const MAX_VALIDATION_RETRIES = 2;
 
+// Helper: Format validation error messages
+function formatValidationErrors(error: Error): string {
+  if ("errors" in error && Array.isArray((error as unknown as { errors: unknown[] }).errors)) {
+    return ((error as unknown as { errors: Array<{ path: string[]; message: string }> }).errors)
+      .map(e => `- ${e.path.join('.')}: ${e.message}`)
+      .join('\n');
+  }
+  return error.message;
+}
+
+// Helper: Parse JSON from AI response content
+function parseAIResponseContent(content: string): unknown | null {
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+// Helper: Create fallback response
+function createFallbackResponse(shouldBreakthrough: boolean): SpiralAIResponse {
+  return {
+    entities: [],
+    connections: [],
+    question: shouldBreakthrough ? "" : "What's on your mind?",
+    response: "I hear you.",
+    friction: undefined,
+    grease: undefined,
+    insight: undefined,
+  };
+}
+
 async function callAIWithValidation(
   systemPrompt: string,
   userContent: string,
@@ -65,24 +98,16 @@ async function callAIWithValidation(
   let retryCount = 0;
 
   for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
-    let prompt = systemPrompt;
-    
-    // On retry, add validation feedback
-    if (attempt > 0 && lastError) {
-      let errorMessages: string;
-      if ("errors" in lastError && Array.isArray((lastError as unknown as { errors: unknown[] }).errors)) {
-        errorMessages = ((lastError as unknown as { errors: Array<{ path: string[]; message: string }> }).errors)
-          .map(e => `- ${e.path.join('.')}: ${e.message}`)
-          .join('\n');
-      } else {
-        errorMessages = lastError.message;
-      }
-      
-      prompt += `\n\n⚠️ VALIDATION FAILED ON PREVIOUS ATTEMPT:\n${errorMessages}\n\nPlease fix these issues and respond with valid JSON.`;
+    // Build prompt with validation feedback on retry
+    const prompt = attempt > 0 && lastError
+      ? `${systemPrompt}\n\n⚠️ VALIDATION FAILED ON PREVIOUS ATTEMPT:\n${formatValidationErrors(lastError)}\n\nPlease fix these issues and respond with valid JSON.`
+      : systemPrompt;
+
+    if (attempt > 0) {
       console.log(`[SPIRAL-AI] 🔄 Retry ${attempt}/${MAX_VALIDATION_RETRIES} with validation feedback`);
     }
 
-    // Create abort controller for timeout
+    // Fetch with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
@@ -118,20 +143,15 @@ async function callAIWithValidation(
       throw new Error("No content in AI response");
     }
 
-    // Parse JSON from response
-    let parsed: unknown;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
-    } catch {
+    // Parse and validate response
+    const parsed = parseAIResponseContent(content);
+    if (parsed === null) {
       lastError = new Error("Invalid JSON response from AI");
       retryCount = attempt + 1;
       continue;
     }
 
-    // Validate with Zod using tier-aware schema
     const result = ResponseSchema.safeParse(parsed);
-    
     if (result.success) {
       console.log(`[SPIRAL-AI] ✅ Validation passed on attempt ${attempt + 1}`);
       return { data: result.data as SpiralAIResponse, retryCount: attempt };
@@ -144,19 +164,7 @@ async function callAIWithValidation(
 
   // All retries failed - return safe fallback
   console.error(`[SPIRAL-AI] ❌ Validation failed after ${MAX_VALIDATION_RETRIES + 1} attempts`);
-  
-  return {
-    data: {
-      entities: [],
-      connections: [],
-      question: shouldBreakthrough ? "" : "What's on your mind?",
-      response: "I hear you.",
-      friction: undefined,
-      grease: undefined,
-      insight: undefined,
-    },
-    retryCount,
-  };
+  return { data: createFallbackResponse(shouldBreakthrough), retryCount };
 }
 
 // =============================================================================
