@@ -1,14 +1,17 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { moderateContent, SAFE_RESPONSES, type ModerationResult } from "./content-guard.ts";
 import { checkRateLimit, checkSessionLimit, type RateLimitResult } from "./rate-limiter.ts";
 import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
 import { detectPromptInjection, validateOutput, detectAnomaly, INJECTION_RESPONSES } from "./prompt-shield.ts";
 import { validateInput, parseRequestBody, validateHeaders, type ValidatedInput } from "./input-validator.ts";
+import { createComplianceWriter } from "./compliance-store.ts";
+import { createResponseSchema, getTierLimits, getPromptValidationRules, getEntityExtractionRules, type SpiralAIResponse } from "./ai-schema.ts";
+import { redactPII } from "./pii-redactor.ts";
 
 // =============================================================================
 // PHASE 4: FULL GUARDRAILS - Content Moderation, Rate Limiting, Compliance
+// Enterprise-Grade Hardening with Durable Compliance Logging
 // =============================================================================
 
 const corsHeaders = {
@@ -24,79 +27,27 @@ const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const AI_TIMEOUT_MS = 30000; // 30 second timeout for AI gateway
 const ENABLE_DETAILED_ERRORS = Deno.env.get("ENABLE_DETAILED_ERRORS") === "true";
 
-// =============================================================================
-// ZOD SCHEMAS - Strict Output Validation
-// =============================================================================
-
-const EntitySchema = z.object({
-  type: z.enum(["problem", "emotion", "value", "action", "friction", "grease"]),
-  label: z.string().max(50, "Label must be under 50 characters"),
-  role: z.enum([
-    "external_irritant",
-    "internal_conflict",
-    "desire",
-    "fear",
-    "constraint",
-    "solution"
-  ]).optional(),
-  emotionalValence: z.number().min(-1).max(1).optional(),
-  importance: z.number().min(0).max(1).optional(),
-});
-
-const ConnectionSchema = z.object({
-  from: z.number().int().min(0),
-  to: z.number().int().min(0),
-  type: z.enum(["causes", "blocks", "enables", "resolves", "opposes"]),
-  strength: z.number().min(0).max(1),
-});
-
-// Main response schema - HARD LIMITS enforced
-const ResponseSchema = z.object({
-  entities: z.array(EntitySchema).max(5, "Maximum 5 entities allowed"),
-  connections: z.array(ConnectionSchema).max(10, "Maximum 10 connections allowed"),
-  question: z.string().max(100, "Question must be under 100 characters"),
-  response: z.string().max(50, "Response must be under 50 characters"),
-  friction: z.string().max(100).optional(),
-  grease: z.string().max(100).optional(),
-  insight: z.string().max(150).optional(),
-});
-
-type ValidatedResponse = z.infer<typeof ResponseSchema>;
+// Flush timeouts (ms)
+const FLUSH_START_MS = 250;
+const FLUSH_BLOCK_MS = 400;
+const FLUSH_SUCCESS_MS = 500;
 
 // =============================================================================
-// PII REDACTION - Security Layer
+// CRYPTO HASHING - SHA-256 for identifier hashing
 // =============================================================================
 
-const PII_PATTERNS = {
-  // Email addresses
-  email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  // Phone numbers (various formats)
-  phone: /(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g,
-  // SSN
-  ssn: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
-  // Credit card numbers
-  creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
-  // IP addresses
-  ipAddress: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
-};
-
-function redactPII(text: string): { redacted: string; piiFound: string[] } {
-  const piiFound: string[] = [];
-  let redacted = text;
-
-  for (const [type, pattern] of Object.entries(PII_PATTERNS)) {
-    const matches = text.match(pattern);
-    if (matches) {
-      piiFound.push(`${type}: ${matches.length} instance(s)`);
-      redacted = redacted.replace(pattern, `[REDACTED_${type.toUpperCase()}]`);
-    }
-  }
-
-  return { redacted, piiFound };
+async function hashSHA256(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  // Return only first 16 chars for brevity while maintaining uniqueness
+  return hashHex.substring(0, 16);
 }
 
 // =============================================================================
-// VALIDATION WITH RETRY - AI Integrity Loop
+// VALIDATION WITH RETRY - AI Integrity Loop with Tier-Aware Schema
 // =============================================================================
 
 const MAX_VALIDATION_RETRIES = 2;
@@ -104,9 +55,13 @@ const MAX_VALIDATION_RETRIES = 2;
 async function callAIWithValidation(
   systemPrompt: string,
   userContent: string,
-  shouldBreakthrough: boolean
-): Promise<{ data: ValidatedResponse; retryCount: number }> {
-  let lastError: z.ZodError | null = null;
+  shouldBreakthrough: boolean,
+  userTier: string
+): Promise<{ data: SpiralAIResponse; retryCount: number }> {
+  const limits = getTierLimits(userTier);
+  const ResponseSchema = createResponseSchema(limits);
+  
+  let lastError: Error | null = null;
   let retryCount = 0;
 
   for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
@@ -114,9 +69,14 @@ async function callAIWithValidation(
     
     // On retry, add validation feedback
     if (attempt > 0 && lastError) {
-      const errorMessages = lastError.errors
-        .map(e => `- ${e.path.join('.')}: ${e.message}`)
-        .join('\n');
+      let errorMessages: string;
+      if ("errors" in lastError && Array.isArray((lastError as unknown as { errors: unknown[] }).errors)) {
+        errorMessages = ((lastError as unknown as { errors: Array<{ path: string[]; message: string }> }).errors)
+          .map(e => `- ${e.path.join('.')}: ${e.message}`)
+          .join('\n');
+      } else {
+        errorMessages = lastError.message;
+      }
       
       prompt += `\n\n⚠️ VALIDATION FAILED ON PREVIOUS ATTEMPT:\n${errorMessages}\n\nPlease fix these issues and respond with valid JSON.`;
       console.log(`[SPIRAL-AI] 🔄 Retry ${attempt}/${MAX_VALIDATION_RETRIES} with validation feedback`);
@@ -164,21 +124,17 @@ async function callAIWithValidation(
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
     } catch {
-      lastError = new z.ZodError([{
-        code: "custom",
-        path: ["root"],
-        message: "Invalid JSON response from AI",
-      }]);
+      lastError = new Error("Invalid JSON response from AI");
       retryCount = attempt + 1;
       continue;
     }
 
-    // Validate with Zod
+    // Validate with Zod using tier-aware schema
     const result = ResponseSchema.safeParse(parsed);
     
     if (result.success) {
       console.log(`[SPIRAL-AI] ✅ Validation passed on attempt ${attempt + 1}`);
-      return { data: result.data, retryCount: attempt };
+      return { data: result.data as SpiralAIResponse, retryCount: attempt };
     }
 
     lastError = result.error;
@@ -213,7 +169,6 @@ const FRUSTRATION_PATTERNS = [
   /get to the point/i, /skip/i, /cut to/i, /what's the answer/i,
 ];
 
-const HARD_ENTITY_CAP = 5;
 const MAX_QUESTIONS = 3;
 
 const QUESTION_PATTERNS = `
@@ -234,14 +189,15 @@ ABSOLUTELY FORBIDDEN:
 
 Be DIRECT. Under 15 words. Reference their EXACT words.`;
 
-const ENTITY_EXTRACTION_PROMPT = `You are ASPIRAL's discovery engine. Extract entities and ask ONE direct question.
+function buildEntityExtractionPrompt(tier: string): string {
+  const entityRules = getEntityExtractionRules(tier);
+  const validationRules = getPromptValidationRules(tier);
+  
+  return `You are ASPIRAL's discovery engine. Extract entities and ask ONE direct question.
 
 ${QUESTION_PATTERNS}
 
-ENTITY RULES:
-1. Extract MAX 5 entities (HARD LIMIT - violating this breaks the product)
-2. Combine similar concepts
-3. Only extract what MATTERS to the friction
+${entityRules}
 
 ENTITY TYPES: problem, emotion, value, friction, grease, action
 ENTITY ROLES: external_irritant, internal_conflict, desire, fear, constraint, solution
@@ -258,18 +214,13 @@ OUTPUT JSON (STRICT SCHEMA):
   "response": "Max 8 words. Acknowledge briefly."
 }
 
-VALIDATION RULES:
-- entities: array, max 5 items
-- label: string, max 50 chars
-- question: string, max 100 chars  
-- response: string, max 50 chars
-- emotionalValence: number -1 to 1
-- importance: number 0 to 1
-- connection strength: number 0 to 1
+${validationRules}`;
+}
 
-NEVER exceed limits. Schema validation is enforced.`;
-
-const BREAKTHROUGH_PROMPT = `Synthesize the breakthrough from this conversation.
+function buildBreakthroughPrompt(tier: string): string {
+  const validationRules = getPromptValidationRules(tier);
+  
+  return `Synthesize the breakthrough from this conversation.
 
 OUTPUT JSON (STRICT SCHEMA):
 {
@@ -282,12 +233,7 @@ OUTPUT JSON (STRICT SCHEMA):
   "response": ""
 }
 
-VALIDATION RULES:
-- friction: string, max 100 chars
-- grease: string, max 100 chars
-- insight: string, max 150 chars
-- question: empty string for breakthrough
-- response: empty string for breakthrough
+${validationRules}
 
 RULES:
 1. Be SPECIFIC to their situation
@@ -300,6 +246,7 @@ Traffic frustration → "You can't change the drivers. You can change how much s
 Job decision → "You don't need to leap. You need to take the first step."
 
 Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`;
+}
 
 // =============================================================================
 // REQUEST/RESPONSE TYPES
@@ -427,7 +374,7 @@ function buildContextInfo(
   stagePrompt: string | undefined,
   questionsAsked: number,
   shouldBreakthrough: boolean,
-  MAX_QUESTIONS: number
+  maxQuestions: number
 ): string {
   let contextInfo = "";
   if (sessionContext?.entities?.length) {
@@ -443,7 +390,7 @@ function buildContextInfo(
   if (stagePrompt && !shouldBreakthrough) {
     contextInfo += `\n\nSTAGE: ${stagePrompt}`;
   }
-  if (questionsAsked === MAX_QUESTIONS - 1 && !shouldBreakthrough) {
+  if (questionsAsked === maxQuestions - 1 && !shouldBreakthrough) {
     contextInfo += `\n\n⚠️ LAST QUESTION - make it count.`;
   }
   return contextInfo;
@@ -460,6 +407,10 @@ serve(async (req) => {
   // Detect jurisdiction for compliance
   const jurisdiction = detectJurisdiction(req);
   const complianceLogger = new ComplianceLogger(requestId, jurisdiction);
+  
+  // Attach durable writer if configured
+  const writer = createComplianceWriter();
+  complianceLogger.attachWriter(writer);
   
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -511,10 +462,29 @@ serve(async (req) => {
       forceBreakthrough,
     } = inputValidation.data as ValidatedInput;
     
+    // =======================================================================
+    // COMPUTE STRONG HASHES (SHA-256) FOR IDENTIFIERS
+    // =======================================================================
+    const sessionHash = await hashSHA256(sessionId);
+    const userHash = userId ? await hashSHA256(userId) : undefined;
+    
+    // Set context on compliance logger
+    complianceLogger.setContext({
+      sessionHash: `sha:${sessionHash}`,
+      userHash: userHash ? `sha:${userHash}` : undefined,
+      userTier,
+    });
+    
     complianceLogger.log("REQUEST_RECEIVED", {
-      sessionHash: `h:${sessionId.substring(0, 8)}`,
+      sessionHash: `sha:${sessionHash}`,
       contentLength: transcript.length,
     });
+
+    // =======================================================================
+    // CRITICAL: WRITE RUN START EARLY (before any LLM/network calls)
+    // =======================================================================
+    await complianceLogger.writeRunStart();
+    await complianceLogger.flush(FLUSH_START_MS);
 
     // =======================================================================
     // LAYER 0.75: PROMPT INJECTION DETECTION
@@ -534,6 +504,8 @@ serve(async (req) => {
         threats: injectionResult.threats.slice(0, 3).map(t => t.category),
       });
 
+      await complianceLogger.finalizeRun({ status: "BLOCKED", blocked: true });
+      await complianceLogger.flush(FLUSH_BLOCK_MS);
       return handleInjectionBlock();
     }
 
@@ -545,6 +517,9 @@ serve(async (req) => {
     if (anomalyResult.isAnomaly) {
       console.warn(`[SPIRAL-AI] 🔍 Anomaly detected: ${anomalyResult.reason}`, { userId });
       complianceLogger.log("ANOMALY_DETECTED", { reason: anomalyResult.reason });
+      
+      await complianceLogger.finalizeRun({ status: "BLOCKED", blocked: true });
+      await complianceLogger.flush(FLUSH_BLOCK_MS);
       return handleAnomalyDetection();
     }
 
@@ -565,6 +540,8 @@ serve(async (req) => {
         usage: rateLimitResult.currentUsage,
       });
 
+      await complianceLogger.finalizeRun({ status: "BLOCKED", blocked: true });
+      await complianceLogger.flush(FLUSH_BLOCK_MS);
       return handleRateLimit(rateLimitResult);
     }
 
@@ -579,6 +556,9 @@ serve(async (req) => {
         count: sessionLimitResult.count,
         limit: sessionLimitResult.limit,
       });
+      
+      await complianceLogger.finalizeRun({ status: "BLOCKED", blocked: true });
+      await complianceLogger.flush(FLUSH_BLOCK_MS);
       
       return new Response(
         JSON.stringify({
@@ -618,6 +598,8 @@ serve(async (req) => {
         moderationSeverity: moderationResult.severity,
       });
 
+      await complianceLogger.finalizeRun({ status: "BLOCKED", blocked: true });
+      await complianceLogger.flush(FLUSH_BLOCK_MS);
       return handleModerationBlock(moderationResult);
     }
     
@@ -656,6 +638,7 @@ serve(async (req) => {
       shouldBreakthrough,
       isFrustrated,
       ultraFast,
+      userTier,
       piiRedacted: piiFound.length > 0,
       processingMs: Date.now() - startTime,
     });
@@ -663,17 +646,19 @@ serve(async (req) => {
     // Build context
     const contextInfo = buildContextInfo(sessionContext, stagePrompt, questionsAsked, shouldBreakthrough, MAX_QUESTIONS);
 
+    // Use tier-aware prompts
     const systemPrompt = shouldBreakthrough 
-      ? BREAKTHROUGH_PROMPT + contextInfo 
-      : ENTITY_EXTRACTION_PROMPT + contextInfo;
+      ? buildBreakthroughPrompt(userTier) + contextInfo 
+      : buildEntityExtractionPrompt(userTier) + contextInfo;
 
     // =======================================================================
-    // PHASE 3: VALIDATED AI CALL - With retry on validation failure
+    // PHASE 3: VALIDATED AI CALL - With tier-aware schema and retry
     // =======================================================================
     const { data: validatedResult, retryCount } = await callAIWithValidation(
       systemPrompt,
       sanitizedTranscript,
-      shouldBreakthrough
+      shouldBreakthrough,
+      userTier
     );
 
     // Filter connections to only reference valid entity indices
@@ -712,6 +697,10 @@ serve(async (req) => {
       processingMs: processingTime,
     });
 
+    // Finalize run as SUCCESS
+    await complianceLogger.finalizeRun({ status: "SUCCESS" });
+    await complianceLogger.flush(FLUSH_SUCCESS_MS);
+
     return new Response(JSON.stringify(result), {
       headers: { 
         ...corsHeaders, 
@@ -724,7 +713,16 @@ serve(async (req) => {
     });
   } catch (error) {
     const processingTime = Date.now() - startTime;
-    console.error("[SPIRAL-AI] Error:", { requestId, error: error instanceof Error ? error.message : "Unknown", processingMs: processingTime });
+    const errorMessage = error instanceof Error ? error.message : "Unknown";
+    console.error("[SPIRAL-AI] Error:", { requestId, error: errorMessage, processingMs: processingTime });
+
+    // Finalize run as ERROR (never throws)
+    await complianceLogger.finalizeRun({ 
+      status: "ERROR", 
+      errorCode: error instanceof Error && error.name === "AbortError" ? "TIMEOUT" : "INTERNAL_ERROR",
+      errorMessage: errorMessage.substring(0, 200), // Truncate for safety
+    });
+    await complianceLogger.flush(FLUSH_BLOCK_MS);
 
     // Handle timeout errors
     if (error instanceof Error && error.name === "AbortError") {
@@ -777,7 +775,7 @@ serve(async (req) => {
     }
 
     // Generic error fallback - hide internal details in production
-    complianceLogger.log("ERROR_OCCURRED", { errorCode: "INTERNAL_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown" });
+    complianceLogger.log("ERROR_OCCURRED", { errorCode: "INTERNAL_ERROR", errorMessage: errorMessage });
     return new Response(
       JSON.stringify({
         error: ENABLE_DETAILED_ERRORS && error instanceof Error ? error.message : "An unexpected error occurred",

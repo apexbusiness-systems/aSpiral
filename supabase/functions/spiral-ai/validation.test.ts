@@ -5,71 +5,18 @@
  * Run with: deno test supabase/functions/spiral-ai/validation.test.ts
  */
 
-import { assertEquals, assertThrows, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
+import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-// =============================================================================
-// SCHEMA DEFINITIONS (Copied from index.ts for testing)
-// =============================================================================
-
-const EntitySchema = z.object({
-  type: z.enum(["problem", "emotion", "value", "action", "friction", "grease"]),
-  label: z.string().max(50, "Label must be under 50 characters"),
-  role: z.enum([
-    "external_irritant",
-    "internal_conflict",
-    "desire",
-    "fear",
-    "constraint",
-    "solution"
-  ]).optional(),
-  emotionalValence: z.number().min(-1).max(1).optional(),
-  importance: z.number().min(0).max(1).optional(),
-});
-
-const ConnectionSchema = z.object({
-  from: z.number().int().min(0),
-  to: z.number().int().min(0),
-  type: z.enum(["causes", "blocks", "enables", "resolves", "opposes"]),
-  strength: z.number().min(0).max(1),
-});
-
-const ResponseSchema = z.object({
-  entities: z.array(EntitySchema).max(5, "Maximum 5 entities allowed"),
-  connections: z.array(ConnectionSchema).max(10, "Maximum 10 connections allowed"),
-  question: z.string().max(100, "Question must be under 100 characters"),
-  response: z.string().max(50, "Response must be under 50 characters"),
-  friction: z.string().max(100).optional(),
-  grease: z.string().max(100).optional(),
-  insight: z.string().max(150).optional(),
-});
-
-// =============================================================================
-// PII REDACTION (Copied from index.ts for testing)
-// =============================================================================
-
-const PII_PATTERNS = {
-  email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  phone: /(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g,
-  ssn: /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,
-  creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
-  ipAddress: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
-};
-
-function redactPII(text: string): { redacted: string; piiFound: string[] } {
-  const piiFound: string[] = [];
-  let redacted = text;
-
-  for (const [type, pattern] of Object.entries(PII_PATTERNS)) {
-    const matches = text.match(pattern);
-    if (matches) {
-      piiFound.push(`${type}: ${matches.length} instance(s)`);
-      redacted = redacted.replace(pattern, `[REDACTED_${type.toUpperCase()}]`);
-    }
-  }
-
-  return { redacted, piiFound };
-}
+// Import from shared modules
+import { 
+  EntitySchema, 
+  ConnectionSchema, 
+  createResponseSchema, 
+  getTierLimits,
+  TIER_LIMITS 
+} from "./ai-schema.ts";
+import { redactPII, PII_PATTERNS } from "./pii-redactor.ts";
 
 // =============================================================================
 // ENTITY SCHEMA TESTS
@@ -202,40 +149,13 @@ Deno.test("ConnectionSchema: rejects strength out of range", () => {
 });
 
 // =============================================================================
-// RESPONSE SCHEMA TESTS
+// TIER-AWARE RESPONSE SCHEMA TESTS
 // =============================================================================
 
-Deno.test("ResponseSchema: accepts valid full response", () => {
-  const valid = {
-    entities: [
-      { type: "problem", label: "Stress" },
-      { type: "emotion", label: "Anxiety" },
-    ],
-    connections: [{ from: 0, to: 1, type: "causes", strength: 0.8 }],
-    question: "What's the source?",
-    response: "I hear you.",
-    friction: "Work overload",
-    grease: "Set boundaries",
-    insight: "You can't pour from an empty cup.",
-  };
+Deno.test("createResponseSchema: free tier rejects more than 5 entities", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
   
-  const result = ResponseSchema.safeParse(valid);
-  assertEquals(result.success, true);
-});
-
-Deno.test("ResponseSchema: accepts empty arrays", () => {
-  const valid = {
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-  };
-  
-  const result = ResponseSchema.safeParse(valid);
-  assertEquals(result.success, true);
-});
-
-Deno.test("ResponseSchema: rejects more than 5 entities", () => {
   const invalid = {
     entities: [
       { type: "problem", label: "1" },
@@ -257,7 +177,157 @@ Deno.test("ResponseSchema: rejects more than 5 entities", () => {
   }
 });
 
-Deno.test("ResponseSchema: rejects more than 10 connections", () => {
+Deno.test("createResponseSchema: free tier accepts exactly 5 entities", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const valid = {
+    entities: [
+      { type: "problem", label: "1" },
+      { type: "problem", label: "2" },
+      { type: "problem", label: "3" },
+      { type: "problem", label: "4" },
+      { type: "problem", label: "5" },
+    ],
+    connections: [],
+    question: "Test",
+    response: "Test",
+  };
+  
+  const result = ResponseSchema.safeParse(valid);
+  assertEquals(result.success, true);
+});
+
+Deno.test("createResponseSchema: pro tier allows 8 entities", () => {
+  const limits = getTierLimits("pro");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const valid = {
+    entities: [
+      { type: "problem", label: "1" },
+      { type: "problem", label: "2" },
+      { type: "problem", label: "3" },
+      { type: "problem", label: "4" },
+      { type: "problem", label: "5" },
+      { type: "problem", label: "6" },
+      { type: "problem", label: "7" },
+      { type: "problem", label: "8" },
+    ],
+    connections: [],
+    question: "Test",
+    response: "Test",
+  };
+  
+  const result = ResponseSchema.safeParse(valid);
+  assertEquals(result.success, true);
+});
+
+Deno.test("createResponseSchema: pro tier rejects more than 8 entities", () => {
+  const limits = getTierLimits("pro");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const invalid = {
+    entities: Array.from({ length: 9 }, (_, i) => ({ type: "problem", label: `E${i}` })),
+    connections: [],
+    question: "Test",
+    response: "Test",
+  };
+  
+  const result = ResponseSchema.safeParse(invalid);
+  assertEquals(result.success, false);
+});
+
+Deno.test("createResponseSchema: enterprise tier allows 12 entities", () => {
+  const limits = getTierLimits("enterprise");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const valid = {
+    entities: Array.from({ length: 12 }, (_, i) => ({ type: "problem", label: `E${i}` })),
+    connections: [],
+    question: "Test",
+    response: "Test",
+  };
+  
+  const result = ResponseSchema.safeParse(valid);
+  assertEquals(result.success, true);
+});
+
+Deno.test("createResponseSchema: enterprise tier rejects more than 12 entities", () => {
+  const limits = getTierLimits("enterprise");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const invalid = {
+    entities: Array.from({ length: 13 }, (_, i) => ({ type: "problem", label: `E${i}` })),
+    connections: [],
+    question: "Test",
+    response: "Test",
+  };
+  
+  const result = ResponseSchema.safeParse(invalid);
+  assertEquals(result.success, false);
+});
+
+Deno.test("createResponseSchema: connection limits are tier-aware", () => {
+  const freeLimits = getTierLimits("free");
+  const proLimits = getTierLimits("pro");
+  
+  // Free tier: max 10 connections
+  assertEquals(freeLimits.maxConnections, 10);
+  
+  // Pro tier: max 20 connections
+  assertEquals(proLimits.maxConnections, 20);
+});
+
+Deno.test("getTierLimits: unknown tier defaults to free", () => {
+  const limits = getTierLimits("unknown_tier");
+  assertEquals(limits.maxEntities, TIER_LIMITS.free.maxEntities);
+  assertEquals(limits.maxConnections, TIER_LIMITS.free.maxConnections);
+});
+
+// =============================================================================
+// RESPONSE SCHEMA GENERAL TESTS
+// =============================================================================
+
+Deno.test("ResponseSchema: accepts valid full response", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const valid = {
+    entities: [
+      { type: "problem", label: "Stress" },
+      { type: "emotion", label: "Anxiety" },
+    ],
+    connections: [{ from: 0, to: 1, type: "causes", strength: 0.8 }],
+    question: "What's the source?",
+    response: "I hear you.",
+    friction: "Work overload",
+    grease: "Set boundaries",
+    insight: "You can't pour from an empty cup.",
+  };
+  
+  const result = ResponseSchema.safeParse(valid);
+  assertEquals(result.success, true);
+});
+
+Deno.test("ResponseSchema: accepts empty arrays", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  const valid = {
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+  };
+  
+  const result = ResponseSchema.safeParse(valid);
+  assertEquals(result.success, true);
+});
+
+Deno.test("ResponseSchema: rejects more than 10 connections (free tier)", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
   const connections = Array.from({ length: 11 }, (_, i) => ({
     from: 0,
     to: 1,
@@ -277,6 +347,9 @@ Deno.test("ResponseSchema: rejects more than 10 connections", () => {
 });
 
 Deno.test("ResponseSchema: rejects question over 100 chars", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
   const invalid = {
     entities: [],
     connections: [],
@@ -289,6 +362,9 @@ Deno.test("ResponseSchema: rejects question over 100 chars", () => {
 });
 
 Deno.test("ResponseSchema: rejects response over 50 chars", () => {
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
   const invalid = {
     entities: [],
     connections: [],
@@ -399,6 +475,42 @@ Deno.test("redactPII: preserves message structure", () => {
 });
 
 // =============================================================================
+// OBFUSCATED EMAIL TESTS
+// =============================================================================
+
+Deno.test("redactPII: redacts obfuscated email 'word dot word at domain dot com'", () => {
+  const input = "Contact me at john dot doe at gmail dot com";
+  const { redacted, piiFound } = redactPII(input);
+  
+  assert(redacted.includes("[REDACTED_OBFUSCATED_EMAIL]"), `Got: ${redacted}`);
+  assert(piiFound.some(p => p.includes("obfuscatedEmail")));
+});
+
+Deno.test("redactPII: redacts obfuscated email with brackets", () => {
+  const input = "Email: j[dot]doe[at]gmail[dot]com";
+  const { redacted, piiFound } = redactPII(input);
+  
+  assert(redacted.includes("[REDACTED_OBFUSCATED_EMAIL]"), `Got: ${redacted}`);
+  assert(piiFound.some(p => p.includes("obfuscatedEmail")));
+});
+
+Deno.test("redactPII: redacts obfuscated email with parentheses", () => {
+  const input = "My email: john (dot) doe (at) example (dot) org";
+  const { redacted, piiFound } = redactPII(input);
+  
+  assert(redacted.includes("[REDACTED_OBFUSCATED_EMAIL]"), `Got: ${redacted}`);
+  assert(piiFound.some(p => p.includes("obfuscatedEmail")));
+});
+
+Deno.test("redactPII: redacts 'word at domain dot tld' pattern", () => {
+  const input = "Reach me at johndoe at example dot com";
+  const { redacted, piiFound } = redactPII(input);
+  
+  assert(redacted.includes("[REDACTED_OBFUSCATED_EMAIL]"), `Got: ${redacted}`);
+  assert(piiFound.some(p => p.includes("obfuscatedEmail")));
+});
+
+// =============================================================================
 // EDGE CASES
 // =============================================================================
 
@@ -437,7 +549,10 @@ Deno.test("ConnectionSchema: all valid connection types", () => {
 });
 
 Deno.test("ResponseSchema: boundary values", () => {
-  // Exactly 5 entities (max)
+  const limits = getTierLimits("free");
+  const ResponseSchema = createResponseSchema(limits);
+  
+  // Exactly 5 entities (max for free tier)
   const maxEntities = {
     entities: Array.from({ length: 5 }, (_, i) => ({ type: "problem", label: `E${i}` })),
     connections: [],
