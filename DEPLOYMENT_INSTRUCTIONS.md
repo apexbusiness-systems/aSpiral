@@ -61,7 +61,32 @@
 
 ---
 
-### Option B: Use Runtime Configuration (Fallback)
+### Option B: Deploy to Vercel (NEW)
+
+**For instant preview deployments and scaling.**
+
+1. **Prerequisites**
+   - Vercel account
+   - GitHub repository connected
+
+2. **Configuration**
+   - The repository includes a `vercel.json` file optimized for Vite + SPA routing.
+   - No manual build command configuration needed (defaults to `npm run build`).
+
+3. **Environment Variables**
+   - Go to Vercel Project Settings → Environment Variables
+   - Add:
+     - `VITE_SUPABASE_URL`
+     - `VITE_SUPABASE_PUBLISHABLE_KEY`
+     - `VITE_POSTHOG_KEY` (Optional)
+     - `VITE_POSTHOG_HOST` (Optional)
+
+4. **Deploy**
+   - Push to `main` or create a Pull Request to trigger a deployment.
+
+---
+
+### Option C: Use Runtime Configuration (Fallback)
 
 **Use this if you can't access Lovable settings.**
 

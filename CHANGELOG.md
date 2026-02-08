@@ -1,0 +1,40 @@
+# Changelog
+
+All notable changes to the aSpiral project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.1] - 2026-02-08
+
+### Added
+- **Infrastructure**: Added `vercel.json` configuration for seamless Vercel deployment support.
+- **Documentation**: New `CHANGELOG.md` to track project history.
+- **Components**: Extracted `StatCard` component for better reusability and testing.
+- **Voice Security**: Enterprise-grade voice security fixes and audio unlock handling.
+
+### Changed
+- **Code Quality**: Achieved SonarQube Grade A maintainability by resolving all major code smells and duplications.
+- **Testing**: Refactored validation tests to remove duplication and improve reliability.
+- **Voice System**: Restored and stabilized voice hooks (`useVoiceInput`, `useTextToSpeech`) for consistent cross-platform performance.
+- **Documentation**: Updated `README.md` with premium block-style ASCII art and build badges.
+- **Documentation**: Updated `LAUNCH_READINESS.md` with latest audit results (Feb 6, 2026).
+- **Documentation**: Updated `DEPLOYMENT_INSTRUCTIONS.md` to include Vercel deployment steps.
+
+### Fixed
+- **Build**: Resolved Vercel build timeout issues via optimized configuration.
+- **Linting**: Fixed various ESLint errors and strict type definitions across the codebase.
+- **Android**: Fixed Android PWA build configuration.
+- **UI**: Resolved duplicate UI sections in MainMenu component.
+- **Audio**: Fixed audio unlock error bubbles appearing on page load.
+
+## [1.0.0] - 2026-01-30
+
+### Added
+- **Core**: Initial Release Candidate for Production Launch.
+- **Features**: Complete Voice Journey, 3D Cinematics, Session Management.
+- **Security**: Comprehensive security guardrails for AI interactions.
+- **Performance**: Optimized 3D rendering engine and physics worker.
+
+### Security
+- **Audit**: Completed full security audit with 0 critical vulnerabilities.
