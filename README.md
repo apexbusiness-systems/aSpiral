@@ -1,25 +1,27 @@
-# aSpiral
+```
+  █████╗ ███████╗██████╗ ██╗██████╗  █████╗ ██╗
+ ██╔══██╗██╔════╝██╔══██╗██║██╔══██╗██╔══██╗██║
+ ███████║███████╗██████╔╝██║██████╔╝███████║██║
+ ██╔══██║╚════██║██╔═══╝ ██║██╔══██╗██╔══██║██║
+ ██║  ██║███████║██║     ██║██║  ██║██║  ██║███████╗
+ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+```
 
-Voice-first AI coaching that visualizes your thoughts and guides you to breakthrough clarity.
+**TRANSFORM CONFUSION INTO CLARITY.**
+_Voice-First • Cinematic • Intelligent_
 
-## Project Overview
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square) ![Security](https://img.shields.io/badge/security-zero--trust-blue?style=flat-square) ![Quality](https://img.shields.io/badge/sonarqube-A-success?style=flat-square) ![License](https://img.shields.io/badge/license-Proprietary-orange?style=flat-square)
 
-aSpiral is a PWA built with Vite, React 18, TypeScript, and R3F/Three.js. It features a cinematic rendering pipeline for visualizing mental models.
+---
 
-## Technologies
+**aSpiral** is a voice-first AI coaching platform that visualizes your thoughts and guides you to breakthrough clarity through immersive 3D cinematic experiences.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-- Three.js / React Three Fiber
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js & npm installed (recommended: use `nvm`)
+- Node.js 22.x or later ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- npm or yarn
 
 ### Installation
 
@@ -99,37 +101,99 @@ The project includes hardened build processes with:
 
 - **[🚀 Launch Readiness Report](LAUNCH_READINESS.md)** - Comprehensive production audit and launch approval
 
-# Step 2: Navigate to the project directory
-cd aSpiral
+### Core Documentation
 
-# Step 3: Install dependencies
-npm ci
+- [Feature Registry](docs/FEATURE_REGISTRY.md) - Complete feature inventory and status
+- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Technical roadmap and architecture
+- [Production Status](docs/PRODUCTION_STATUS.md) - Current deployment status
+- [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
+- [Security Review](docs/SECURITY_REVIEW.md) - Security audit results
+- [Code Review](docs/CODE_REVIEW.md) - Code quality guidelines
+
+### Setup Guides
+
+- [Supabase Setup](SUPABASE_SETUP.md) - Backend configuration
+- [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md) - Production deployment
+- [Bootstrap Guide](docs/bootstrap.md) - New environment setup
+
+## 🔧 Development
+
+### Available Scripts
+
+```json
+{
+  "dev": "Start development server",
+  "build": "Build for production",
+  "build:production": "Full validation + production build",
+  "test": "Run test suite",
+  "test:watch": "Run tests in watch mode",
+  "lint": "Run ESLint",
+  "lint:fix": "Auto-fix ESLint issues",
+  "typecheck": "Run TypeScript compiler check",
+  "validate": "Run full validation pipeline",
+  "precommit": "Pre-commit validation",
+  "prepush": "Pre-push validation + build"
+}
 ```
 
-### Development
+### Code Quality Standards
+
+- **TypeScript**: Zero type errors
+- **ESLint**: Zero errors (warnings for shadcn/ui patterns)
+- **SonarQube**: Grade A maintainability
+- **Testing**: 100% pass rate required
+- **Build**: Zero failures in CI/CD
+
+## 🚀 Deployment
+
+### Production Build
 
 ```sh
-# Start the development server
-npm run dev
+npm run build:production
 ```
 
-### Building
+### Mobile Deployment
 
 ```sh
-# Build for web
+# iOS
 npm run build
+npx cap add ios
+npx cap open ios
 
-# Sync Capacitor projects (iOS/Android)
-npx cap sync ios
-npx cap sync android
+# Android
+npm run build
+npx cap add android
+npx cap open android
 ```
 
-## Documentation
+### PWA Deployment
 
-- [Renderer V2: Cinematic Pipeline Documentation](docs/RENDERER_V2.md)
-- [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md)
-- [Supabase Setup](SUPABASE_SETUP.md)
+The app is automatically configured as a Progressive Web App and can be installed from any modern browser.
 
-## License
+## 🤝 Contributing
 
-Copyright (c) Apex Business Systems. All rights reserved.
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Run validation: `npm run validate`
+4. Commit changes: `git commit -m "Add your feature"`
+5. Push to branch: `git push origin feature/your-feature`
+6. Create a Pull Request
+
+### Code Standards
+
+- All commits must pass `npm run validate`
+- Tests must maintain 100% pass rate
+- Code must maintain SonarQube Grade A
+- Documentation must be updated for API changes
+
+## 📄 License
+
+Copyright © 2024-2026 Apex Business Systems. All rights reserved.
+
+## 🆘 Support
+
+For technical support or questions:
+
+- Create an issue in this repository
+- Contact the development team
+- Check the [documentation](docs/) for common solutions
