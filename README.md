@@ -60,7 +60,7 @@ npm run build:production
 - **State Management**: Zustand
 - **API**: Supabase (Backend-as-a-Service)
 - **Testing**: Vitest + Testing Library
-- **Deployment**: Capacitor (iOS/Android) + PWA
+- **Deployment**: Vercel (Web) + Capacitor (iOS/Android) + PWA
 
 ### Key Features
 

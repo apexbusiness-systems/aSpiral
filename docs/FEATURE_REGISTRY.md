@@ -1,7 +1,7 @@
 # aSpiral Feature Registry
 
-**Version:** 1.0.0
-**Last Updated:** February 6, 2026
+**Version:** 1.0.1
+**Last Updated:** February 8, 2026
 **Status:** Production
 
 ---
