@@ -1,199 +1,63 @@
-```
-  █████╗ ███████╗██████╗ ██╗██████╗  █████╗ ██╗
- ██╔══██╗██╔════╝██╔══██╗██║██╔══██╗██╔══██╗██║
- ███████║███████╗██████╔╝██║██████╔╝███████║██║
- ██╔══██║╚════██║██╔═══╝ ██║██╔══██╗██╔══██║██║
- ██║  ██║███████║██║     ██║██║  ██║██║  ██║███████╗
- ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
-```
+# aSpiral
 
-**TRANSFORM CONFUSION INTO CLARITY.**  
-_Voice-First • Cinematic • Intelligent_
+Voice-first AI coaching that visualizes your thoughts and guides you to breakthrough clarity.
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square) ![Security](https://img.shields.io/badge/security-zero--trust-blue?style=flat-square) ![Quality](https://img.shields.io/badge/sonarqube-A-success?style=flat-square) ![License](https://img.shields.io/badge/license-Proprietary-orange?style=flat-square)
+## Project Overview
 
----
+aSpiral is a PWA built with Vite, React 18, TypeScript, and R3F/Three.js. It features a cinematic rendering pipeline for visualizing mental models.
 
-**aSpiral** is a voice-first AI coaching platform that visualizes your thoughts and guides you to breakthrough clarity through immersive 3D cinematic experiences.
+## Technologies
 
-## 🚀 Quick Start
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
+- Three.js / React Three Fiber
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 22.x or later ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
-- npm or yarn
+- Node.js & npm installed (recommended: use `nvm`)
 
 ### Installation
 
 ```sh
-# Clone the repository
-git clone https://github.com/apexbusiness-systems/aSpiral.git
+# Step 1: Clone the repository
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory
 cd aSpiral
 
-# Install dependencies
-npm install
+# Step 3: Install dependencies
+npm ci
+```
 
-# Start development server
+### Development
+
+```sh
+# Start the development server
 npm run dev
 ```
 
-### Build & Test
+### Building
 
 ```sh
-# Run tests (Level 6 Armageddon Test Suite)
-npm test
-
-# Run full validation pipeline
-npm run validate
-
-# Build for production
-npm run build:production
-```
-
-## 🏗️ Architecture
-
-### Core Technologies
-
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + shadcn/ui components
-- **3D Rendering**: Three.js + React Three Fiber
-- **State Management**: Zustand
-- **API**: Supabase (Backend-as-a-Service)
-- **Testing**: Vitest + Testing Library
-- **Deployment**: Capacitor (iOS/Android) + PWA
-
-### Key Features
-
-- **Voice-First Interface**: Speech-to-text and text-to-speech integration
-- **Cinematic Breakthroughs**: 35+ procedural 3D visual experiences
-- **Multi-Language Support**: i18n with 5 languages (EN, ES, FR, DE, JA)
-- **Progressive Web App**: Installable on mobile and desktop
-- **Real-time Analytics**: Comprehensive user interaction tracking
-
-## 🧪 Testing & Quality
-
-### Test Suite Status
-
-- **Coverage**: 12 test suites, 172 individual tests
-- **Pass Rate**: 100% (All tests passing)
-- **Quality Grade**: SonarQube Grade A (Maintainability)
-
-### Validation Pipeline
-
-```sh
-# Run comprehensive validation
-npm run validate
-# Includes: TypeScript → ESLint → Tests → Build
-```
-
-### Build Integrity
-
-The project includes hardened build processes with:
-
-- Pre-commit hooks for code quality
-- Automated validation scripts
-- Production build verification
-- Zero-failure test suite
-
-## 📚 Documentation
-
-### Production Launch
-
-- **[🚀 Launch Readiness Report](LAUNCH_READINESS.md)** - Comprehensive production audit and launch approval
-
-### Core Documentation
-
-- [Feature Registry](docs/FEATURE_REGISTRY.md) - Complete feature inventory and status
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Technical roadmap and architecture
-- [Production Status](docs/PRODUCTION_STATUS.md) - Current deployment status
-- [Renderer V2](docs/RENDERER_V2.md) - Cinematic pipeline documentation
-- [Security Review](docs/SECURITY_REVIEW.md) - Security audit results
-- [Code Review](docs/CODE_REVIEW.md) - Code quality guidelines
-
-### Setup Guides
-
-- [Supabase Setup](SUPABASE_SETUP.md) - Backend configuration
-- [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md) - Production deployment
-- [Bootstrap Guide](docs/bootstrap.md) - New environment setup
-
-## 🔧 Development
-
-### Available Scripts
-
-```json
-{
-  "dev": "Start development server",
-  "build": "Build for production",
-  "build:production": "Full validation + production build",
-  "test": "Run test suite",
-  "test:watch": "Run tests in watch mode",
-  "lint": "Run ESLint",
-  "lint:fix": "Auto-fix ESLint issues",
-  "typecheck": "Run TypeScript compiler check",
-  "validate": "Run full validation pipeline",
-  "precommit": "Pre-commit validation",
-  "prepush": "Pre-push validation + build"
-}
-```
-
-### Code Quality Standards
-
-- **TypeScript**: Zero type errors
-- **ESLint**: Zero errors (warnings for shadcn/ui patterns)
-- **SonarQube**: Grade A maintainability
-- **Testing**: 100% pass rate required
-- **Build**: Zero failures in CI/CD
-
-## 🚀 Deployment
-
-### Production Build
-
-```sh
-npm run build:production
-```
-
-### Mobile Deployment
-
-```sh
-# iOS
+# Build for web
 npm run build
-npx cap add ios
-npx cap open ios
 
-# Android
-npm run build
-npx cap add android
-npx cap open android
+# Sync Capacitor projects (iOS/Android)
+npx cap sync ios
+npx cap sync android
 ```
 
-### PWA Deployment
+## Documentation
 
-The app is automatically configured as a Progressive Web App and can be installed from any modern browser.
+- [Renderer V2: Cinematic Pipeline Documentation](docs/RENDERER_V2.md)
+- [Deployment Instructions](DEPLOYMENT_INSTRUCTIONS.md)
+- [Supabase Setup](SUPABASE_SETUP.md)
 
-## 🤝 Contributing
+## License
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Run validation: `npm run validate`
-4. Commit changes: `git commit -m "Add your feature"`
-5. Push to branch: `git push origin feature/your-feature`
-6. Create a Pull Request
-
-### Code Standards
-
-- All commits must pass `npm run validate`
-- Tests must maintain 100% pass rate
-- Code must maintain SonarQube Grade A
-- Documentation must be updated for API changes
-
-## 📄 License
-
-Copyright © 2024-2026 Apex Business Systems. All rights reserved.
-
-## 🆘 Support
-
-For technical support or questions:
-
-- Create an issue in this repository
-- Contact the development team
-- Check the [documentation](docs/) for common solutions
+Copyright (c) Apex Business Systems. All rights reserved.
