@@ -2,14 +2,14 @@
  * Core type definitions for aSpiral
  */
 
-export type EntityType = "problem" | "emotion" | "value" | "action" | "friction" | "grease";
+export type EntityType = "problem" | "emotion" | "value" | "action" | "friction" | "grease" | "insight";
 
-export type EntityRole = 
-  | "external_irritant" 
-  | "internal_conflict" 
-  | "desire" 
-  | "fear" 
-  | "constraint" 
+export type EntityRole =
+  | "external_irritant"
+  | "internal_conflict"
+  | "desire"
+  | "fear"
+  | "constraint"
   | "solution";
 
 export type ConnectionType = "causes" | "blocks" | "enables" | "resolves" | "opposes";

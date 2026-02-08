@@ -1,70 +1,97 @@
+ 
+/* eslint-disable react-hooks/exhaustive-deps */
 /**
- * useVoiceInput Hook - Fixed for STT "rapping/repeat" bug
- * 
- * ROOT CAUSE FIX:
- * 1. The original code appended interim transcripts repeatedly instead of replacing
- * 2. Multiple recognition instances could be created without cleanup
- * 3. No idempotent guards prevented duplicate listener attachment
- * 4. resultIndex was not properly tracked across recognition restarts
- * 
- * SOLUTION:
- * - Separate finalTranscript and interimTranscript buffers
- * - Only append to final when isFinal=true, replace interim otherwise
- * - Single recognition instance with proper lifecycle management
- * - Idempotent start/stop with ref guards
- * - Structured debug logging for verification
+ * useVoiceInput Hook - Fixed for STT "Rap God" Duplication Bug
+ *
+ * CORE FIXES:
+ * 1. Single AudioSessionController: Enforces exactly one active listener.
+ * 2. Strict Transcript Assembly: Separate interim vs final buffers.
+ * 3. Deduplication: Checks normalized text + timestamp to prevent echo.
+ * 4. Audio Bridge: Respects native platform audio focus.
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 import { createLogger } from "@/lib/logger";
-import { registerSTTController, updateListeningState, isGated } from "@/lib/audioSession";
-import { addBreadcrumb } from "@/lib/debugOverlay";
+import {
+  registerSTTController,
+  updateListeningState,
+  isGated,
+} from "@/lib/audioSession";
 import { featureFlags } from "@/lib/featureFlags";
-
-// Audit Fix: Explicit keywords to stop recording
-const VOICE_STOP_KEYWORDS = ['stop', 'pause', 'end session', 'shut up', 'hold on'];
+import { toast } from "sonner";
+import { audioDebug } from "@/lib/audioLogger";
+import { i18n } from "@/lib/i18n";
+import { getSpeechLocale } from "@/lib/i18n/speechLocale";
+import { addBreadcrumb } from "@/lib/debugOverlay";
 
 const logger = createLogger("useVoiceInput");
+const VOICE_STOP_KEYWORDS = ["stop", "pause", "end session", "shut up", "hold on"];
+const DEDUPE_WINDOW_MS = 2000; // Time window to ignore duplicate final commits
+const SETTINGS_STORAGE_KEY = "aspiral_settings_v1";
+const INTERIM_UPDATE_INTERVAL = 100;
 
-/**
- * Detect iOS Safari for voice input fallback handling
- * iOS Safari has quirks with continuous speech recognition
- */
+type StoredSettings = {
+  soundEffects?: boolean;
+  reducedMotion?: boolean;
+};
+
+const parseStoredSettings = (value: string | null): StoredSettings | null => {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as StoredSettings;
+  } catch {
+    return null;
+  }
+};
+
+const shouldPlayFeedback = (): boolean => {
+  if (typeof globalThis === "undefined") return false;
+  const stored = parseStoredSettings(localStorage.getItem(SETTINGS_STORAGE_KEY));
+  if (stored?.soundEffects === false) return false;
+  if (stored?.reducedMotion === true) return false;
+  return true;
+};
+
+const triggerHaptic = (pattern: number | number[]): void => {
+  if (!shouldPlayFeedback()) return;
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(pattern);
+  }
+};
+
 function isIOSSafari(): boolean {
-  if (typeof navigator === 'undefined') return false;
+  if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
   return isIOS && isSafari;
 }
 
-/**
- * Check if device supports Web Speech API reliably
- * Returns { supported: boolean, requiresFallback: boolean, reason?: string }
- */
-function checkVoiceSupport(): { supported: boolean; requiresFallback: boolean; reason?: string } {
-  if (typeof window === 'undefined') {
-    return { supported: false, requiresFallback: false, reason: 'no_window' };
+function checkVoiceSupport(): {
+  supported: boolean;
+  requiresFallback: boolean;
+  reason?: string;
+} {
+  if (typeof globalThis === "undefined") {
+    return { supported: false, requiresFallback: false, reason: "no_window" };
   }
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
+  const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    return { supported: false, requiresFallback: false, reason: 'no_speech_api' };
+    return { supported: false, requiresFallback: false, reason: "no_speech_api" };
   }
-
-  // iOS Safari requires special handling - continuous mode is unreliable
   if (isIOSSafari()) {
     return {
       supported: true,
       requiresFallback: true,
-      reason: 'ios_safari_continuous_unreliable'
+      reason: "ios_safari_continuous_unreliable",
     };
   }
-
   return { supported: true, requiresFallback: false };
 }
 
@@ -78,7 +105,7 @@ type VoiceDebugEvent = {
 // Global debug event buffer (circular, max 50 events)
 const DEBUG_BUFFER_SIZE = 50;
 let debugBuffer: VoiceDebugEvent[] = [];
-let debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
+const debugSubscribers: Set<(events: VoiceDebugEvent[]) => void> = new Set();
 
 function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
   const fullEvent: VoiceDebugEvent = { ...event, timestamp: Date.now() };
@@ -92,7 +119,7 @@ function emitDebugEvent(event: Omit<VoiceDebugEvent, 'timestamp'>) {
       data: event.data,
     });
   }
-  
+
   // Also log to console for debugging
   logger.debug(`[${event.type}]`, event.data);
 }
@@ -113,76 +140,198 @@ export function clearVoiceDebugBuffer() {
   debugSubscribers.forEach(cb => cb(debugBuffer));
 }
 
+// Interfaces for SpeechRecognition
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
+  silenceTimeoutMs?: number;
+  watchdogIntervalMs?: number;
+}
+
+// Global Set of known final transcripts to prevent cross-component duplication if multiple hooks mounted
+const globalFinalHistory = new Set<string>();
+
+function getActiveSpeechLocale(): string {
+  const lng = i18n.resolvedLanguage ?? i18n.language ?? "en";
+  return getSpeechLocale(lng);
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}) {
+  const silenceTimeoutMs = Math.max(800, Math.min(10000, options.silenceTimeoutMs ?? 5000));
+  const watchdogIntervalMs = Math.max(15000, Math.min(60000, options.watchdogIntervalMs ?? 25000));
+
   const [isSupported, setIsSupported] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  
+  const [voiceState, setVoiceState] = useState<'Idle' | 'Listening' | 'Reconnecting' | 'Error'>('Idle');
+
   // Two-buffer transcript model: final (append-only) + interim (replace on each update)
   const [finalTranscript, setFinalTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
-  
+
   // Combined display transcript
   const transcript = (finalTranscript + " " + interimTranscript).trim();
 
-  // Refs for lifecycle management
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const isStartedRef = useRef(false); // Idempotent guard
-  const isIntentionalStop = useRef(false); // Audit Fix: Track if user clicked stop
-  const silenceTimer = useRef<NodeJS.Timeout | null>(null); // Audit Fix: Silence detection timer
-  const interimTranscriptRef = useRef("");
-  const lastInterimEmitRef = useRef(0);
-  const INTERIM_UPDATE_INTERVAL = 150;
+  // Refs
+  const recognitionRef = useRef<any>(null);
+  const isStartedRef = useRef(false);
+  const isIntentionalStop = useRef(false);
+
+  // Cleaned up unused refs based on SonarQube
+  const silenceTimer = useRef<NodeJS.Timeout | null>(null);
+  const watchdogTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Dedupe tracking
+  const lastFinalCommitTime = useRef<number>(0);
+  const lastFinalText = useRef<string>("");
+  const interimCountRef = useRef<number>(0);
+  const finalCountRef = useRef<number>(0);
+
+  // Watchdog and activity tracking
+  const lastActivityAtRef = useRef(Date.now());
+  const restartRequestedRef = useRef(false);
+  const restartCount60sRef = useRef(0);
+  const lastRestartTimeRef = useRef(0);
+  const WATCHDOG_INTERVAL_MS = 90000; // 90s to catch 60-120s stalls
+  const MAX_RESTARTS_60S = 3;
+  const RESTART_BACKOFF_MS = 250;
+
+  // Silence timeout
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const SILENCE_TIMEOUT_MS = 30000; // 30s
+
+  // Ref for stopRecording to avoid circular dependency
+  const stopRecordingRef = useRef<() => void>(() => { });
+
+  // Interim update throttling
+  const lastInterimEmitRef = useRef<number>(0);
+  const interimTranscriptRef = useRef<string>("");
 
   const { isRecording, setRecording, setError } = useSessionStore();
   const voiceEnabled = featureFlags.voiceEnabled;
-  
-  // Assistant speaking gate - mute STT when assistant is speaking to prevent feedback loops
-  const assistantIsSpeaking = useAssistantSpeakingStore(state => state.isSpeaking);
+  const assistantIsSpeaking = useAssistantSpeakingStore((state) => state.isSpeaking);
+
+  // Use ref to access current value in callbacks without dependency cycles
   const assistantIsSpeakingRef = useRef(assistantIsSpeaking);
   assistantIsSpeakingRef.current = assistantIsSpeaking;
 
-  // Track iOS Safari mode for special handling
   const isIOSSafariMode = useRef(false);
 
-  // Check for browser support with iOS Safari detection
   useEffect(() => {
     if (!voiceEnabled) {
       setIsSupported(false);
       return;
     }
+    const check = checkVoiceSupport();
+    setIsSupported(check.supported);
+    isIOSSafariMode.current = check.requiresFallback;
 
-    const voiceCheck = checkVoiceSupport();
-    setIsSupported(voiceCheck.supported);
-    isIOSSafariMode.current = voiceCheck.requiresFallback;
-
-    if (!voiceCheck.supported) {
-      logger.warn("Speech recognition not supported", { reason: voiceCheck.reason });
-      emitDebugEvent({ type: 'stt.error', data: { error: 'not_supported', reason: voiceCheck.reason } });
-    } else if (voiceCheck.requiresFallback) {
-      logger.info("iOS Safari detected - using non-continuous mode for reliability");
-      emitDebugEvent({ type: 'stt.start', data: { ios_safari_mode: true } });
-    }
+    audioDebug.log("mic_permission", { supported: check.supported, reason: check.reason });
   }, [voiceEnabled]);
 
-  // Cleanup function - ensures all resources are released
   const cleanup = useCallback(() => {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch (e) {
-        // Already stopped, ignore
+        audioDebug.log("recognizer_stop", { reason: "cleanup" });
+      } catch {
+        // ignore
       }
       recognitionRef.current = null;
     }
     isStartedRef.current = false;
     interimTranscriptRef.current = "";
+    clearWatchdog();
+    clearSilenceTimer();
     emitDebugEvent({ type: 'listener.detach', data: { reason: 'cleanup' } });
   }, []);
+
+  // Watchdog functions
+  const clearWatchdog = useCallback(() => {
+    if (watchdogTimeoutRef.current) {
+      clearTimeout(watchdogTimeoutRef.current);
+      watchdogTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startWatchdog = useCallback(() => {
+    clearWatchdog();
+    watchdogTimeoutRef.current = setTimeout(() => {
+      if (!isStartedRef.current) return;
+
+      const now = Date.now();
+      const timeSinceLastRestart = now - lastRestartTimeRef.current;
+      if (timeSinceLastRestart < 60000) {
+        restartCount60sRef.current++;
+        if (restartCount60sRef.current >= MAX_RESTARTS_60S) {
+          logger.error("STT watchdog: too many restarts in 60s, entering error state");
+          emitDebugEvent({ type: 'stt.error', data: { error: 'stalled', restarts: restartCount60sRef.current } });
+          toast.error("Mic stalled—tap to restart");
+          setVoiceState('Error');
+          stopRecordingRef.current();
+          return;
+        }
+      } else {
+        restartCount60sRef.current = 1;
+      }
+
+      lastRestartTimeRef.current = now;
+      restartRequestedRef.current = true;
+      setVoiceState('Reconnecting');
+      emitDebugEvent({ type: 'stt.stop', data: { reason: 'watchdog_restart' } });
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore
+        }
+      }
+    }, WATCHDOG_INTERVAL_MS);
+  }, [clearWatchdog, stopRecordingRef]);
+
+  // Silence timeout functions
+  const clearSilenceTimer = useCallback(() => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startSilenceTimer = useCallback(() => {
+    clearSilenceTimer();
+    silenceTimeoutRef.current = setTimeout(() => {
+      if (isStartedRef.current && recognitionRef.current) {
+        logger.info("Silence timeout reached, stopping recognition");
+        recognitionRef.current.stop();
+      }
+    }, SILENCE_TIMEOUT_MS);
+  }, [clearSilenceTimer]);
 
   const emitInterimUpdate = useCallback((text: string, force = false) => {
     const now = Date.now();
@@ -202,250 +351,377 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     emitInterimUpdate("", true);
   }, [emitInterimUpdate, options]);
 
-  const handleRecognitionResult = useCallback((event: SpeechRecognitionEvent) => {
-    // FEEDBACK LOOP PREVENTION: Ignore transcripts while assistant is speaking OR during reverb gate
-    // The isGated() check handles the 600ms "reverb buffer" after TTS ends
-    if (assistantIsSpeakingRef.current || isGated()) {
-      emitDebugEvent({
-        type: 'stt.partial',
-        data: {
-          ignored: true,
-          reason: assistantIsSpeakingRef.current ? 'assistant_speaking' : 'reverb_gated'
-        },
-      });
-      return;
-    }
+  const stopRecording = useCallback(() => {
+    setVoiceState('Idle');
+    emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
+    commitInterimAsFinal();
 
-    let newFinalText = "";
-    let newInterimText = "";
+    cleanup();
+    setRecording(false);
+    setIsPaused(false);
+    emitInterimUpdate("", true); // Clear interim on stop
 
-      // Process only new results from resultIndex
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      const text = result[0].transcript;
-
-      // Audit Fix: Keyword Detection
-      if (VOICE_STOP_KEYWORDS.some(keyword => text.toLowerCase().includes(keyword))) {
-        stopRecording();
-        return;
-      }
-
-      if (result.isFinal) {
-        newFinalText += text;
-        emitDebugEvent({
-          type: 'stt.final',
-          data: {
-            text: text.substring(0, 50),
-            length: text.length,
-            resultIndex: i,
-          },
-        });
+    // Sound Effect
+    try {
+      if (shouldPlayFeedback()) {
+        const AudioContext =
+          (globalThis as any).AudioContext ||
+          (globalThis as any).webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        }
       } else {
-        newInterimText += text;
+        restartCount60sRef.current = 1;
+      }
+    } catch {
+      // Ignore audio context errors during stop
+    }
+  }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
+
+  // Update stopRecordingRef
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
+
+  const handleRecognitionResult = useCallback(
+    (event: Event) => {
+      const speechEvent = event as SpeechRecognitionEvent;
+      // Update activity timestamp and reset timers on ANY recognition activity
+      lastActivityAtRef.current = Date.now();
+      startWatchdog();
+      clearSilenceTimer();
+      startSilenceTimer();
+
+      // 1. Gate: Assistant Speaking
+      if (assistantIsSpeakingRef.current) {
         emitDebugEvent({
           type: 'stt.partial',
           data: {
-            text: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
-            length: text.length,
-            resultIndex: i,
-          },
+            ignored: true,
+            reason: "assistant_speaking",
+          }
         });
+        return;
       }
-    }
 
-    // 3. Smart Silence Detection
-    // Only stop if user has been silent for 2.5 seconds AFTER a final result
-    if (newFinalText) {
-      // Clear previous silence timer - user is talking!
-      if (silenceTimer.current) clearTimeout(silenceTimer.current);
+      // 2. Gate: Reverb Buffer (AudioSession)
+      if (isGated()) {
+        emitDebugEvent({
+          type: 'stt.partial',
+          data: {
+            ignored: true,
+            reason: "reverb_gated",
+          }
+        });
+        return;
+      }
 
-      silenceTimer.current = setTimeout(() => {
-        console.log("Silence detected. Stopping recording.");
-        stopRecording();
-      }, 2500); // Increased from 1000ms to 2500ms for natural pauses
-    }
+      let newFinalText = "";
+      let newInterimText = "";
 
-    // Update transcript buffers correctly:
-    // - Final: APPEND new final text
-    // - Interim: REPLACE with current interim (not append!)
-    if (newFinalText) {
-      setFinalTranscript(prev => (prev + " " + newFinalText).trim());
-      // Notify parent of final transcript
-      options.onTranscript?.(newFinalText.trim());
-    }
+      // Process results
+      for (let i = speechEvent.resultIndex; i < speechEvent.results.length; i++) {
+        const result = speechEvent.results[i];
+        const text = result[0].transcript;
 
-    // Always replace interim (this is the key fix for "rapping")
-    interimTranscriptRef.current = newInterimText;
-    emitInterimUpdate(newInterimText);
-  }, [emitInterimUpdate, options]);
+        if (VOICE_STOP_KEYWORDS.some((k) => text.toLowerCase().includes(k))) {
+          stopRecording();
+          return;
+        }
 
-  const handleRecognitionError = useCallback((event: SpeechRecognitionErrorEvent, context: string) => {
-    // "aborted" is not really an error, it's expected on stop
-    if (event.error === 'aborted') {
-      logger.debug(`Recognition aborted (${context})`);
-      return;
-    }
+        if (result.isFinal) {
+          newFinalText += text;
+        } else {
+          newInterimText += text;
+        }
+      }
 
-    logger.error(`Recognition error (${context})`, new Error(event.error));
-    emitDebugEvent({ type: 'stt.error', data: { error: event.error, context } });
-    setError(`Voice recognition error: ${event.error}`);
-    setRecording(false);
-    setIsPaused(false);
-    isStartedRef.current = false;
-    options.onError?.(new Error(event.error));
-  }, [options, setError, setRecording]);
+      // Always replace interim (this is the key fix for "rapping")
+      interimTranscriptRef.current = newInterimText;
+      emitInterimUpdate(newInterimText);
 
-  const createRecognition = useCallback((options: {
+      // Smart Silence Detection (Reset timer if final text received)
+      if (newFinalText) {
+        if (silenceTimer.current) clearTimeout(silenceTimer.current);
+        silenceTimer.current = setTimeout(() => {
+          logger.info(`Silence detected after ${silenceTimeoutMs}ms. Stopping.`);
+          stopRecording();
+        }, silenceTimeoutMs);
+
+        // Commit Final with Deduplication
+        const normalized = newFinalText.trim().toLowerCase();
+        const now = Date.now();
+
+        const isDuplicate =
+          (normalized === lastFinalText.current &&
+            now - lastFinalCommitTime.current < DEDUPE_WINDOW_MS) ||
+          globalFinalHistory.has(normalized + "_" + Math.floor(now / 5000));
+
+        if (isDuplicate) {
+          audioDebug.log("stt_dedupe", {
+            text: newFinalText,
+            reason: "duplicate_detected",
+            windowMs: DEDUPE_WINDOW_MS,
+          });
+        } else {
+          lastFinalText.current = normalized;
+          lastFinalCommitTime.current = now;
+          finalCountRef.current += 1;
+
+          globalFinalHistory.add(normalized + "_" + Math.floor(now / 5000));
+          setTimeout(() => globalFinalHistory.clear(), 10000);
+
+          setFinalTranscript((prev) => (prev + " " + newFinalText).trim());
+          options.onTranscript?.(newFinalText.trim());
+          audioDebug.log("stt_final", {
+            text: newFinalText,
+            count: finalCountRef.current,
+          });
+        }
+      }
+    },
+    [assistantIsSpeakingRef, emitInterimUpdate, silenceTimeoutMs, options, stopRecording, startWatchdog, clearSilenceTimer, startSilenceTimer]
+  );
+
+  const handleRecognitionError = useCallback(
+    (event: Event) => {
+      // AGGRESSIVE RESTART: For network, aborted, or no-speech errors, restart immediately
+      const errorEvent = event as SpeechRecognitionErrorEvent;
+      const error = errorEvent.error;
+      const context = "handler";
+
+      const restartableErrors = ['network', 'aborted', 'no-speech'];
+
+      if (restartableErrors.includes(error)) {
+        restartCount60sRef.current++;
+        if (restartCount60sRef.current < 5) {
+          logger.warn(`Aggressive restart for ${error} (${restartCount60sRef.current}/5)`);
+          emitDebugEvent({
+            type: 'stt.error', data: {
+              error,
+              context,
+              aggressiveRestart: true,
+              restartCount: restartCount60sRef.current
+            }
+          });
+
+          // DON'T set isRecording to false - keep UI alive
+          setTimeout(() => {
+            if (recognitionRef.current && isStartedRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch (restartError) {
+                logger.error("Failed to restart recognition", restartError as Error);
+              }
+            }
+          }, 100);
+          return;
+        } else {
+          logger.error(`Too many restarts (${restartCount60sRef.current}), giving up`);
+        }
+      }
+
+      logger.error(`Recognition error`, new Error(error));
+      emitDebugEvent({ type: 'stt.error', data: { error, context } });
+      setError(`Voice recognition error: ${error}`);
+      setRecording(false);
+      setIsPaused(false);
+      isStartedRef.current = false;
+      options.onError?.(new Error(error));
+    },
+    [options, setError, setRecording]
+  );
+
+  const createRecognition = useCallback((opts: {
     onStart?: () => void;
     onEnd?: () => void;
     onErrorContext: string;
   }) => {
     const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+      (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
-    // iOS Safari: use non-continuous mode for reliability (auto-restarts on silence)
-    // Other browsers: use continuous mode for seamless recording
     recognition.continuous = !isIOSSafariMode.current;
     recognition.interimResults = true;
-    recognition.lang = "en-US";
+    recognition.lang = getActiveSpeechLocale();
 
     recognition.onstart = () => {
       isStartedRef.current = true;
-      options.onStart?.();
+      setVoiceState('Listening');
+      startWatchdog();
+      startSilenceTimer();
+      opts.onStart?.();
     };
 
     recognition.onresult = handleRecognitionResult;
-
-    recognition.onerror = (event) => {
-      handleRecognitionError(event, options.onErrorContext);
-    };
+    recognition.onerror = handleRecognitionError;
 
     recognition.onend = () => {
-      // Audit Fix: Intelligent Auto-Restart
-      // Only actually stop if the user explicitly requested it or we are paused
-      if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
-        logger.debug("Auto-restarting speech recognition (unexpected end)");
-        try {
-           recognition.start();
-        } catch (e) {
-           // Ignore 'already started' errors
-        }
-      } else {
-         // Genuine stop
-         setRecording(false);
-         isStartedRef.current = false;
+      clearWatchdog();
+      clearSilenceTimer();
+
+      if (restartRequestedRef.current && isStartedRef.current) {
+        // Watchdog triggered restart
+        restartRequestedRef.current = false;
+        setTimeout(() => {
+          if (recognitionRef.current && isStartedRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              logger.warn("Failed to restart recognition after watchdog", { error: e });
+            }
+          }
+        }, RESTART_BACKOFF_MS);
+        return;
       }
-      options.onEnd?.();
+      setVoiceState('Idle');
+      opts.onEnd?.();
     };
 
     return recognition;
-  }, [handleRecognitionError, handleRecognitionResult]);
+  }, [handleRecognitionResult, handleRecognitionError, startWatchdog, startSilenceTimer, clearWatchdog, clearSilenceTimer, watchdogIntervalMs]);
 
-  const startRecording = useCallback(() => {
+  const startRecording = useCallback(async () => {
     if (!voiceEnabled) {
-      setError("Voice input disabled");
+      setError("Voice disabled");
+      toast.error("Voice input disabled");
+      return;
+    }
+    if (isStartedRef.current) return;
+    if (assistantIsSpeakingRef.current) {
+      toast.error("Wait for playback to finish");
       return;
     }
 
-    // Idempotent guard - prevent double-start
-    if (isStartedRef.current) {
-      logger.warn("startRecording called but already started - ignoring");
-      return;
+    // Check microphone permission before starting
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        if (permissionStatus.state === 'denied') {
+          setError("Microphone permission denied");
+          toast.error("Microphone access denied. Please enable in browser settings.");
+          return;
+        }
+      }
+    } catch (permError) {
+      logger.debug("Permission API not available", { error: permError });
     }
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
+    const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      const error = new Error("Speech recognition not supported");
-      setError(error.message);
-      options.onError?.(error);
+      setError("Not supported");
+      toast.error("Speech recognition not supported");
       return;
+    }
+
+    interimCountRef.current = 0;
+    finalCountRef.current = 0;
+    audioDebug.log("session_start", { source: "user" });
+
+    // Start feedback
+    try {
+      if (shouldPlayFeedback()) {
+        const AudioContext =
+          (globalThis as any).AudioContext ||
+          (globalThis as any).webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        }
+        triggerHaptic(12);
+      }
+    } catch {
+      // ignore
     }
 
     try {
-      // Clean up any existing instance first
       cleanup();
-
-      // Reset transcript buffers
       setFinalTranscript("");
-      emitInterimUpdate("", true);
-      interimTranscriptRef.current = "";
-      isIntentionalStop.current = false; // Reset flag
+      setInterimTranscript("");
+      isIntentionalStop.current = false;
+      lastFinalText.current = "";
+
       const recognition = createRecognition({
         onStart: () => {
           setRecording(true);
           setIsPaused(false);
-          emitDebugEvent({ type: 'stt.start', data: { lang: 'en-US' } });
+          audioDebug.log("recognizer_start", {
+            mode: isIOSSafariMode.current ? "safari_fallback" : "continuous",
+            lang: recognition ? recognition.lang : 'unknown',
+          });
         },
         onEnd: () => {
-          emitDebugEvent({ type: 'stt.stop', data: { wasPaused: isPaused, iosSafari: isIOSSafariMode.current } });
-
-          // Only update state if we're not paused (paused means intentional stop)
-          if (!isPaused) {
-            commitInterimAsFinal();
-
-            // iOS Safari auto-restart: if in non-continuous mode and still recording, restart
-            if (isIOSSafariMode.current && isStartedRef.current) {
-              logger.debug("iOS Safari: auto-restarting recognition");
-              setTimeout(() => {
-                if (recognitionRef.current && isStartedRef.current) {
-                  try {
-                    recognitionRef.current.start();
-                  } catch (e) {
-                    // Already started or other issue, ignore
-                  }
-                }
-              }, 100);
-              return; // Don't set recording to false
+          audioDebug.log("session_end", { intentional: isIntentionalStop.current });
+          if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
+            try {
+              // Refresh language on restart
+              if (recognition) {
+                recognition.lang = getActiveSpeechLocale();
+                recognition.start();
+              }
+            } catch {
+              // ignore
             }
-
+          } else {
             setRecording(false);
             isStartedRef.current = false;
+            // Ensure watchdog is stopped
+            clearWatchdog();
           }
         },
-        onErrorContext: 'start',
+        onErrorContext: 'start'
       });
 
-      if (!recognition) {
-        const error = new Error("Speech recognition not supported");
-        setError(error.message);
-        options.onError?.(error);
-        return;
+      if (recognition) {
+        recognitionRef.current = recognition;
+        recognition.start();
       }
 
-      recognitionRef.current = recognition;
-      emitDebugEvent({ type: 'listener.attach', data: { single: true } });
-      
-      recognition.start();
-    } catch (error) {
-      logger.error("Failed to start recording", error as Error);
-      emitDebugEvent({ type: 'stt.error', data: { error: (error as Error).message } });
-      setError("Failed to start voice recording");
-      isStartedRef.current = false;
-      options.onError?.(error as Error);
+    } catch (e) {
+      audioDebug.error("session_start", { error: (e as Error).message });
+      setError("Failed to start");
+      toast.error("Failed to start recording");
     }
-  }, [setRecording, setError, options, cleanup, isPaused, emitInterimUpdate, commitInterimAsFinal, voiceEnabled, createRecognition]);
-
-  const stopRecording = useCallback(() => {
-    isIntentionalStop.current = true; // Mark as intentional
-    emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
-    commitInterimAsFinal();
-    cleanup();
-    setRecording(false);
-    setIsPaused(false);
-    emitInterimUpdate("", true); // Clear interim on stop
-  }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
+  }, [
+    voiceEnabled,
+    setError,
+    cleanup,
+    createRecognition,
+    setRecording,
+    isPaused,
+    clearWatchdog,
+  ]);
 
   const pauseRecording = useCallback(() => {
-    if (recognitionRef.current && isRecording && !isPaused) {
-      recognitionRef.current.stop();
+    if (isRecording && !isPaused) {
+      isIntentionalStop.current = true;
+      recognitionRef.current?.stop();
       setIsPaused(true);
-      emitDebugEvent({ type: 'stt.stop', data: { action: 'pause' } });
-      logger.info("Recording paused");
+      triggerHaptic(8);
+      audioDebug.log("app_state_change", { state: "paused" });
     }
   }, [isRecording, isPaused]);
 
@@ -453,44 +729,40 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     if (isPaused) {
       setIsPaused(false);
       isStartedRef.current = false; // Allow restart
-      
-      // Create new recognition instance for resume
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      
-      if (SpeechRecognition) {
-        const recognition = createRecognition({
-          onStart: () => {
-            emitDebugEvent({ type: 'stt.start', data: { action: 'resume' } });
-          },
-          onEnd: () => {
-            if (!isPaused) {
-              commitInterimAsFinal();
-              setRecording(false);
-              isStartedRef.current = false;
-            }
-          },
-          onErrorContext: 'resume',
-        });
 
-        if (!recognition) return;
+      const recognition = createRecognition({
+        onStart: () => {
+          emitDebugEvent({ type: 'stt.start', data: { action: 'resume' } });
+        },
+        onEnd: () => {
+          if (!isPaused) {
+            commitInterimAsFinal();
+            setRecording(false);
+            isStartedRef.current = false;
+          }
+        },
+        onErrorContext: 'resume',
+      });
 
-        recognitionRef.current = recognition;
-        emitDebugEvent({ type: 'listener.attach', data: { action: 'resume' } });
+      if (!recognition) return;
 
-        recognition.start();
-        logger.info("Recording resumed");
-      }
+      recognitionRef.current = recognition;
+      emitDebugEvent({ type: 'listener.attach', data: { action: 'resume' } });
+
+      recognition.start();
+      logger.info("Recording resumed");
     }
-  }, [isPaused, setRecording, options, commitInterimAsFinal, createRecognition]);
+  }, [isPaused, setRecording, commitInterimAsFinal, createRecognition]);
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
       stopRecording();
     } else {
       startRecording();
+      triggerHaptic(8);
+      audioDebug.log("app_state_change", { state: "resumed" });
     }
-  }, [isRecording, startRecording, stopRecording]);
+  }, [isRecording, isPaused, startRecording, stopRecording]);
 
   const togglePause = useCallback(() => {
     if (isPaused) {
@@ -498,86 +770,39 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     } else {
       pauseRecording();
     }
-  }, [isPaused, pauseRecording, resumeRecording]);
+  }, [isPaused, resumeRecording, pauseRecording]);
 
-  // Register STT controller for audio session coordination
-  const stopListening = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    }
-  }, [isRecording, stopRecording]);
-
-  const resumeListening = useCallback(() => {
-    if (!isRecording && !isPaused) {
-      startRecording();
-    }
-  }, [isRecording, isPaused, startRecording]);
-
-  const isListening = useCallback(() => isRecording && !isPaused, [isRecording, isPaused]);
-
+  // Register with AudioSession for TTS coordination
   useEffect(() => {
-    registerSTTController({ stopListening, resumeListening, isListening });
-  }, [stopListening, resumeListening, isListening]);
+    registerSTTController({
+      stopListening: stopRecording,
+      resumeListening: startRecording,
+      isListening: () => isRecording && !isPaused,
+    });
+  }, [stopRecording, startRecording, isRecording, isPaused]);
 
+  // Sync Global State
   useEffect(() => {
     updateListeningState(isRecording && !isPaused);
   }, [isRecording, isPaused]);
 
   useEffect(() => {
-    if (!voiceEnabled && isRecording) {
-      stopRecording();
-    }
-  }, [voiceEnabled, isRecording, stopRecording]);
-
-  // Cleanup on unmount - MUST be idempotent
-  useEffect(() => {
-    return () => {
-      cleanup();
-    };
+    return () => cleanup();
   }, [cleanup]);
 
   return {
     isRecording,
     isSupported,
     isPaused,
+    voiceState,
     transcript,
-    // Expose individual buffers for debugging
     finalTranscript,
     interimTranscript,
     startRecording,
     stopRecording,
+    toggleRecording,
     pauseRecording,
     resumeRecording,
-    toggleRecording,
     togglePause,
   };
-}
-
-// Type declarations for Web Speech API
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-
-interface SpeechRecognitionInstance extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition: new () => SpeechRecognitionInstance;
-  }
 }

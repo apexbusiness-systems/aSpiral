@@ -326,6 +326,7 @@ export function CinematicPlayer({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSkip is stable via useCallback
   }, [allowSkip, isPlaying, hasCompleted]);
 
   // Update adaptive quality

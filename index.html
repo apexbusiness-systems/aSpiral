@@ -33,7 +33,22 @@
   <body>
     <div id="root"></div>
     <!-- Runtime environment configuration (fallback for missing build-time vars) -->
-    <script src="/config.js"></script>
+    <script>
+      (function () {
+        var configScript = document.createElement('script');
+        configScript.src = '/config.js';
+        configScript.defer = true;
+        configScript.onload = function () {
+          if (!window.ENV) {
+            console.error('[config] /config.js loaded but window.ENV is missing');
+          }
+        };
+        configScript.onerror = function () {
+          console.warn('[config] /config.js not found; falling back to build-time env');
+        };
+        document.head.appendChild(configScript);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

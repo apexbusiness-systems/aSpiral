@@ -65,11 +65,11 @@ self.onmessage = (event: MessageEvent<RendererInitMessage | RendererResizeMessag
     root = createRoot(canvas);
     root.configure({
       dpr,
-      size,
+      size: { width: size.width, height: size.height, top: 0, left: 0 },
       frameloop: "demand",
       camera: { position: [5, 3, 5], fov: 60 },
       gl: { antialias: true },
-      events: { enabled: false },
+      events: undefined,
       onCreated: ({ gl }) => {
         gl.outputColorSpace = THREE.SRGBColorSpace;
         gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -87,7 +87,7 @@ self.onmessage = (event: MessageEvent<RendererInitMessage | RendererResizeMessag
   if (event.data.type === "resize" && root && latestConfig) {
     root.configure({
       dpr: latestConfig.dpr,
-      size: event.data.size,
+      size: { width: event.data.size.width, height: event.data.size.height, top: 0, left: 0 },
     });
   }
 };

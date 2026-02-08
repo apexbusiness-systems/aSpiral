@@ -24,12 +24,14 @@ export function DebugOverlay() {
 
   useEffect(() => {
     if (!debugEnabled) return;
-    return subscribeDebugOverlay((next) => setDebugState(next));
+    const unsubscribe = subscribeDebugOverlay((next) => setDebugState(next));
+    return () => { unsubscribe(); };
   }, [debugEnabled]);
 
   useEffect(() => {
     if (!debugEnabled) return;
-    return subscribeAudioSession((next) => setAudioStatus(next));
+    const unsubscribe = subscribeAudioSession((next) => setAudioStatus(next));
+    return () => { unsubscribe(); };
   }, [debugEnabled]);
 
   if (!debugEnabled) return null;

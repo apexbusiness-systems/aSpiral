@@ -15,14 +15,14 @@ interface ParticleSystemProps extends ParticleConfig {
   loop?: boolean;
 }
 
-interface Particle {
+type Particle = {
   position: THREE.Vector3;
   velocity: THREE.Vector3;
   life: number;
   maxLife: number;
   size: number;
   color: THREE.Color;
-}
+};
 
 export const ParticleSystem = forwardRef<ParticleSystemRef, ParticleSystemProps>(
   (
@@ -76,6 +76,7 @@ export const ParticleSystem = forwardRef<ParticleSystemRef, ParticleSystemProps>
       }
 
       updateInstancedMesh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateInstancedMesh is stable
     }, [count, pattern, patternParams, colors, size, sizeVariation, speed, speedVariation, lifetime]);
 
     // Expose control methods

@@ -24,9 +24,27 @@ export default defineConfig(({ mode }) => ({
     minify: mode === "production" ? "esbuild" : false,
     // Target modern browsers for smaller bundles
     target: "es2020",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React runtime
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          // 3D rendering (largest dependency)
+          "vendor-three": ["three", "@react-three/fiber", "@react-three/drei", "@react-three/postprocessing"],
+          // UI framework
+          "vendor-ui": ["framer-motion", "@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-tooltip", "@radix-ui/react-tabs", "@radix-ui/react-accordion"],
+          // Data & state
+          "vendor-data": ["@tanstack/react-query", "zustand", "@supabase/supabase-js"],
+          // i18n
+          "vendor-i18n": ["i18next", "react-i18next"],
+          // Charts
+          "vendor-charts": ["recharts"],
+        },
+      },
+    },
   },
   test: {
-    exclude: [...configDefaults.exclude, "supabase/functions/spiral-ai/**/*.test.ts"],
+    exclude: [...configDefaults.exclude, "**/supabase/functions/spiral-ai/**/*.test.ts", "temp_repo/**/*.test.ts"],
   },
   plugins: [
     react(),

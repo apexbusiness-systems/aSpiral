@@ -97,31 +97,31 @@ export type QualityTier = 'low' | 'mid' | 'high';
 export interface MutationKnobs {
   /** Duration range in milliseconds */
   durationRange: [number, number];
-  
+
   /** Particle count range (before quality multiplier) */
   particleCountRange: [number, number];
-  
+
   /** Animation curve profile */
   curveProfile: CurveProfile;
-  
+
   /** Camera movement archetype */
   cameraArchetype: CameraArchetype;
-  
+
   /** Palette seed (0-1, maps to color variations) */
   paletteSeed: number;
-  
+
   /** Audio intensity (0-1) */
   audioIntensity: number;
-  
+
   /** Audio timing offset in ms */
   audioTimingOffset: number;
-  
+
   /** Speed multiplier (0.5-2.0) */
   speedMultiplier: number;
-  
+
   /** Scale multiplier (0.5-2.0) */
   scaleMultiplier: number;
-  
+
   /** Extra visual elements count */
   extraVisualsCount: number;
 }
@@ -133,49 +133,49 @@ export interface MutationKnobs {
 export interface BaseVariant {
   /** Unique identifier */
   id: string;
-  
+
   /** Display name */
   name: string;
-  
+
   /** Brief description */
   description: string;
-  
+
   /** Classification */
   class: BreakthroughClass;
-  
+
   /** Intensity band */
   intensity: IntensityBand;
-  
+
   /** Color mood */
   colorMood: ColorMood;
-  
+
   /** Audio mood */
   audioMood: AudioMood;
-  
+
   /** Base duration in ms */
   baseDuration: number;
-  
+
   /** Default particle count */
   baseParticleCount: number;
-  
+
   /** Particle pattern */
   particlePattern: ParticlePattern;
-  
+
   /** Camera archetype */
   cameraArchetype: CameraArchetype;
-  
+
   /** Default curve profile */
   curveProfile: CurveProfile;
-  
+
   /** Tags for context matching */
   tags: string[];
-  
+
   /** Whether this variant is safe for low-tier devices */
   lowTierSafe: boolean;
-  
+
   /** Whether this is suitable as a fallback */
   isFallback: boolean;
-  
+
   /** Mutation bounds for each knob */
   mutationBounds: {
     durationRange: [number, number];
@@ -183,10 +183,10 @@ export interface BaseVariant {
     speedRange: [number, number];
     scaleRange: [number, number];
   };
-  
+
   /** Base colors (HSL strings) */
   baseColors: string[];
-  
+
   /** Camera path waypoints */
   cameraPath: {
     from: [number, number, number];
@@ -195,7 +195,7 @@ export interface BaseVariant {
     fovTo: number;
     lookAt: 'center' | 'follow' | [number, number, number];
   };
-  
+
   /** Post-processing effects */
   effects: {
     bloom: boolean;
@@ -212,16 +212,16 @@ export interface BaseVariant {
 export interface MutatedVariant extends BaseVariant {
   /** The applied mutation knobs */
   mutation: MutationKnobs;
-  
+
   /** Seed used for this mutation */
   seed: number;
-  
+
   /** Computed final duration */
   finalDuration: number;
-  
+
   /** Computed final particle count */
   finalParticleCount: number;
-  
+
   /** Computed final colors */
   finalColors: string[];
 }
@@ -237,25 +237,25 @@ export interface SelectionContext {
     label: string;
     valence?: number;
   }>;
-  
+
   /** Overall sentiment (-1 to 1) */
   sentiment: number;
-  
+
   /** Friction intensity (0-1) */
   frictionIntensity: number;
-  
+
   /** Breakthrough type hint from AI */
   breakthroughType?: BreakthroughClass;
-  
+
   /** User's recent intensity history */
   recentIntensities: IntensityBand[];
-  
+
   /** Recently used variant IDs */
   recentVariantIds: string[];
-  
+
   /** Device quality tier */
   qualityTier: QualityTier;
-  
+
   /** Whether reduced motion is preferred */
   reducedMotion: boolean;
 }
@@ -267,22 +267,22 @@ export interface SelectionContext {
 export interface BreakthroughHistoryEntry {
   /** Variant ID */
   variantId: string;
-  
+
   /** Mutation seed */
   seed: number;
-  
+
   /** Intensity band */
   intensity: IntensityBand;
-  
+
   /** Timestamp */
   timestamp: number;
-  
+
   /** Quality tier used */
   qualityTier: QualityTier;
-  
+
   /** Whether it completed successfully */
   completed: boolean;
-  
+
   /** Was fallback triggered? */
   wasFallback: boolean;
 }
@@ -335,18 +335,18 @@ export const BREAKTHROUGH_V2_FLAG = 'BREAKTHROUGH_V2';
 export function isBreakthroughV2Enabled(): boolean {
   // Check environment variable
   if (typeof import.meta !== 'undefined') {
-    const envFlag = (import.meta as any).env?.VITE_BREAKTHROUGH_V2;
+    const envFlag = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_BREAKTHROUGH_V2;
     if (envFlag === 'false' || envFlag === '0') return false;
     if (envFlag === 'true' || envFlag === '1') return true;
   }
-  
+
   // Check localStorage override
   if (typeof localStorage !== 'undefined') {
     const localFlag = localStorage.getItem(BREAKTHROUGH_V2_FLAG);
     if (localFlag === 'false' || localFlag === '0') return false;
     if (localFlag === 'true' || localFlag === '1') return true;
   }
-  
+
   // Default: ON in dev, ON in prod (can be toggled)
   return true;
 }

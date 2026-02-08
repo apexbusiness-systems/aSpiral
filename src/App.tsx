@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,25 +15,33 @@ import { DebugOverlay } from "@/components/DebugOverlay";
 import { toast } from "sonner";
 import { SplashScreen } from '@capacitor/splash-screen';
 import PremiumSplash from "@/components/PremiumSplash";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import { unlockAudioFromGesture } from "@/lib/audioSession";
 
-// Pages
+// Eagerly loaded pages (critical path)
 import Landing from "./pages/Landing";
-import HowItWorks from "./pages/HowItWorks";
-import Story from "./pages/Story";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Sessions from "./pages/Sessions";
-import Workspaces from "./pages/Workspaces";
-import ApiKeys from "./pages/ApiKeys";
-import AdminDashboard from "./pages/AdminDashboard";
-import NotificationTest from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
-import VoiceYourChaos from "./pages/steps/VoiceYourChaos";
-import WatchItVisualize from "./pages/steps/WatchItVisualize";
-import AnswerQuestions from "./pages/steps/AnswerQuestions";
-import GetBreakthrough from "./pages/steps/GetBreakthrough";
+
+// Lazy-loaded pages (code-split for smaller initial bundle)
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const Story = lazy(() => import("./pages/Story"));
+const Index = lazy(() => import("./pages/Index"));
+const Sessions = lazy(() => import("./pages/Sessions"));
+const Workspaces = lazy(() => import("./pages/Workspaces"));
+const ApiKeys = lazy(() => import("./pages/ApiKeys"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const NotificationTest = lazy(() => import("./pages/NotificationTest"));
+const VoiceYourChaos = lazy(() => import("./pages/steps/VoiceYourChaos"));
+const WatchItVisualize = lazy(() => import("./pages/steps/WatchItVisualize"));
+const AnswerQuestions = lazy(() => import("./pages/steps/AnswerQuestions"));
+const GetBreakthrough = lazy(() => import("./pages/steps/GetBreakthrough"));
 
 const queryClient = new QueryClient();
+
+// Module-level flag to prevent race conditions across multiple event types
+// (touchstart + pointerdown both fire on mobile taps)
+let audioUnlockAttempted = false;
 
 /**
  * PWA Update Handler (Auto-Update Mode)
@@ -88,10 +97,39 @@ const App = () => {
     initApp();
   }, []);
 
+  useEffect(() => {
+    // Use only 'pointerdown' - it fires for both mouse and touch on modern browsers
+    // This prevents duplicate events from touchstart + pointerdown race condition
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown"];
+
+    const handler = async () => {
+      // Use module-level flag to prevent race conditions
+      // (React StrictMode double-mount + multiple events can cause races)
+      if (audioUnlockAttempted) return;
+      audioUnlockAttempted = true;
+
+      // Audio unlock is best-effort and silent - errors are logged but not shown to users
+      // Users shouldn't see audio errors when just browsing; errors only matter when
+      // they explicitly try to use voice features
+      await unlockAudioFromGesture();
+      if (import.meta.env.DEV) {
+        console.info("[Audio] User gesture unlock attempted");
+      }
+      cleanup();
+    };
+
+    const cleanup = () => {
+      events.forEach((event) => window.removeEventListener(event, handler));
+    };
+
+    events.forEach((event) => window.addEventListener(event, handler, { passive: true }));
+    return cleanup;
+  }, []);
+
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <SentinelProvider />
+        {/* <SentinelProvider /> */}
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
@@ -101,9 +139,13 @@ const App = () => {
 
             <PremiumSplash isVisible={showSplash} />
 
+            {/* PWA Install Prompt - visible banner for install CTA */}
+            <PwaInstallPrompt />
+
             <HashRouter>
               <StandaloneModeRedirect />
               <DebugOverlay />
+              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
@@ -118,9 +160,10 @@ const App = () => {
                 <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
                 <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/notification-test" element={<NotificationTest />} />
+                {import.meta.env.DEV && <Route path="/notification-test" element={<NotificationTest />} />}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </HashRouter>
           </TooltipProvider>
         </AuthProvider>

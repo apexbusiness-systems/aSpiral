@@ -35,11 +35,18 @@ export function MicButton({
   const lastClickRef = useRef<number>(0);
   const DEBOUNCE_MS = 200;
   
-  // Larger touch targets on mobile
-  const mainSize = isMobile ? "h-24 w-24" : "h-20 w-20";
-  const secondarySize = isMobile ? "h-14 w-14" : "h-12 w-12";
-  const iconSize = isMobile ? "h-10 w-10" : "h-8 w-8";
-  const smallIconSize = isMobile ? "h-5 w-5" : "h-4 w-4";
+  // RESPONSIVE SIZING: Viewport-relative units for mobile adaptation
+  // Mobile: 20vw width with min 80px (ensures touch target >= 48px on all devices)
+  // Desktop: Fixed 72px for consistency
+  // All sizes guarantee minimum 48px touch target (WCAG 2.5.5)
+  const mainSize = isMobile
+    ? "h-[20vw] w-[20vw] min-h-[88px] min-w-[88px] max-h-[124px] max-w-[124px]"
+    : "h-[72px] w-[72px]";
+  const secondarySize = isMobile
+    ? "h-[12vw] w-[12vw] min-h-[52px] min-w-[52px] max-h-[68px] max-w-[68px]"
+    : "h-12 w-12";
+  const iconSize = isMobile ? "h-[6vw] min-h-[24px] w-[6vw] min-w-[24px]" : "h-7 w-7";
+  const smallIconSize = isMobile ? "h-[4vw] min-h-[16px] w-[4vw] min-w-[16px]" : "h-4 w-4";
 
   // Debounced click handlers for reliability
   const handleMainClick = useCallback(() => {
@@ -69,15 +76,22 @@ export function MicButton({
         variant="outline"
         size="lg"
         disabled
-        className={cn("rounded-full glass-card", isMobile ? "h-20 w-20" : "h-16 w-16")}
+        aria-label="Microphone unavailable"
+        className={cn("rounded-full glass-card", mainSize)}
       >
         <MicOff className="h-6 w-6 text-muted-foreground" />
       </Button>
     );
   }
 
+  const getAriaLabel = () => {
+    if (isProcessing) return "Processing audio...";
+    if (isRecording) return isPaused ? "Resume recording" : "Stop recording";
+    return "Start recording";
+  };
+
   return (
-    <div className={cn("relative flex items-center", isMobile ? "gap-4" : "gap-3")}>
+    <div className={cn("relative flex items-center justify-center", isMobile ? "gap-4" : "gap-3", "min-h-[104px]")}>
       {/* Stop Button - visible when recording */}
       <AnimatePresence>
         {isRecording && onStop && (
@@ -94,6 +108,7 @@ export function MicButton({
               onPointerLeave={() => setIsStopPressed(false)}
               size="lg"
               variant="ghost"
+              aria-label="End session"
               className={cn(
                 "rounded-full touch-manipulation select-none",
                 secondarySize,
@@ -110,44 +125,20 @@ export function MicButton({
 
       {/* Main Mic Button */}
       <div className="relative">
-        {/* Outer glow ring when not recording - enhanced with dramatic effect */}
+        {/* Outer glow ring when not recording */}
         {!isRecording && !isProcessing && (
-          <>
-            <motion.div 
-              className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-secondary to-accent blur-xl"
-              animate={{
-                opacity: [0.2, 0.35, 0.2],
-                scale: [1, 1.1, 1],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-            {/* Floating micro-particles around button */}
-            {[...Array(4)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute w-1.5 h-1.5 rounded-full bg-primary/60"
-                style={{
-                  left: `${50 + 45 * Math.cos((i * Math.PI * 2) / 4)}%`,
-                  top: `${50 + 45 * Math.sin((i * Math.PI * 2) / 4)}%`,
-                }}
-                animate={{
-                  y: [0, -8, 0],
-                  opacity: [0.3, 0.7, 0.3],
-                  scale: [1, 1.2, 1],
-                }}
-                transition={{
-                  duration: 2 + i * 0.3,
-                  repeat: Infinity,
-                  delay: i * 0.4,
-                  ease: "easeInOut",
-                }}
-              />
-            ))}
-          </>
+          <motion.div
+            className="absolute inset-0 rounded-full bg-primary/20 blur-xl"
+            animate={{
+              opacity: [0.3, 0.5, 0.3],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
         )}
         
         <Button
@@ -157,28 +148,45 @@ export function MicButton({
           onPointerLeave={() => setIsMainPressed(false)}
           disabled={isProcessing}
           size="lg"
+          aria-label={getAriaLabel()}
           className={cn(
-            "relative rounded-full transition-transform duration-75 touch-manipulation select-none",
+            "relative rounded-full transition-transform duration-75 touch-manipulation select-none z-10",
             mainSize,
-            "border-2 backdrop-blur-sm",
+            "border-2 backdrop-blur-sm shadow-xl",
             isRecording
-              ? "bg-destructive border-destructive/50 hover:bg-destructive/90 mic-pulse"
-              : "bg-gradient-to-br from-primary to-secondary border-primary/30 shadow-[0_0_40px_hsl(var(--primary)/0.4)]",
+              ? "bg-destructive border-destructive/50 hover:bg-destructive/90 mic-pulse ring-4 ring-destructive/20"
+              : "bg-gradient-to-br from-primary to-purple-600 border-primary/30",
             isMainPressed ? "scale-90" : "scale-100"
           )}
         >
-          {isRecording ? (
-            <Square className={cn("fill-current text-destructive-foreground", isMobile ? "h-7 w-7" : "h-6 w-6")} />
+          {isProcessing ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
+            />
+          ) : isRecording ? (
+             <div className="flex flex-col items-center justify-center">
+                 <Mic className={cn("text-white animate-pulse", iconSize)} />
+             </div>
           ) : (
-            <Mic className={cn("text-primary-foreground drop-shadow-lg", iconSize)} />
+            <Mic className={cn("text-white drop-shadow-md", iconSize)} />
           )}
         </Button>
         
-        {/* Recording indicator ring - enhanced glow */}
-        {isRecording && (
+        {/* Recording ripple effect */}
+        {isRecording && !isPaused && (
           <>
-            <div className="absolute -inset-2 rounded-full border-2 border-destructive/50 animate-ping" />
-            <div className="absolute -inset-3 rounded-full bg-destructive/20 blur-md animate-pulse" />
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-destructive/50"
+              animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-destructive/30"
+              animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+              transition={{ duration: 1.5, delay: 0.5, repeat: Infinity }}
+            />
           </>
         )}
       </div>
@@ -199,6 +207,7 @@ export function MicButton({
               onPointerLeave={() => setIsPausePressed(false)}
               size="lg"
               variant="ghost"
+              aria-label={isPaused ? "Resume" : "Pause"}
               className={cn(
                 "rounded-full touch-manipulation select-none",
                 secondarySize,

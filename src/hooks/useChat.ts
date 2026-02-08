@@ -6,7 +6,8 @@ import type { Message } from "@/lib/types";
 
 const logger = createLogger("useChat");
 
-const CHAT_URL = "https://eqtwatyodujxofrdznen.supabase.co/functions/v1/chat";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const CHAT_URL = `${SUPABASE_URL}/functions/v1/chat`;
 
 interface UseChatOptions {
   onError?: (error: Error) => void;

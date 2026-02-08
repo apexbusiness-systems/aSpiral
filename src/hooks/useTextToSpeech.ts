@@ -19,6 +19,7 @@ import {
   getAudioSessionStatus,
 } from '@/lib/audioSession';
 import { featureFlags } from '@/lib/featureFlags';
+import { toast } from 'sonner';
 
 const logger = createLogger('useTextToSpeech');
 
@@ -32,7 +33,7 @@ type TTSDebugEvent = {
 // Debug buffer (shared with voice debug panel)
 const DEBUG_BUFFER_SIZE = 50;
 let ttsDebugBuffer: TTSDebugEvent[] = [];
-let ttsDebugSubscribers: Set<(events: TTSDebugEvent[]) => void> = new Set();
+const ttsDebugSubscribers: Set<(events: TTSDebugEvent[]) => void> = new Set();
 
 function emitTTSDebugEvent(event: Omit<TTSDebugEvent, 'timestamp'>) {
   const fullEvent: TTSDebugEvent = { ...event, timestamp: Date.now() };
@@ -48,8 +49,10 @@ export function subscribeToTTSDebug(callback: (events: TTSDebugEvent[]) => void)
 }
 
 interface UseTextToSpeechOptions {
-  voice?: string; // OpenAI voices: alloy, ash, ballad, coral, echo, sage, shimmer, verse, nova
-  speed?: number; // 0.25 to 4.0
+  voice?: string; // OpenAI voices: alloy, ash, ballot, coral, echo, sage, shimmer, verse, nova
+  speed?: number; // 0.25 to 4
+  volume?: number; // 0 to 1
+  forceWebSpeech?: boolean;
   fallbackToWebSpeech?: boolean;
   onStart?: () => void;
   onEnd?: () => void;
@@ -66,7 +69,9 @@ interface TextToSpeechState {
 export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const {
     voice = 'nova',
-    speed = 1.0,
+    speed = 1.1,
+    volume = 1,
+    forceWebSpeech = false,
     fallbackToWebSpeech = true,
     onStart,
     onEnd,
@@ -109,7 +114,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         };
       });
     });
-    return unsubscribe;
+    return () => { unsubscribe(); };
   }, []);
 
   const stop = useCallback(() => {
@@ -121,16 +126,15 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const speak = useCallback(async (text: string): Promise<void> => {
     if (!featureFlags.voiceEnabled) {
       logger.warn('TTS disabled via VITE_VOICE_ENABLED');
+      toast.error('Voice output disabled');
       return;
     }
 
     if (!text || text.trim().length === 0) {
       logger.warn('speak called with empty text');
+      toast.error('Nothing to speak yet');
       return;
     }
-
-    // 1. Ensure we cancel any existing speech first
-    window.speechSynthesis.cancel();
 
     emitTTSDebugEvent({
       type: 'tts.request',
@@ -149,6 +153,8 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         text,
         voice,
         speed,
+        volume,
+        forceWebSpeech,
         fallbackToWebSpeech,
         supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
         supabaseKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -163,6 +169,7 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         onError: (error) => {
           emitTTSDebugEvent({ type: 'tts.error', data: { error: error.message } });
           setState(prev => ({ ...prev, error: error.message }));
+          toast.error('Voice playback failed', { description: error.message });
           onError?.(error);
         },
       });
@@ -179,8 +186,10 @@ export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
         isLoading: false,
         error: err.message,
       }));
+      toast.error('Voice playback failed', { description: err.message });
       onError?.(err);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- forceWebSpeech and volume are stable refs
   }, [voice, speed, fallbackToWebSpeech, onStart, onEnd, onError]);
 
   // Cleanup on unmount

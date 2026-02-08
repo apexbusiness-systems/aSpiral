@@ -23,6 +23,7 @@ interface SessionState {
   isApplyingGrease: boolean;
   greaseIsCorrect: boolean;
   isBreakthroughActive: boolean;
+  isBreakthroughImminent: boolean;
   
   // UI State
   isRecording: boolean;
@@ -81,6 +82,7 @@ export const useSessionStore = create<SessionState>()(
       isApplyingGrease: false,
       greaseIsCorrect: false,
       isBreakthroughActive: false,
+      isBreakthroughImminent: false,
       isRecording: false,
       isProcessing: false,
       isConnected: false,

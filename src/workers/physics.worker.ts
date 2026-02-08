@@ -21,7 +21,7 @@ import type {
 
 let entities: SerializableEntity[] = [];
 let connections: SerializableConnection[] = [];
-let positions: Map<string, [number, number, number]> = new Map();
+const positions: Map<string, [number, number, number]> = new Map();
 let isPaused = false;
 let iteration = 0;
 let lastTotalMovement = Infinity;

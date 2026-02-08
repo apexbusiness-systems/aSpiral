@@ -53,17 +53,18 @@ export function calculateOptimalLayout(
     entities.forEach((e1, idx1) => {
       entities.forEach((e2, idx2) => {
         if (idx1 >= idx2) return;
-        
-        const pos1 = positions.get(e1.id)!;
-        const pos2 = positions.get(e2.id)!;
-        
+
+        const pos1 = positions.get(e1.id);
+        const pos2 = positions.get(e2.id);
+        if (!pos1 || !pos2) return;
+
         const dx = pos1[0] - pos2[0];
         const dy = pos1[1] - pos2[1];
         const dz = pos1[2] - pos2[2];
         const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        
+
         if (distance < 0.1) return; // Avoid division by zero
-        
+
         // Repulsion force (inverse square)
         const minDistance = 1.5;
         if (distance < minDistance) {
@@ -71,12 +72,12 @@ export function calculateOptimalLayout(
           const fx = (dx / distance) * force;
           const fy = (dy / distance) * force;
           const fz = (dz / distance) * force * 0.3; // Reduce Z force
-          
-          const f1 = forces.get(e1.id)!;
-          forces.set(e1.id, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
-          
-          const f2 = forces.get(e2.id)!;
-          forces.set(e2.id, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
+
+          const f1 = forces.get(e1.id);
+          if (f1) forces.set(e1.id, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
+
+          const f2 = forces.get(e2.id);
+          if (f2) forces.set(e2.id, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
         }
       });
     });
@@ -103,19 +104,20 @@ export function calculateOptimalLayout(
       const fx = (dx / distance) * force;
       const fy = (dy / distance) * force;
       const fz = (dz / distance) * force * 0.3;
-      
-      const f1 = forces.get(conn.fromEntityId)!;
-      forces.set(conn.fromEntityId, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
-      
-      const f2 = forces.get(conn.toEntityId)!;
-      forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
+
+      const f1 = forces.get(conn.fromEntityId);
+      if (f1) forces.set(conn.fromEntityId, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
+
+      const f2 = forces.get(conn.toEntityId);
+      if (f2) forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
     });
     
     // Center gravity (prevent drift)
     entities.forEach(entity => {
-      const pos = positions.get(entity.id)!;
-      const f = forces.get(entity.id)!;
-      
+      const pos = positions.get(entity.id);
+      const f = forces.get(entity.id);
+      if (!pos || !f) return;
+
       forces.set(entity.id, [
         f[0] - pos[0] * 0.01,
         f[1] - pos[1] * 0.01,
@@ -125,11 +127,12 @@ export function calculateOptimalLayout(
     
     // Apply forces with damping
     entities.forEach(entity => {
-      const pos = positions.get(entity.id)!;
-      const force = forces.get(entity.id)!;
-      
+      const pos = positions.get(entity.id);
+      const force = forces.get(entity.id);
+      if (!pos || !force) return;
+
       const decay = 1 - (i / iterations) * 0.5; // Reduce movement over time
-      
+
       positions.set(entity.id, [
         pos[0] + force[0] * damping * decay,
         pos[1] + force[1] * damping * decay,
