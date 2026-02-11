@@ -27,7 +27,7 @@ export function SpiralEntities() {
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
 
   const entities = useMemo(() => currentSession?.entities || [], [currentSession?.entities]);
-  const connections = currentSession?.connections || [];
+  const connections = useMemo(() => currentSession?.connections || [], [currentSession?.connections]);
 
   // Handle position updates from physics worker
   const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {
@@ -127,6 +127,14 @@ export function SpiralEntities() {
     }
   }, []);
 
+  // Memoize filtered connections for performance
+  const visibleConnections = useMemo(() => {
+    return connections.filter(conn =>
+      visibleEntityIds.has(conn.fromEntityId) &&
+      visibleEntityIds.has(conn.toEntityId)
+    );
+  }, [connections, visibleEntityIds]);
+
   return (
     <>
       {/* Render entities with adaptive visibility */}
@@ -149,24 +157,19 @@ export function SpiralEntities() {
       })}
 
       {/* Only show connections for visible entities */}
-      {connections
-        .filter(conn =>
-          visibleEntityIds.has(conn.fromEntityId) &&
-          visibleEntityIds.has(conn.toEntityId)
-        )
-        .map((connection) => {
-          const fromPos = getEntityPosition(connection.fromEntityId);
-          const toPos = getEntityPosition(connection.toEntityId);
+      {visibleConnections.map((connection) => {
+        const fromPos = getEntityPosition(connection.fromEntityId);
+        const toPos = getEntityPosition(connection.toEntityId);
 
-          return (
-            <ConnectionLine
-              key={connection.id}
-              connection={connection}
-              fromPosition={fromPos}
-              toPosition={toPos}
-            />
-          );
-        })}
+        return (
+          <ConnectionLine
+            key={connection.id}
+            connection={connection}
+            fromPosition={fromPos}
+            toPosition={toPos}
+          />
+        );
+      })}
 
       {/* Debug: Show worker state in development */}
       {import.meta.env.DEV && workerState.lastError && (
