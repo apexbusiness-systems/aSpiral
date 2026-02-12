@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Code Quality**: Achieved SonarQube Grade A maintainability by resolving all major code smells and duplications.
+- **Code Health**: Replaced direct console logs with structured logger in `App.tsx` for cleaner production output.
 - **Testing**: Refactored validation tests to remove duplication and improve reliability.
 - **Voice System**: Restored and stabilized voice hooks (`useVoiceInput`, `useTextToSpeech`) for consistent cross-platform performance.
 - **Documentation**: Updated `README.md` with premium block-style ASCII art and build badges.
