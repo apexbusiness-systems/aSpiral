@@ -8,7 +8,10 @@ describe('utils', () => {
     });
 
     it('should handle conditional classes', () => {
-      expect(cn('foo', true && 'bar', false && 'baz')).toBe('foo bar');
+      // Use variables to bypass constant condition checks while testing logic
+      const shouldInclude = true;
+      const shouldExclude = false;
+      expect(cn('foo', shouldInclude && 'bar', shouldExclude && 'baz')).toBe('foo bar');
     });
 
     it('should handle array inputs', () => {
@@ -25,7 +28,7 @@ describe('utils', () => {
     });
 
     it('should handle mixed inputs', () => {
-      expect(cn('foo', ['bar', { baz: true }], false && 'qux', 'p-4', 'p-2')).toBe('foo bar baz p-2');
+      expect(cn('foo', ['bar', { baz: true }], false, 'p-4', 'p-2')).toBe('foo bar baz p-2');
     });
 
     it('should handle undefined and null inputs', () => {
