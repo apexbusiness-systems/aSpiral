@@ -109,10 +109,29 @@ export class FPSMonitor {
 }
 
 /**
+ * Cache for device capabilities to avoid expensive WebGL/DOM operations
+ */
+let cachedGpuCapabilities: {
+  gpuTier: number;
+  maxTextureSize: number;
+  webglVersion: number;
+  gpuVendor: string;
+  gpuRenderer: string;
+} | null = null;
+
+/**
  * Detect device capabilities with GPU fingerprinting
  * Uses WEBGL_debug_renderer_info for accurate GPU identification
  */
 export function detectDeviceCapabilities(): DeviceCapabilities {
+  if (cachedGpuCapabilities) {
+    return {
+      deviceType: getDeviceType(),
+      ...cachedGpuCapabilities,
+      availableMemory: getMemoryUsage(),
+    };
+  }
+
   const canvas = document.createElement('canvas');
   const gl = canvas.getContext('webgl') as WebGLRenderingContext | null;
 
@@ -194,14 +213,18 @@ export function detectDeviceCapabilities(): DeviceCapabilities {
     }
   }
 
-  return {
-    deviceType: getDeviceType(),
+  cachedGpuCapabilities = {
     gpuTier,
     maxTextureSize,
     webglVersion,
-    availableMemory: getMemoryUsage(),
     gpuVendor,
     gpuRenderer,
+  };
+
+  return {
+    deviceType: getDeviceType(),
+    ...cachedGpuCapabilities,
+    availableMemory: getMemoryUsage(),
   };
 }
 
