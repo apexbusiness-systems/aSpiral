@@ -26,6 +26,21 @@ function useDeepCompareMemo<T>(factory: () => T, deps: DependencyList): T {
 }
 
 /**
+ * Helper to shallow compare two arrays
+ */
+function shallowCompareArrays(a: readonly unknown[], b: readonly unknown[]): boolean {
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Shallow equality check for dependency arrays
  * For array dependencies, compares array length and item references
  */
@@ -38,18 +53,10 @@ function areArraysShallowEqual(a: DependencyList, b: DependencyList): boolean {
 
     // For arrays (entities/connections), check length and item identity
     if (Array.isArray(aItem) && Array.isArray(bItem)) {
-      if (aItem.length !== bItem.length) return false;
-
-      // Shallow comparison: same items in same order = equal
-      let allMatch = true;
-      for (let j = 0; j < aItem.length; j++) {
-        if (aItem[j] !== bItem[j]) {
-          allMatch = false;
-          break;
-        }
+      if (!shallowCompareArrays(aItem, bItem)) {
+        return false;
       }
-      if (allMatch) continue;
-      return false;
+      continue;
     }
 
     // For non-arrays, use reference equality
