@@ -30,7 +30,7 @@ export function SwipeHandler({
   const leftOpacity = useTransform(x, [0, threshold], [0, 1]);
   const rightOpacity = useTransform(x, [-threshold, 0], [1, 0]);
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
 
     if (info.offset.x > threshold && onSwipeRight) {
