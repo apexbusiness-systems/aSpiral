@@ -65,17 +65,16 @@ let cachedVersion = 0
 /**
  * Reads a CSS custom property value from :root
  */
-function getCssVar(name: CssVarKey): string | null {
-    if (typeof document === 'undefined') return null
-    const style = getComputedStyle(document.documentElement)
+function getCssVar(name: CssVarKey, style: CSSStyleDeclaration | null): string | null {
+    if (!style) return null
     return style.getPropertyValue(`--${name}`).trim() || null
 }
 
 /**
  * Creates a THREE.Color from CSS HSL variable or fallback
  */
-function createThreeColor(varName: CssVarKey, fallback: string): THREE.Color {
-    const cssValue = getCssVar(varName)
+function createThreeColor(varName: CssVarKey, fallback: string, style: CSSStyleDeclaration | null): THREE.Color {
+    const cssValue = getCssVar(varName, style)
     const hsl = parseCssHsl(cssValue)
 
     if (hsl) {
@@ -90,19 +89,21 @@ function createThreeColor(varName: CssVarKey, fallback: string): THREE.Color {
  * Builds the full theme colors object
  */
 function buildThemeColors(): ThemeColors {
+    const style = typeof document !== 'undefined' ? getComputedStyle(document.documentElement) : null
+
     return Object.freeze({
-        primary: createThreeColor('primary', FALLBACK_COLORS.primary),
-        secondary: createThreeColor('secondary', FALLBACK_COLORS.secondary),
-        accent: createThreeColor('accent', FALLBACK_COLORS.accent),
-        spiralGlow: createThreeColor('spiral-glow', FALLBACK_COLORS.spiralGlow),
-        spiralAccent: createThreeColor('spiral-accent', FALLBACK_COLORS.spiralAccent),
-        friction: createThreeColor('friction-color', FALLBACK_COLORS.friction),
-        grease: createThreeColor('grease-color', FALLBACK_COLORS.grease),
-        entity: createThreeColor('entity-color', FALLBACK_COLORS.entity),
-        connection: createThreeColor('connection-color', FALLBACK_COLORS.connection),
-        success: createThreeColor('success', FALLBACK_COLORS.success),
-        warning: createThreeColor('warning', FALLBACK_COLORS.warning),
-        destructive: createThreeColor('destructive', FALLBACK_COLORS.destructive)
+        primary: createThreeColor('primary', FALLBACK_COLORS.primary, style),
+        secondary: createThreeColor('secondary', FALLBACK_COLORS.secondary, style),
+        accent: createThreeColor('accent', FALLBACK_COLORS.accent, style),
+        spiralGlow: createThreeColor('spiral-glow', FALLBACK_COLORS.spiralGlow, style),
+        spiralAccent: createThreeColor('spiral-accent', FALLBACK_COLORS.spiralAccent, style),
+        friction: createThreeColor('friction-color', FALLBACK_COLORS.friction, style),
+        grease: createThreeColor('grease-color', FALLBACK_COLORS.grease, style),
+        entity: createThreeColor('entity-color', FALLBACK_COLORS.entity, style),
+        connection: createThreeColor('connection-color', FALLBACK_COLORS.connection, style),
+        success: createThreeColor('success', FALLBACK_COLORS.success, style),
+        warning: createThreeColor('warning', FALLBACK_COLORS.warning, style),
+        destructive: createThreeColor('destructive', FALLBACK_COLORS.destructive, style)
     })
 }
 
