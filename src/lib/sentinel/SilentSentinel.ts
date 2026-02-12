@@ -1,3 +1,7 @@
+import { createLogger } from '../logger';
+
+const logger = createLogger('SilentSentinel');
+
 const SENTINEL_KEYS = {
   CRASH_COUNT: 'sentinel_crash_count',
   LAST_BOOT: 'sentinel_last_boot',
@@ -12,7 +16,7 @@ export const SilentSentinel = {
     try {
       // 1. Check if we just recovered from an emergency
       if (sessionStorage.getItem('sentinel_just_recovered')) {
-        console.log('[SilentSentinel] Recovery successful. Monitoring resumed.');
+        logger.debug('Recovery successful. Monitoring resumed.');
         sessionStorage.removeItem('sentinel_just_recovered');
         // Reset last boot to now so we don't flag this valid boot as a crash later
         localStorage.setItem(SENTINEL_KEYS.LAST_BOOT, Date.now().toString());
@@ -25,7 +29,7 @@ export const SilentSentinel = {
 
       if (now - lastBoot < BOOT_LOOP_WINDOW_MS) {
         const newCount = crashCount + 1;
-        console.warn(`[SilentSentinel] Rapid boot detected. Count: ${newCount}`);
+        logger.warn(`Rapid boot detected. Count: ${newCount}`);
         localStorage.setItem(SENTINEL_KEYS.CRASH_COUNT, newCount.toString());
 
         if (newCount > CRASH_THRESHOLD) {
@@ -37,21 +41,21 @@ export const SilentSentinel = {
       localStorage.setItem(SENTINEL_KEYS.LAST_BOOT, now.toString());
 
       setTimeout(() => {
-        console.log('[SilentSentinel] Stability achieved. Resetting counters.');
+        logger.debug('Stability achieved. Resetting counters.');
         localStorage.setItem(SENTINEL_KEYS.CRASH_COUNT, '0');
       }, STABILITY_WINDOW_MS);
 
     } catch (e) {
-      console.error('[SilentSentinel] Initialization failed', e);
+      logger.error('Initialization failed', e instanceof Error ? e : new Error(String(e)));
     }
   },
 
   recordError: (error: unknown) => {
-    console.error('[SilentSentinel] Error captured:', error);
+    logger.error('Error captured:', error instanceof Error ? error : new Error(String(error)));
   },
 
   emergencyProtocol: () => {
-    console.error('[SilentSentinel] EXECUTE TACTICAL NUKE: EMERGENCY PROTOCOL ENGAGED');
+    logger.error('EXECUTE TACTICAL NUKE: EMERGENCY PROTOCOL ENGAGED');
     const authToken = localStorage.getItem('supabase.auth.token');
     
     // Clear storage but preserve auth
