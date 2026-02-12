@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeError, shouldShowErrorBanner, getErrorMessage, NormalizedError } from '../normalizeError';
+import { normalizeError, shouldShowErrorBanner, getErrorMessage } from '../normalizeError';
 
 describe('normalizeError', () => {
   describe('Empty/No Data Scenarios', () => {
