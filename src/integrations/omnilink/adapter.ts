@@ -167,6 +167,7 @@ async function processQueue(): Promise<void> {
 
 // Start background queue processing
 if (typeof window !== "undefined") {
+  omniLinkEventQueue.initialize();
   setInterval(() => {
     processQueue().catch(console.error);
   }, 30000); // Every 30 seconds

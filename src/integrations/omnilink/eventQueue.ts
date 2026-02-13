@@ -23,6 +23,10 @@ class EventQueue {
   private processing = false;
 
   constructor() {
+    // Initialization moved to initialize()
+  }
+
+  initialize(): void {
     this.loadFromStorage();
   }
 
@@ -33,8 +37,8 @@ class EventQueue {
         this.queue = JSON.parse(stored);
         logger.info(`Loaded ${this.queue.length} queued events from storage`);
       }
-    } catch {
-      logger.warn("Failed to load queued events from storage");
+    } catch (error) {
+      logger.warn("Failed to load queued events from storage", { error });
       this.queue = [];
     }
   }
@@ -42,8 +46,8 @@ class EventQueue {
   private saveToStorage(): void {
     try {
       localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(this.queue));
-    } catch {
-      logger.warn("Failed to save queued events to storage");
+    } catch (error) {
+      logger.warn("Failed to save queued events to storage", { error });
     }
   }
 
