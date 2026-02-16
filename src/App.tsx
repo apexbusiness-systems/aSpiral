@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { I18nextProvider } from "react-i18next";
 import i18n from "@/lib/i18n/config";
-import { SentinelProvider } from "@/components/SentinelProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { DebugOverlay } from "@/components/DebugOverlay";
 import { toast } from "sonner";
@@ -129,7 +128,6 @@ const App = () => {
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        {/* <SentinelProvider /> */}
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
