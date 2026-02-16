@@ -6,6 +6,8 @@
 
 import type { OmniLinkEvent } from "./types";
 import { createLogger } from "@/lib/logger";
+import { encrypt, decrypt } from "@/lib/crypto";
+import { getEncryptionSecret } from "@/lib/secureStorage";
 
 const logger = createLogger("OmniLinkEventQueue");
 
@@ -18,36 +20,70 @@ interface QueuedEvent {
   attempts: number;
 }
 
-class EventQueue {
+export class EventQueue {
   private queue: QueuedEvent[] = [];
   private processing = false;
+  private initialized: Promise<void>;
+  private secretOverride?: string;
 
-  constructor() {
-    this.loadFromStorage();
+  constructor(secretOverride?: string) {
+    this.secretOverride = secretOverride;
+    this.initialized = this.loadFromStorage();
   }
 
-  private loadFromStorage(): void {
+  private async getSecret(): Promise<string> {
+    if (this.secretOverride) return this.secretOverride;
+    return getEncryptionSecret();
+  }
+
+  private async loadFromStorage(): Promise<void> {
     try {
       const stored = localStorage.getItem(QUEUE_STORAGE_KEY);
       if (stored) {
-        this.queue = JSON.parse(stored);
-        logger.info(`Loaded ${this.queue.length} queued events from storage`);
+        // Try to decrypt first (new format)
+        try {
+          const secret = await this.getSecret();
+          const decrypted = await decrypt(stored, secret);
+          this.queue = JSON.parse(decrypted);
+          logger.info(`Loaded ${this.queue.length} queued events from encrypted storage`);
+        } catch (decryptError) {
+          // Fallback to plaintext (old format / migration)
+          try {
+            // Check if it looks like JSON before parsing
+            if (stored.trim().startsWith('[') || stored.trim().startsWith('{')) {
+              this.queue = JSON.parse(stored);
+              logger.info(`Migrating ${this.queue.length} plaintext events to encrypted storage`);
+              await this.saveToStorage(); // Upgrade to encrypted format
+            } else {
+              throw new Error("Not a valid JSON format");
+            }
+          } catch (parseError) {
+            logger.error("Failed to parse queued events from storage, likely encrypted with different key or corrupted", parseError as Error);
+            this.queue = [];
+          }
+        }
       }
-    } catch {
-      logger.warn("Failed to load queued events from storage");
+    } catch (error) {
+      logger.warn("Failed to load queued events from storage", { error });
       this.queue = [];
     }
   }
 
-  private saveToStorage(): void {
+  private async saveToStorage(): Promise<void> {
     try {
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(this.queue));
-    } catch {
-      logger.warn("Failed to save queued events to storage");
+      const serialized = JSON.stringify(this.queue);
+      const secret = await this.getSecret();
+      const encrypted = await encrypt(serialized, secret);
+      localStorage.setItem(QUEUE_STORAGE_KEY, encrypted);
+    } catch (error) {
+      // FAIL-SAFE: If encryption fails, we don't save to localStorage to avoid leaking plaintext
+      logger.error("Failed to save queued events to storage due to encryption failure", error as Error);
     }
   }
 
-  enqueue(event: OmniLinkEvent): void {
+  async enqueue(event: OmniLinkEvent): Promise<void> {
+    await this.initialized;
+
     // Prevent duplicate events (idempotency)
     const exists = this.queue.some(
       (q) => q.event.metadata.idempotencyKey === event.metadata.idempotencyKey
@@ -74,21 +110,24 @@ class EventQueue {
       attempts: 0,
     });
 
-    this.saveToStorage();
+    await this.saveToStorage();
     logger.info("Event queued", { eventId: event.id, queueSize: this.queue.length });
   }
 
-  dequeue(): QueuedEvent | undefined {
+  async dequeue(): Promise<QueuedEvent | undefined> {
+    await this.initialized;
     const item = this.queue.shift();
-    this.saveToStorage();
+    await this.saveToStorage();
     return item;
   }
 
-  peek(): QueuedEvent | undefined {
+  async peek(): Promise<QueuedEvent | undefined> {
+    await this.initialized;
     return this.queue[0];
   }
 
   size(): number {
+    // Synchronous size check based on current in-memory state
     return this.queue.length;
   }
 
@@ -96,26 +135,29 @@ class EventQueue {
     return this.queue.length === 0;
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
+    await this.initialized;
     this.queue = [];
-    this.saveToStorage();
+    await this.saveToStorage();
   }
 
-  incrementAttempts(idempotencyKey: string): void {
+  async incrementAttempts(idempotencyKey: string): Promise<void> {
+    await this.initialized;
     const item = this.queue.find(
       (q) => q.event.metadata.idempotencyKey === idempotencyKey
     );
     if (item) {
       item.attempts++;
-      this.saveToStorage();
+      await this.saveToStorage();
     }
   }
 
-  remove(idempotencyKey: string): void {
+  async remove(idempotencyKey: string): Promise<void> {
+    await this.initialized;
     this.queue = this.queue.filter(
       (q) => q.event.metadata.idempotencyKey !== idempotencyKey
     );
-    this.saveToStorage();
+    await this.saveToStorage();
   }
 
   setProcessing(processing: boolean): void {
@@ -124,6 +166,13 @@ class EventQueue {
 
   isProcessing(): boolean {
     return this.processing;
+  }
+
+  /**
+   * For testing purposes
+   */
+  async waitReady(): Promise<void> {
+    await this.initialized;
   }
 }
 

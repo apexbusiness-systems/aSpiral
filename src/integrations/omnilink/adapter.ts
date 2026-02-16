@@ -64,7 +64,7 @@ async function publishToHub<T>(event: OmniLinkEvent<T>): Promise<boolean> {
   // Check circuit breaker
   if (!omniLinkCircuitBreaker.canExecute()) {
     logger.warn("Circuit breaker OPEN, queueing event");
-    omniLinkEventQueue.enqueue(event);
+    await omniLinkEventQueue.enqueue(event);
     return false;
   }
 
@@ -115,7 +115,7 @@ async function publishToHub<T>(event: OmniLinkEvent<T>): Promise<boolean> {
     return true;
   } catch (error) {
     omniLinkCircuitBreaker.recordFailure();
-    omniLinkEventQueue.enqueue(event);
+    await omniLinkEventQueue.enqueue(event);
 
     logger.error("Failed to publish event", error as Error, {
       eventId: event.id,
@@ -140,7 +140,7 @@ async function processQueue(): Promise<void> {
 
   try {
     while (!omniLinkEventQueue.isEmpty()) {
-      const queued = omniLinkEventQueue.peek();
+      const queued = await omniLinkEventQueue.peek();
       if (!queued) break;
 
       // Skip if too many attempts
@@ -148,15 +148,15 @@ async function processQueue(): Promise<void> {
         logger.warn("Dropping event after max attempts", {
           eventId: queued.event.id,
         });
-        omniLinkEventQueue.dequeue();
+        await omniLinkEventQueue.dequeue();
         continue;
       }
 
       const success = await publishToHub(queued.event);
       if (success) {
-        omniLinkEventQueue.dequeue();
+        await omniLinkEventQueue.dequeue();
       } else {
-        omniLinkEventQueue.incrementAttempts(queued.event.metadata.idempotencyKey);
+        await omniLinkEventQueue.incrementAttempts(queued.event.metadata.idempotencyKey);
         break; // Stop if publish fails
       }
     }

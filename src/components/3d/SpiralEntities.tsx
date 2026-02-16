@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, type DependencyList } from "react";
 import { useThree } from "@react-three/fiber";
 import { AdaptiveEntity } from "./AdaptiveEntity";
 import { ConnectionLine } from "./ConnectionLine";
@@ -10,6 +10,54 @@ import type { Entity } from "@/lib/types";
 import * as THREE from "three";
 
 type Position3D = [number, number, number];
+
+/**
+ * Deep comparison hook for arrays - prevents memo invalidation when array content is identical
+ * but reference changes (common with Zustand state updates)
+ */
+function useDeepCompareMemo<T>(factory: () => T, deps: DependencyList): T {
+  const ref = useRef<{ deps: DependencyList; value: T }>();
+
+  if (!ref.current || !areArraysShallowEqual(ref.current.deps, deps)) {
+    ref.current = { deps, value: factory() };
+  }
+
+  return ref.current.value;
+}
+
+/**
+ * Shallow equality check for dependency arrays
+ * For array dependencies, compares array length and item references
+ */
+function areArraysShallowEqual(a: DependencyList, b: DependencyList): boolean {
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    const aItem = a[i];
+    const bItem = b[i];
+
+    // For arrays (entities/connections), check length and item identity
+    if (Array.isArray(aItem) && Array.isArray(bItem)) {
+      if (aItem.length !== bItem.length) return false;
+
+      // Shallow comparison: same items in same order = equal
+      let allMatch = true;
+      for (let j = 0; j < aItem.length; j++) {
+        if (aItem[j] !== bItem[j]) {
+          allMatch = false;
+          break;
+        }
+      }
+      if (allMatch) continue;
+      return false;
+    }
+
+    // For non-arrays, use reference equality
+    if (aItem !== bItem) return false;
+  }
+
+  return true;
+}
 
 /**
  * APEX Phase 2: Off-Main-Thread Physics Integration
@@ -26,8 +74,26 @@ export function SpiralEntities() {
   const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
 
-  const entities = useMemo(() => currentSession?.entities || [], [currentSession?.entities]);
-  const connections = currentSession?.connections || [];
+  const entities = useDeepCompareMemo(
+    () => currentSession?.entities || [],
+    [currentSession?.entities]
+  );
+
+  const connections = useDeepCompareMemo(
+    () => currentSession?.connections || [],
+    [currentSession?.connections]
+  );
+
+  // DEV-ONLY: Track memoization effectiveness
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[SpiralEntities] entities/connections updated', {
+        entitiesCount: entities.length,
+        connectionsCount: connections.length,
+        timestamp: Date.now()
+      });
+    }
+  }, [entities, connections]);
 
   // Handle position updates from physics worker
   const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {
@@ -127,6 +193,14 @@ export function SpiralEntities() {
     }
   }, []);
 
+  // Memoize filtered connections for performance
+  const visibleConnections = useMemo(() => {
+    return connections.filter(conn =>
+      visibleEntityIds.has(conn.fromEntityId) &&
+      visibleEntityIds.has(conn.toEntityId)
+    );
+  }, [connections, visibleEntityIds]);
+
   return (
     <>
       {/* Render entities with adaptive visibility */}
@@ -149,24 +223,19 @@ export function SpiralEntities() {
       })}
 
       {/* Only show connections for visible entities */}
-      {connections
-        .filter(conn =>
-          visibleEntityIds.has(conn.fromEntityId) &&
-          visibleEntityIds.has(conn.toEntityId)
-        )
-        .map((connection) => {
-          const fromPos = getEntityPosition(connection.fromEntityId);
-          const toPos = getEntityPosition(connection.toEntityId);
+      {visibleConnections.map((connection) => {
+        const fromPos = getEntityPosition(connection.fromEntityId);
+        const toPos = getEntityPosition(connection.toEntityId);
 
-          return (
-            <ConnectionLine
-              key={connection.id}
-              connection={connection}
-              fromPosition={fromPos}
-              toPosition={toPos}
-            />
-          );
-        })}
+        return (
+          <ConnectionLine
+            key={connection.id}
+            connection={connection}
+            fromPosition={fromPos}
+            toPosition={toPos}
+          />
+        );
+      })}
 
       {/* Debug: Show worker state in development */}
       {import.meta.env.DEV && workerState.lastError && (

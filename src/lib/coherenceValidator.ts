@@ -15,6 +15,38 @@ interface ValidationResult {
   kept: string[];
 }
 
+// Semantic equivalents for common patterns
+const SEMANTIC_MATCHES: Record<string, string[]> = {
+  "anger": ["angry", "mad", "pissed", "frustrated", "annoying", "annoyed"],
+  "frustration": ["frustrated", "frustrating", "annoying", "annoyed", "grinds"],
+  "fear": ["scared", "afraid", "worried", "anxious", "nervous"],
+  "anxiety": ["anxious", "worried", "nervous", "stress", "stressed"],
+  "joy": ["happy", "glad", "excited", "thrilled"],
+  "sadness": ["sad", "upset", "down", "depressed"],
+  "control": ["controlling", "control", "manage", "handle"],
+  "traffic": ["driving", "road", "cars", "commute"],
+  "drivers": ["driving", "driver", "people", "cars"],
+};
+
+// Smart entity deduplication patterns
+const SIMILARITY_PATTERNS: [RegExp, string][] = [
+  [/stupid\s*drivers?|bad\s*drivers?|other\s*drivers?/i, "drivers"],
+  [/traffic|road|commute|driving/i, "traffic"],
+  [/angry|anger|mad|pissed|frustrated/i, "anger"],
+  [/scared|fear|afraid|worried/i, "fear"],
+  [/anxious|anxiety|nervous|stress/i, "anxiety"],
+];
+
+// Entity type priority for sorting
+const TYPE_PRIORITY: Record<string, number> = {
+  problem: 5,
+  friction: 4,
+  emotion: 3,
+  value: 2,
+  grease: 2,
+  action: 1,
+};
+
 /**
  * Check if entities are coherent with the transcript
  */
@@ -39,20 +71,7 @@ export function validateCoherence(
       // Fuzzy match (word appears as substring)
       if (transcriptLower.includes(word) && word.length > 3) return true;
       
-      // Semantic equivalents for common patterns
-      const semanticMatches: Record<string, string[]> = {
-        "anger": ["angry", "mad", "pissed", "frustrated", "annoying", "annoyed"],
-        "frustration": ["frustrated", "frustrating", "annoying", "annoyed", "grinds"],
-        "fear": ["scared", "afraid", "worried", "anxious", "nervous"],
-        "anxiety": ["anxious", "worried", "nervous", "stress", "stressed"],
-        "joy": ["happy", "glad", "excited", "thrilled"],
-        "sadness": ["sad", "upset", "down", "depressed"],
-        "control": ["controlling", "control", "manage", "handle"],
-        "traffic": ["driving", "road", "cars", "commute"],
-        "drivers": ["driving", "driver", "people", "cars"],
-      };
-      
-      const matches = semanticMatches[word] || [];
+      const matches = SEMANTIC_MATCHES[word] || [];
       return matches.some(m => transcriptLower.includes(m));
     });
     
@@ -93,19 +112,11 @@ export function validateCoherence(
 export function deduplicateEntities(entities: Entity[]): Entity[] {
   const seen = new Map<string, Entity>();
   
-  const similarityPatterns: [RegExp, string][] = [
-    [/stupid\s*drivers?|bad\s*drivers?|other\s*drivers?/i, "drivers"],
-    [/traffic|road|commute|driving/i, "traffic"],
-    [/angry|anger|mad|pissed|frustrated/i, "anger"],
-    [/scared|fear|afraid|worried/i, "fear"],
-    [/anxious|anxiety|nervous|stress/i, "anxiety"],
-  ];
-  
   return entities.filter(entity => {
     const normalized = entity.label.toLowerCase().trim();
     
     // Check if we've seen a similar entity
-    for (const [pattern, canonical] of similarityPatterns) {
+    for (const [pattern, canonical] of SIMILARITY_PATTERNS) {
       if (pattern.test(normalized)) {
         if (seen.has(canonical)) {
           return false; // Skip duplicate
@@ -141,17 +152,7 @@ export function prioritizeEntities(
         return importanceB - importanceA;
       }
       
-      // Then by type priority
-      const typePriority: Record<string, number> = {
-        problem: 5,
-        friction: 4,
-        emotion: 3,
-        value: 2,
-        grease: 2,
-        action: 1,
-      };
-      
-      return (typePriority[b.type] || 0) - (typePriority[a.type] || 0);
+      return (TYPE_PRIORITY[b.type] || 0) - (TYPE_PRIORITY[a.type] || 0);
     })
     .slice(0, maxCount);
 }
