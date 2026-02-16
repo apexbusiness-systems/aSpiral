@@ -32,6 +32,10 @@ import { analytics } from '@/lib/analytics';
 import type { CinematicPlayerProps, CinematicVariant } from '@/lib/cinematics/types';
 import { addBreadcrumb } from '@/lib/debugOverlay';
 import { featureFlags } from '@/lib/featureFlags';
+import { createLogger } from '@/lib/logger';
+
+// Create module-level logger
+const logger = createLogger('CinematicPlayer');
 
 // Error Boundary for WebGL crashes
 interface ErrorBoundaryState {
@@ -46,7 +50,7 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode; onError: () =>
   }
 
   componentDidCatch(error: Error) {
-    console.warn('[CinematicPlayer] WebGL error caught:', error.message);
+    logger.warn('WebGL error caught', { errorMessage: error.message });
     this.props.onError();
   }
 
@@ -116,7 +120,7 @@ export function CinematicPlayer({
   } = useBreakthroughDirector({
     onComplete,
     onAbort: (reason) => {
-      console.log('[CinematicPlayer] V2 aborted:', reason);
+      logger.info('V2 aborted', { reason });
       onSkip?.();
     },
     qualityTier: deviceTier,
@@ -203,7 +207,7 @@ export function CinematicPlayer({
 
   // Handle WebGL/canvas errors - show fallback UI then complete
   const handleWebGLError = useCallback(() => {
-    console.warn('[CinematicPlayer] WebGL error - showing fallback UI');
+    logger.warn('WebGL error - showing fallback UI');
     setWebglFailed(true);
     audioManager.current?.stop();
     addBreadcrumb({ type: 'cinematic', message: 'webgl_error' });
@@ -229,13 +233,13 @@ export function CinematicPlayer({
       setV2Initialized(true);
       prewarm(sessionEntities, breakthroughType)
         .then((variant) => {
-          console.log('[CinematicPlayer] V2 prewarmed:', variant.id);
+          logger.info('V2 prewarmed', { variantId: variant.id });
           if (autoPlay) {
             playDirector(variant);
           }
         })
         .catch((err) => {
-          console.warn('[CinematicPlayer] V2 prewarm failed:', err);
+          logger.error('V2 prewarm failed', err instanceof Error ? err : new Error(String(err)));
           abortDirector('prewarm_failed');
           handleComplete();
         });
@@ -273,7 +277,7 @@ export function CinematicPlayer({
 
     // FALLBACK: Force completion after max duration to prevent getting stuck
     fallbackTimeoutRef.current = setTimeout(() => {
-      console.warn('[CinematicPlayer] Fallback timeout triggered - forcing completion');
+      logger.warn('Fallback timeout triggered - forcing completion', { maxDuration: MAX_CINEMATIC_DURATION_MS });
       handleComplete();
     }, MAX_CINEMATIC_DURATION_MS);
 
@@ -341,7 +345,7 @@ export function CinematicPlayer({
   // Handle canvas context loss
   const handleContextLost = (event: Event) => {
     event.preventDefault();
-    console.warn('[CinematicPlayer] WebGL context lost');
+    logger.warn('WebGL context lost');
     handleWebGLError();
   };
 
