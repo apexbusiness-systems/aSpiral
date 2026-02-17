@@ -6,8 +6,9 @@ import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
 import { detectPromptInjection, validateOutput, detectAnomaly, INJECTION_RESPONSES } from "./prompt-shield.ts";
 import { validateInput, parseRequestBody, validateHeaders, type ValidatedInput } from "./input-validator.ts";
 import { createComplianceWriter } from "./compliance-store.ts";
-import { createResponseSchema, getTierLimits, getPromptValidationRules, getEntityExtractionRules, type SpiralAIResponse } from "./ai-schema.ts";
+import { createResponseSchema, getTierLimits, type SpiralAIResponse } from "./ai-schema.ts";
 import { redactPII } from "./pii-redactor.ts";
+import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 
 // =============================================================================
 // PHASE 4: FULL GUARDRAILS - Content Moderation, Rate Limiting, Compliance
@@ -178,83 +179,6 @@ const FRUSTRATION_PATTERNS = [
 ];
 
 const MAX_QUESTIONS = 3;
-
-const QUESTION_PATTERNS = `
-QUESTION STRUCTURE (rotate these):
-- Direct: "So {paraphrase}. What's grinding?"
-- Excavation: "Underneath that, what else?"
-- Contrast: "When you're NOT feeling {negative}, what's different?"
-- Challenge: "Is it really {surface}, or something deeper?"
-- Stakes: "What happens if you do nothing?"
-- Binary: "Simple: stay or go?"
-
-ABSOLUTELY FORBIDDEN:
-❌ "I hear your..." / "It sounds like..."
-❌ "I'm here to help..." / "Let's explore..."
-❌ "Can you tell me more..."
-❌ "How does that make you feel?"
-❌ Starting consecutive questions with "What"
-
-Be DIRECT. Under 15 words. Reference their EXACT words.`;
-
-function buildEntityExtractionPrompt(tier: string): string {
-  const entityRules = getEntityExtractionRules(tier);
-  const validationRules = getPromptValidationRules(tier);
-  
-  return `You are ASPIRAL's discovery engine. Extract entities and ask ONE direct question.
-
-${QUESTION_PATTERNS}
-
-${entityRules}
-
-ENTITY TYPES: problem, emotion, value, friction, grease, action
-ENTITY ROLES: external_irritant, internal_conflict, desire, fear, constraint, solution
-
-CONNECTION TYPES: causes, blocks, enables, resolves, opposes
-
-OUTPUT JSON (STRICT SCHEMA):
-{
-  "entities": [
-    {"type": "problem", "label": "3-word max", "role": "external_irritant", "emotionalValence": -0.8, "importance": 0.9}
-  ],
-  "connections": [{"from": 0, "to": 1, "type": "causes", "strength": 0.8}],
-  "question": "Under 15 words. Direct. No fluff.",
-  "response": "Max 8 words. Acknowledge briefly."
-}
-
-${validationRules}`;
-}
-
-function buildBreakthroughPrompt(tier: string): string {
-  const validationRules = getPromptValidationRules(tier);
-  
-  return `Synthesize the breakthrough from this conversation.
-
-OUTPUT JSON (STRICT SCHEMA):
-{
-  "friction": "The gears grinding (concise, <15 words)",
-  "grease": "The solution (actionable, <15 words)", 
-  "insight": "The memorable one-liner (<25 words)",
-  "entities": [],
-  "connections": [],
-  "question": "",
-  "response": ""
-}
-
-${validationRules}
-
-RULES:
-1. Be SPECIFIC to their situation
-2. Reference their actual words
-3. Make insight memorable and quotable
-4. Grease must be ACTIONABLE
-
-EXAMPLES:
-Traffic frustration → "You can't change the drivers. You can change how much space they take in your head."
-Job decision → "You don't need to leap. You need to take the first step."
-
-Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`;
-}
 
 // =============================================================================
 // REQUEST/RESPONSE TYPES
@@ -651,20 +575,39 @@ serve(async (req) => {
       processingMs: Date.now() - startTime,
     });
 
-    // Build context
+    // Build context for user-content only (single system prompt source remains MindCore SSOT)
     const contextInfo = buildContextInfo(sessionContext, stagePrompt, questionsAsked, shouldBreakthrough, MAX_QUESTIONS);
 
-    // Use tier-aware prompts
-    const systemPrompt = shouldBreakthrough 
-      ? buildBreakthroughPrompt(userTier) + contextInfo 
-      : buildEntityExtractionPrompt(userTier) + contextInfo;
+    let mindcore;
+    try {
+      mindcore = await loadAspiralMindcore();
+    } catch (error) {
+      console.error("[SPIRAL-AI] ❌ MindCore load failed; disabling aSpiral agent initialization", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      await complianceLogger.finalizeRun({ status: "ERROR", blocked: true });
+      await complianceLogger.flush(FLUSH_BLOCK_MS);
+      return new Response(
+        JSON.stringify({ error: "aSpiral agent unavailable: prompt integrity check failed" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[SPIRAL-AI] MindCore prompt locked", {
+      aspiral_prompt_version: mindcore.version,
+      aspiral_prompt_sha256: mindcore.sha256,
+    });
+
+    const systemPrompt = mindcore.systemPrompt;
 
     // =======================================================================
-    // PHASE 3: VALIDATED AI CALL - With tier-aware schema and retry
+    // PHASE 3: VALIDATED AI CALL - With schema validation and retry
     // =======================================================================
+    const userContent = `${sanitizedTranscript}${contextInfo}`;
     const { data: validatedResult, retryCount } = await callAIWithValidation(
       systemPrompt,
-      sanitizedTranscript,
+      userContent,
       shouldBreakthrough,
       userTier
     );
