@@ -3,7 +3,7 @@ set -euo pipefail
 
 TARGET="supabase/functions/spiral-ai/index.ts"
 
-if [ ! -f "$TARGET" ]; then
+if [[ ! -f "$TARGET" ]]; then
   echo "❌ Missing $TARGET"
   exit 1
 fi
@@ -20,7 +20,7 @@ if rg -n "You are ASPIRAL's discovery engine|Synthesize the breakthrough from th
 fi
 
 SSOT_DIR=".claude/skills/aspiral-mindcore"
-if [ ! -f "$SSOT_DIR/UNIVERSAL_PROMPT.md" ] || [ ! -f "$SSOT_DIR/SHA256" ]; then
+if [[ ! -f "$SSOT_DIR/UNIVERSAL_PROMPT.md" ]] || [[ ! -f "$SSOT_DIR/SHA256" ]]; then
   echo "❌ Missing SSOT prompt files under $SSOT_DIR"
   exit 1
 fi
@@ -40,7 +40,7 @@ PY
 )
 EXPECTED_SHA=$(tr -d '[:space:]' < "$SSOT_DIR/SHA256")
 
-if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+if [[ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]]; then
   echo "❌ MindCore SHA lock mismatch"
   echo "expected=$EXPECTED_SHA"
   echo "actual=$ACTUAL_SHA"

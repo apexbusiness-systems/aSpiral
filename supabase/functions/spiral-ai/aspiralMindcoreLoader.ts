@@ -1,3 +1,4 @@
+// deno-lint-ignore no-import-prefix
 import { dirname, fromFileUrl, join, resolve } from "https://deno.land/std@0.168.0/path/mod.ts";
 
 const START_MARKER = "# ▶▶ SYSTEM PROMPT START ◀◀";
@@ -32,7 +33,7 @@ function extractSystemPromptBlock(content: string): string {
 
   const block = content
     .slice(startIndex + START_MARKER.length, endIndex)
-    .replace(/^\n+|\n+$/g, "") + "\n";
+    .replaceAll(/(^\n+)|(\n+$)/g, "") + "\n";
 
   const promptSize = new TextEncoder().encode(block).byteLength;
   if (promptSize > MAX_PROMPT_SIZE_BYTES) {
