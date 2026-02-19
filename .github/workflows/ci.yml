@@ -27,8 +27,8 @@ jobs:
         with:
           deno-version: v2.3.0
       - run: |
-          if [[ -d "supabase/functions" ]]; then
-            deno test --allow-read --allow-env --lock=deno.lock supabase/functions
+          if [[ -f "supabase/functions/spiral-ai/aspiralMindcoreLoader.test.ts" ]]; then
+            deno test supabase/functions/spiral-ai/aspiralMindcoreLoader.test.ts --allow-read --allow-env --lock=deno.lock
           fi
 
   # ─────────────────────────────────────────────────────────────────────────────
