@@ -15,11 +15,13 @@ find_matches() {
 
   if [[ "$SEARCH_TOOL" == "rg" ]]; then
     rg -n "$pattern" "$file_path"
-  else
-    grep -En "$pattern" "$file_path"
+    local status=$?
+    return "$status"
   fi
 
-  return 0
+  grep -En "$pattern" "$file_path"
+  local status=$?
+  return "$status"
 }
 
 has_match() {
@@ -28,11 +30,13 @@ has_match() {
 
   if [[ "$SEARCH_TOOL" == "rg" ]]; then
     rg -n "$pattern" "$file_path" >/dev/null
-  else
-    grep -Eq "$pattern" "$file_path"
+    local status=$?
+    return "$status"
   fi
 
-  return 0
+  grep -Eq "$pattern" "$file_path"
+  local status=$?
+  return "$status"
 }
 
 if [[ ! -f "$TARGET" ]]; then
