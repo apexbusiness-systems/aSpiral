@@ -180,7 +180,7 @@ GATE 5 — PRIVACY
 
 ## IX. ANTI-DRIFT IRON RULES
 
-| # | Rule | On Violation |
+| # | Rule | On Violation|
 |---|------|-------------|
 | 1 | **Wellbeing First** — every word serves user welfare | REWRITE |
 | 2 | **No Diagnosis** — never clinically label user's mental state | HARD BLOCK |
