@@ -22,6 +22,21 @@ function getMindcoreRoot(): string {
   return resolve(join(thisDir, "../../../.claude/skills/aspiral-mindcore"));
 }
 
+function trimSurroundingNewlines(value: string): string {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && value[start] === "\n") {
+    start += 1;
+  }
+
+  while (end > start && value[end - 1] === "\n") {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+}
+
 function extractSystemPromptBlock(content: string): string {
   const startIndex = content.indexOf(START_MARKER);
   const endIndex = content.indexOf(END_MARKER);
@@ -30,9 +45,8 @@ function extractSystemPromptBlock(content: string): string {
     throw new Error("MindCore prompt markers missing or invalid");
   }
 
-  const block = content
-    .slice(startIndex + START_MARKER.length, endIndex)
-    .replace(/^\n+|\n+$/g, "") + "\n";
+  const rawBlock = content.slice(startIndex + START_MARKER.length, endIndex);
+  const block = `${trimSurroundingNewlines(rawBlock)}\n`;
 
   const promptSize = new TextEncoder().encode(block).byteLength;
   if (promptSize > MAX_PROMPT_SIZE_BYTES) {
