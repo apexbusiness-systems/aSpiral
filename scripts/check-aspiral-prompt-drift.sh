@@ -4,26 +4,50 @@ set -euo pipefail
 TARGET="supabase/functions/spiral-ai/index.ts"
 
 if command -v rg >/dev/null 2>&1; then
-  FIND_MATCHES() { rg -n "$1" "$2"; }
-  HAS_MATCH() { rg -n "$1" "$2" >/dev/null; }
+  SEARCH_TOOL="rg"
 else
-  FIND_MATCHES() { grep -En "$1" "$2"; }
-  HAS_MATCH() { grep -Eq "$1" "$2"; }
+  SEARCH_TOOL="grep"
 fi
+
+find_matches() {
+  local pattern="$1"
+  local file_path="$2"
+
+  if [[ "$SEARCH_TOOL" == "rg" ]]; then
+    rg -n "$pattern" "$file_path"
+  else
+    grep -En "$pattern" "$file_path"
+  fi
+
+  return 0
+}
+
+has_match() {
+  local pattern="$1"
+  local file_path="$2"
+
+  if [[ "$SEARCH_TOOL" == "rg" ]]; then
+    rg -n "$pattern" "$file_path" >/dev/null
+  else
+    grep -Eq "$pattern" "$file_path"
+  fi
+
+  return 0
+}
 
 if [[ ! -f "$TARGET" ]]; then
   echo "❌ Missing $TARGET"
   exit 1
 fi
 
-if ! HAS_MATCH "loadAspiralMindcore|const systemPrompt = mindcore\.systemPrompt" "$TARGET"; then
+if ! has_match "loadAspiralMindcore|const systemPrompt = mindcore\.systemPrompt" "$TARGET"; then
   echo "❌ MindCore loader injection not found in $TARGET"
   exit 1
 fi
 
-if HAS_MATCH "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"; then
+if has_match "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"; then
   echo "❌ Legacy directive tokens found in active prompt assembly path"
-  FIND_MATCHES "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"
+  find_matches "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"
   exit 1
 fi
 
