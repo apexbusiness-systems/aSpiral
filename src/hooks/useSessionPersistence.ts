@@ -216,12 +216,11 @@ export function useSessionPersistence() {
   }, [user, currentSession, saveSession]);
 
   // Save on session changes (debounced) - deps intentionally track only data length changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user && currentSession) {
       debouncedSave();
     }
-  }, [currentSession?.entities.length, currentSession?.connections.length, messages.length, debouncedSave]);
+  }, [user, currentSession, debouncedSave]);
 
   // Save on page unload
   useEffect(() => {

@@ -62,19 +62,20 @@ const ApiKeys = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadApiKeys is defined after this effect
   useEffect(() => {
     if (user) {
       loadApiKeys();
     }
-  }, [user]);
+  }, [user, loadApiKeys]);
 
-  const loadApiKeys = async () => {
+  const loadApiKeys = React.useCallback(async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('api_keys')
         .select('id, name, last_used_at, created_at, expires_at')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -89,7 +90,7 @@ const ApiKeys = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, toast]);
 
   const generateApiKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

@@ -44,7 +44,7 @@ function Particle({
 }
 
 export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectProps) {
-  const { scene } = useThree();
+  // const { scene } = useThree(); // scene is unused
   const sceneRef = useRef<THREE.Group>(null);
   const [particles, setParticles] = useState<
     Array<{ id: number; pos: THREE.Vector3; vel: THREE.Vector3; color: string; size: number }>
@@ -111,8 +111,9 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
 
     return () => {
       // Strict cleanup on unmount
-      if (sceneRef.current) {
-        sceneRef.current.clear();
+      const scene = sceneRef.current;
+      if (scene) {
+        scene.clear();
       }
     };
   }, [isActive, onComplete]);

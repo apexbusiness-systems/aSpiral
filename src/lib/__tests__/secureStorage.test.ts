@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getDeviceFingerprint, getEncryptionSecret } from '../secureStorage';
 
@@ -38,10 +39,25 @@ describe('SecureStorage', () => {
   });
 
   it('should generate a persistent device fingerprint', () => {
+    // Ensure we are simulating a browser environment
+    
+    // Mock crypto.randomUUID
+    Object.defineProperty(globalThis, 'crypto', {
+      value: {
+        randomUUID: vi.fn().mockReturnValue('test-uuid-1'),
+        subtle: {
+          digest: vi.fn().mockResolvedValue(new ArrayBuffer(32))
+        }
+      },
+      writable: true
+    });
+
     const f1 = getDeviceFingerprint();
+    // Subsequent call should return same fingerprint from localStorage
     const f2 = getDeviceFingerprint();
 
-    expect(f1).toBe(f2);
+    expect(f1).toBe('test-uuid-1');
+    expect(f2).toBe('test-uuid-1');
     expect(localStorage.getItem('aspiral_device_fingerprint')).toBe(f1);
   });
 
@@ -68,8 +84,31 @@ describe('SecureStorage', () => {
     const { supabase } = await import('@/integrations/supabase/client');
     (supabase.auth.getSession as any).mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } });
 
+    // Force a specific UUID for first call
+    const cryptoMock = {
+      randomUUID: vi.fn()
+        .mockReturnValueOnce('device-1')
+        .mockReturnValueOnce('device-2'),
+      subtle: {
+        digest: vi.fn().mockImplementation(async (algo, data) => {
+          // Simple mock digest to ensure different inputs produce different outputs
+          const arr = Array.from(data as Uint8Array);
+          return new Uint8Array(arr).buffer;
+        })
+      }
+    };
+
+    Object.defineProperty(globalThis, 'crypto', {
+      value: cryptoMock,
+      writable: true
+    });
+
+    // Clear ANY existing fingerprint
+    localStorage.removeItem('aspiral_device_fingerprint');
+    
     const s1 = await getEncryptionSecret();
 
+    // Clear fingerprint to force generation of a NEW device ID
     localStorage.removeItem('aspiral_device_fingerprint');
     const s2 = await getEncryptionSecret();
 

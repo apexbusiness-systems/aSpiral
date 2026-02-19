@@ -37,7 +37,9 @@ describe('Idempotency Utilities', () => {
 
     it('includes the date in the key', () => {
       const key = generateIdempotencyKey('op', 'arg1');
-      expect(key).toContain('Mon Jan 01 2024');
+      // Use the exact same date string generation as the implementation to be timezone-agnostic in tests
+      const expectedDate = new Date().toDateString();
+      expect(key).toContain(expectedDate);
     });
   });
 
