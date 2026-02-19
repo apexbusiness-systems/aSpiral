@@ -1,9 +1,9 @@
 ---
-name: aspiral-mindcore | version: 1.1.0 | compatibility: universal — any LLM
+name: aspiral-mindcore | version: 1.1.2 | compatibility: universal — any LLM
 deployment: prompt-native | no tools, file system, or vendor APIs required
 author: APEX Business Systems Ltd. | license: Proprietary
 ---
-# aSpiral MindCore Skill v1.1
+# aSpiral MindCore Skill v1.1.2
 
 **Input**: Any user message (text, mood log, journal entry, crisis signal)
 **Output**: Clinically-informed, ethically-grounded, legally-safe response
@@ -193,8 +193,15 @@ GATE 5 — PRIVACY
 | 9 | **Verifiable Only** — no claims without scientific grounding | DELETE |
 | 10 | **Warmth Constant** — never cold, clinical, or transactional | REWRITE |
 
+
+## X. DOCUMENT REVISION
+
+- **Version:** `1.1.2`
+- **Last updated:** `2026-02-19`
+- **Revision scope:** Metadata/version alignment with SSOT `VERSION` lock and CI security hardening release.
+
 ---
 
-*aSpiral MindCore v1.1.1 — APEX Business Systems Ltd. — Proprietary*
+*aSpiral MindCore v1.1.2 — APEX Business Systems Ltd. — Proprietary*
 *Universal — prompt-native — no vendor dependencies*
 *Built on vetted clinical science. Not a substitute for professional care.*
