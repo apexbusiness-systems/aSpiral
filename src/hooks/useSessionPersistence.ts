@@ -118,6 +118,9 @@ export function useSessionPersistence() {
         if (entityError) throw entityError;
       }
 
+      // Parallelize dependent records (connections, friction points, messages)
+      const upsertTasks = [];
+
       // Save connections
       if (currentSession.connections.length > 0) {
         const connectionRecords = currentSession.connections.map(c => ({
@@ -129,11 +132,7 @@ export function useSessionPersistence() {
           strength: c.strength || 0.5,
         }));
 
-        const { error: connectionError } = await db
-          .from('connections')
-          .upsert(connectionRecords, { onConflict: 'id' });
-
-        if (connectionError) throw connectionError;
+        upsertTasks.push(db.from('connections').upsert(connectionRecords, { onConflict: 'id' }));
       }
 
       // Save friction points
@@ -147,11 +146,7 @@ export function useSessionPersistence() {
           discovered: f.discovered || false,
         }));
 
-        const { error: frictionError } = await db
-          .from('friction_points')
-          .upsert(frictionRecords, { onConflict: 'id' });
-
-        if (frictionError) throw frictionError;
+        upsertTasks.push(db.from('friction_points').upsert(frictionRecords, { onConflict: 'id' }));
       }
 
       // Save messages
@@ -165,11 +160,13 @@ export function useSessionPersistence() {
           created_at: m.timestamp,
         }));
 
-        const { error: messageError } = await db
-          .from('messages')
-          .upsert(messageRecords, { onConflict: 'id' });
+        upsertTasks.push(db.from('messages').upsert(messageRecords, { onConflict: 'id' }));
+      }
 
-        if (messageError) throw messageError;
+      if (upsertTasks.length > 0) {
+        const results = await Promise.all(upsertTasks);
+        const errorResult = results.find(r => r.error);
+        if (errorResult?.error) throw errorResult.error;
       }
 
       lastSavedDataRef.current = currentHash;
