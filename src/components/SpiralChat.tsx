@@ -83,9 +83,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   // Session persistence
   const {
     save: saveSession,
-    saveBreakthrough,
     isSaving,
-    lastSaved
   } = useSessionPersistence();
 
   // Analytics tracking
@@ -100,12 +98,6 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     currentSession,
     messages,
     addMessage,
-    addEntity,
-    addConnection,
-    showFriction,
-    applyGrease,
-    triggerBreakthrough,
-    activeFriction,
   } = useSessionStore();
 
   const {
@@ -195,7 +187,6 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   // Text-to-Speech for AI responses
   const {
     speak: speakText,
-    stop: stopSpeaking,
     isSpeaking: isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
