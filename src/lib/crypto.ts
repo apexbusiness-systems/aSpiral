@@ -113,3 +113,28 @@ export async function decrypt(encoded: string, secret: string): Promise<string> 
     throw new Error("Decryption failed");
   }
 }
+
+/**
+ * Generates a cryptographically secure random string of specified length.
+ * Uses rejection sampling to eliminate modulo bias.
+ */
+export function generateSecureToken(length: number = 40): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charCount = chars.length;
+  const maxValidByte = 256 - (256 % charCount); // 256 - 8 = 248
+  let result = '';
+  const batchSize = length * 2; // Fetch more bytes than needed to reduce calls
+  const randomBytes = new Uint8Array(batchSize);
+
+  while (result.length < length) {
+    crypto.getRandomValues(randomBytes);
+    for (let i = 0; i < randomBytes.length && result.length < length; i++) {
+      // Rejection sampling: discard values that would cause modulo bias
+      if (randomBytes[i] < maxValidByte) {
+        result += chars.charAt(randomBytes[i] % charCount);
+      }
+    }
+  }
+
+  return result;
+}
