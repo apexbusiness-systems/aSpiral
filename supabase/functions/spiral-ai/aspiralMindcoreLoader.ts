@@ -45,7 +45,8 @@ function extractSystemPromptBlock(content: string): string {
     throw new Error("MindCore prompt markers missing or invalid");
   }
 
-  const rawBlock = content.slice(startIndex + START_MARKER.length, endIndex);
+  // Normalize CRLF→LF for cross-platform SHA256 consistency (Windows git checkout converts LF→CRLF)
+  const rawBlock = content.slice(startIndex + START_MARKER.length, endIndex).replaceAll("\r", "");
   const block = `${trimSurroundingNewlines(rawBlock)}\n`;
 
   const promptSize = new TextEncoder().encode(block).byteLength;
