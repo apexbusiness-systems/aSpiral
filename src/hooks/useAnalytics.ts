@@ -75,12 +75,16 @@ export function useAnalytics() {
   useEffect(() => {
     return () => {
       if (currentSession && sessionTracked.current === currentSession.id) {
+        // Get latest messages from store to count questions
+        const messages = useSessionStore.getState().messages;
+        const userQuestions = messages.filter(m => m.role === 'user').length;
+
         analytics.trackSessionEnd({
           sessionId: currentSession.id,
           duration: getSessionDuration(),
           entityCount: currentSession.entities.length,
           connectionCount: currentSession.connections.length,
-          questionCount: 0, // Would need to track this
+          questionCount: userQuestions,
           hadBreakthrough: currentSession.status === 'breakthrough',
           status: currentSession.status,
         });
