@@ -111,7 +111,6 @@ export function usePushNotifications() {
     reminderTime: Date
   ) => {
     if (permission !== 'granted') {
-      console.log('Cannot schedule reminder - notifications not enabled');
       return false;
     }
     scheduleSessionReminder(sessionId, sessionTitle, reminderTime);

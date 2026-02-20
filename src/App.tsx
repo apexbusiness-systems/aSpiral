@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -17,6 +16,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import PremiumSplash from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { unlockAudioFromGesture } from "@/lib/audioSession";
+import { createLogger } from "@/lib/logger";
 
 // Eagerly loaded pages (critical path)
 import Landing from "./pages/Landing";
@@ -38,6 +38,8 @@ const AnswerQuestions = lazy(() => import("./pages/steps/AnswerQuestions"));
 const GetBreakthrough = lazy(() => import("./pages/steps/GetBreakthrough"));
 
 const queryClient = new QueryClient();
+const logger = createLogger('PWA');
+const audioLogger = createLogger('Audio');
 
 // Module-level flag to prevent race conditions across multiple event types
 // (touchstart + pointerdown both fire on mobile taps)
@@ -51,7 +53,7 @@ function PWAUpdateHandler() {
     if (!('serviceWorker' in navigator)) return;
 
     const handleControllerChange = () => {
-      console.log("[PWA] Controller changed - App updated");
+      logger.debug("Controller changed - App updated");
       toast.success("App updated to latest version", { duration: 3000 });
     };
 
@@ -112,9 +114,7 @@ const App = () => {
       // Users shouldn't see audio errors when just browsing; errors only matter when
       // they explicitly try to use voice features
       await unlockAudioFromGesture();
-      if (import.meta.env.DEV) {
-        console.info("[Audio] User gesture unlock attempted");
-      }
+      audioLogger.debug("User gesture unlock attempted");
       cleanup();
     };
 
