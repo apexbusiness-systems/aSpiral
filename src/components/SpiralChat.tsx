@@ -1,7 +1,7 @@
  
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, Maximize2, Minimize2, Sparkles, Cog, Droplets, Zap, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Send, Maximize2, Minimize2, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useSessionPersistence } from "@/hooks/useSessionPersistence";
 import { useAuth } from "@/contexts/AuthContext";
 import { useKeyboardShortcuts, ASPIRAL_SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
-import type { EntityType, Entity } from "@/lib/types";
+import type { Entity } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { OmniLinkAdapter } from "@/integrations/omnilink";
@@ -304,69 +304,6 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       setIsSettingsOpen(true);
     },
   }), [handleMicToggle, trackFeature]);
-
-  const addTestEntities = () => {
-    const testEntities: Array<{ type: EntityType; label: string }> = [
-      { type: "problem", label: "Should I take the job offer?" },
-      { type: "emotion", label: "Anxiety about change" },
-      { type: "emotion", label: "Excitement for growth" },
-      { type: "value", label: "Financial security" },
-      { type: "value", label: "Work-life balance" },
-      { type: "problem", label: "Moving to new city" },
-      { type: "action", label: "Research the company" },
-      { type: "friction", label: "Fear of leaving comfort zone" },
-      { type: "grease", label: "Partner is supportive" },
-    ];
-
-    const createdEntities: string[] = [];
-
-    testEntities.forEach((e) => {
-      const entity = addEntity({ type: e.type, label: e.label });
-      createdEntities.push(entity.id);
-    });
-
-    setTimeout(() => {
-      if (createdEntities.length >= 4) {
-        addConnection({ fromEntityId: createdEntities[0], toEntityId: createdEntities[1], type: "causes", strength: 0.8 });
-        addConnection({ fromEntityId: createdEntities[0], toEntityId: createdEntities[2], type: "causes", strength: 0.6 });
-        addConnection({ fromEntityId: createdEntities[3], toEntityId: createdEntities[0], type: "enables", strength: 0.7 });
-        addConnection({ fromEntityId: createdEntities[7], toEntityId: createdEntities[0], type: "blocks", strength: 0.9 });
-        addConnection({ fromEntityId: createdEntities[8], toEntityId: createdEntities[7], type: "resolves", strength: 0.85 });
-      }
-    }, 100);
-  };
-
-  // Demo: Trigger friction visualization
-  const demoFriction = () => {
-    showFriction(
-      "Fear of losing control",
-      "Need to talk to her",
-      0.8,
-      ["entity1", "entity2"]
-    );
-    toast({
-      title: "Friction Detected",
-      description: "Two values are grinding against each other...",
-    });
-  };
-
-  // Demo: Apply grease (correct)
-  const demoGreaseCorrect = () => {
-    applyGrease(true);
-    toast({
-      title: "Grease Applied",
-      description: "The right solution is smoothing things out...",
-    });
-  };
-
-  // Demo: Trigger breakthrough
-  const demoBreakthrough = () => {
-    triggerBreakthrough();
-    toast({
-      title: "🎉 BREAKTHROUGH!",
-      description: "You've found your answer!",
-    });
-  };
 
   const handleNewSession = useCallback(() => {
     resetSession();
@@ -645,55 +582,6 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
               <EntityCounter count={entityCount} />
             )}
 
-            {/* Demo buttons - only in development */}
-            {import.meta.env.DEV && (
-              <>
-                {entityCount === 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={addTestEntities}
-                    className="glass-card rounded-xl text-xs hover:bg-glass-hover"
-                  >
-                    <Sparkles className="h-3 w-3 mr-1.5" />
-                    Add Entities
-                  </Button>
-                )}
-
-                {!activeFriction ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={demoFriction}
-                    className="glass-card rounded-xl text-xs text-warning hover:text-warning"
-                  >
-                    <Cog className="h-3 w-3 mr-1.5" />
-                    Friction
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={demoGreaseCorrect}
-                      className="glass-card rounded-xl text-xs text-accent hover:text-accent"
-                    >
-                      <Droplets className="h-3 w-3 mr-1.5" />
-                      Grease
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={demoBreakthrough}
-                      className="glass-card rounded-xl text-xs text-secondary hover:text-secondary"
-                    >
-                      <Zap className="h-3 w-3 mr-1.5" />
-                      Breakthrough
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
           </div>
         </div>
 
