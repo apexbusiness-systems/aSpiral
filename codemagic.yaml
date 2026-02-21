@@ -20,10 +20,13 @@ workflows:
     # ║                                Default: false (safe — fetch only)    ║
     # ║    APP_STORE_APPLE_ID          Numeric Apple ID for the app record   ║
     # ║                                                                      ║
-    # ║  ⚠  ONE-TIME MANUAL STEP IN APP STORE CONNECT:                      ║
-    # ║     TestFlight → Internal Groups → "aSpiral Internal"                ║
-    # ║     Set distribution type to MANUAL (not Automatic).                 ║
-    # ║     Automatic distribution can silently block group assignments.     ║
+    # ║  ⚠  ONE-TIME MANUAL STEPS IN APP STORE CONNECT:                     ║
+    # ║     Internal: TestFlight → Internal Groups → "aSpiral Internal"      ║
+    # ║       Set distribution type to MANUAL (not Automatic).               ║
+    # ║       Automatic distribution can silently block group assignments.   ║
+    # ║     External: TestFlight → External Testing → create group           ║
+    # ║       "aSpiral External" before first build. First build per new     ║
+    # ║       marketing version requires Beta App Review (~1 day).           ║
     # ╚══════════════════════════════════════════════════════════════════════╝
     name: aSpiral iOS → TestFlight (Green Lane)
     instance_type: mac_mini_m2
@@ -343,10 +346,10 @@ workflows:
           keychain add-certificates
           echo "✅ Signing assets ready"
 
-      - name: Configure code signing (Internal Testing Only)
+      - name: Configure code signing
         script: |
           set -euo pipefail
-          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
+          xcode-project use-profiles
           echo "✅ Profiles applied"
 
       - name: Build IPA
@@ -398,3 +401,7 @@ workflows:
         submit_to_testflight: true
         beta_groups:
           - "aSpiral Internal"
+          # External testers — requires Beta App Review (Apple reviews first build per new version)
+          # ⚠  MANUAL STEP: Create this group in App Store Connect → TestFlight → External Testing
+          #    before triggering a build, or Codemagic will error on group not found.
+          - "aSpiral External"
