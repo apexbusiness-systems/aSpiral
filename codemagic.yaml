@@ -542,3 +542,18 @@ workflows:
     artifacts:
       - build/sim/artifacts/aSpiral-simulator.zip
       - /tmp/xcodebuild_sim.log
+
+    publishing:
+      # Notify external testers when a simulator build is ready.
+      # They download aSpiral-simulator.zip from the artifact link in the email,
+      # then: unzip → xcrun simctl install booted App.app (or drag onto Simulator)
+      #
+      # ⚠  Add SIMULATOR_TESTER_EMAILS to Codemagic env vars (group or workflow-level):
+      #    comma-separated list, e.g. "alice@example.com,bob@example.com"
+      #    Or hardcode addresses in the recipients list below.
+      email:
+        recipients:
+          - $SIMULATOR_TESTER_EMAILS
+        notify:
+          success: true   # send artifact link on successful build
+          failure: false  # don't spam testers with CI failures
