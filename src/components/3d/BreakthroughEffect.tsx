@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 interface BreakthroughEffectProps {
@@ -44,7 +44,6 @@ function Particle({
 }
 
 export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectProps) {
-  const { scene } = useThree();
   const sceneRef = useRef<THREE.Group>(null);
   const [particles, setParticles] = useState<
     Array<{ id: number; pos: THREE.Vector3; vel: THREE.Vector3; color: string; size: number }>

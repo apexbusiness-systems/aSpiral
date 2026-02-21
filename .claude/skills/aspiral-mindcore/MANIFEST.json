@@ -1,0 +1,108 @@
+{
+  "name": "aspiral-mindcore",
+  "version": "1.1.2",
+  "description": "Clinical-intelligence layer for the aSpiral AI agent. Grounded in evidence-based behavioural science with ironclad ethical and legal safeguards.",
+  "author": "APEX Business Systems Ltd.",
+  "license": "Proprietary",
+  "archetype": "hybrid",
+  "sub_archetypes": [
+    "domain",
+    "guardian"
+  ],
+  "compatibility": {
+    "deployment_mode": "prompt-native",
+    "requires_tools": false,
+    "requires_file_system": false,
+    "requires_vendor_api": false,
+    "llm_agnostic": true,
+    "tested_with": [
+      "Claude (any version with system prompt support)",
+      "OpenAI GPT-4 / GPT-4o / GPT-4 Turbo",
+      "Google Gemini Pro / Ultra",
+      "Meta Llama 3 (any size, any host)",
+      "Mistral / Mixtral (any size)",
+      "Cohere Command R / R+",
+      "Any model accepting a system prompt or instruction context"
+    ],
+    "integration_file": "UNIVERSAL_PROMPT.md"
+  },
+  "activation": {
+    "method": "system_prompt_injection",
+    "primary_file": "UNIVERSAL_PROMPT.md",
+    "fallback_file": "SKILL.md",
+    "always_active": true,
+    "triggers": [
+      "session start",
+      "mood log received",
+      "journal entry",
+      "distress signal",
+      "emotional support request",
+      "mental health question",
+      "crisis signal",
+      "self-harm mention",
+      "anxiety expression",
+      "depression expression",
+      "relationship difficulty",
+      "stress or overwhelm",
+      "motivation or purpose question",
+      "behavioral change goal",
+      "sleep or energy concern",
+      "grief or loss",
+      "anger or frustration",
+      "self-worth or identity question"
+    ]
+  },
+  "legal": {
+    "scope": "peer_support_and_psychoeducation_only",
+    "not_a_substitute_for": "licensed_clinical_care",
+    "crisis_resources_required": true,
+    "diagnosis_prohibited": true,
+    "prescription_prohibited": true,
+    "jurisdiction_aware": true,
+    "disclosure_required_at": [
+      "session_start",
+      "diagnosis_request",
+      "medication_request",
+      "active_crisis"
+    ]
+  },
+  "recommended_inference_settings": {
+    "temperature": "0.5\u20130.7",
+    "max_tokens_per_response": "512\u20131024",
+    "top_p": "0.9",
+    "presence_penalty": "0.1",
+    "stop_sequences": []
+  },
+  "scientific_references": [
+    "Baglioni, C., et al. (2011). Insomnia as a predictor of depression. Journal of Affective Disorders, 135(1-3), 10-19.",
+    "Beck, A.T. (1979). Cognitive Therapy of Depression. Guilford Press.",
+    "Burns, D.D. (1980). Feeling Good: The New Mood Therapy. Morrow.",
+    "Butler, A.C., et al. (2006). The empirical status of CBT. Clinical Psychology Review, 26(1), 17-31.",
+    "Hayes, S.C., Strosahl, K.D., & Wilson, K.G. (2004). Acceptance and Commitment Therapy. Guilford Press.",
+    "Holt-Lunstad, J., et al. (2015). Loneliness and social isolation as risk factors. Perspectives on Psychological Science, 10(2), 227-237.",
+    "Linehan, M.M. (1993). Cognitive-Behavioral Treatment of Borderline Personality Disorder. Guilford Press.",
+    "Linehan, M.M. (1997). Validation and psychotherapy. In A. Bohart & L. Greenberg (Eds.), Empathy Reconsidered. APA.",
+    "Mathias, C.W., et al. (2012). What's the harm in asking about suicidal ideation? Psychological Medicine, 42(7), 1469-1473.",
+    "McEwen, B.S. (2007). Physiology and neurobiology of stress and adaptation. Physiological Reviews, 87(3), 873-904.",
+    "Miller, W.R., & Rollnick, S. (2012). Motivational Interviewing (3rd ed.). Guilford Press.",
+    "Porges, S.W. (2011). The Polyvagal Theory. Norton.",
+    "SAMHSA (2014). Trauma-informed approach guidance. HHS Publication No. (SMA) 14-4884.",
+    "Schuch, F.B., et al. (2016). Exercise as a treatment for depression. Journal of Psychiatric Research, 77, 42-51.",
+    "van der Kolk, B.A. (2014). The Body Keeps the Score. Viking.",
+    "Walker, M. (2017). Why We Sleep. Scribner.",
+    "Zaccaro, A., et al. (2018). How breath-control can change your life. Frontiers in Human Neuroscience, 12, 353."
+  ],
+  "audit": {
+    "score": 9.9,
+    "last_audited": "2026-02-19",
+    "status": "production",
+    "tests_passed": "32/32",
+    "test_file": "scripts/tests.py",
+    "notes": "Documentation/version alignment completed for SSOT package release 1.1.2."
+  },
+  "release": {
+    "released_at": "2026-02-19",
+    "effective_version": "1.1.2",
+    "change_summary": "Aligned package metadata/docs with VERSION file and CI remediation rollout."
+  }
+}
