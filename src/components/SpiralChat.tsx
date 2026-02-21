@@ -1,5 +1,5 @@
  
-import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from "react";
+import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, Maximize2, Minimize2, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,12 +11,13 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { MicButton } from "@/components/MicButton";
 import { LiveTranscript } from "@/components/LiveTranscript";
 import { QuestionBubble } from "@/components/QuestionBubble";
-import { SpiralStage } from "@/components/SpiralStage";
+// Lazy load heavy 3D components
+const SpiralStage = lazy(() => import("@/components/SpiralStage").then(module => ({ default: module.SpiralStage })));
+const CinematicPlayer = lazy(() => import("@/components/cinematics/CinematicPlayer").then(module => ({ default: module.CinematicPlayer })));
 import { BreakthroughCard } from "@/components/BreakthroughCard";
 import { UltraFastToggle } from "@/components/UltraFastToggle";
 import { LoadingState } from "@/components/LoadingState";
 import { FloatingMenuButton, MainMenu, QuickActionsBar, SettingsPanel, KeyboardShortcutsModal } from "@/components/menu";
-import { CinematicPlayer } from "@/components/cinematics/CinematicPlayer";
 import { FilmGrainCSS } from "@/components/effects/FilmGrainOverlay";
 import { EntityCardList } from "@/components/EntityCard";
 import { EntityCounter } from "@/components/EntityCounter";
@@ -486,15 +487,17 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
         {/* Cinematic Player - plays before breakthrough card shows */}
         {showCinematic && !cinematicComplete && (
-          <CinematicPlayer
-            variant={undefined} // Random variant selection
-            onComplete={handleCinematicComplete}
-            onSkip={handleCinematicComplete}
-            allowSkip={true}
-            autoPlay={true}
-            enableAnalytics={true}
-            className="z-[200]"
-          />
+          <Suspense fallback={null}>
+            <CinematicPlayer
+              variant={undefined} // Random variant selection
+              onComplete={handleCinematicComplete}
+              onSkip={handleCinematicComplete}
+              allowSkip={true}
+              autoPlay={true}
+              enableAnalytics={true}
+              className="z-[200]"
+            />
+          </Suspense>
         )}
 
         {/* Breakthrough Overlay Card */}
@@ -516,7 +519,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             : "h-48 lg:h-full lg:w-1/3"
             }`}
         >
-          <SpiralStage />
+          <Suspense fallback={<div className="absolute inset-0 bg-background/50 backdrop-blur-sm transition-colors duration-500" />}>
+            <SpiralStage />
+          </Suspense>
 
           {/* Question Bubble - positioned in 3D area */}
           <QuestionBubble
