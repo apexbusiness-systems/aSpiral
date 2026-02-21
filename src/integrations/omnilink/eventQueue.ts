@@ -23,16 +23,18 @@ interface QueuedEvent {
 export class EventQueue {
   private queue: QueuedEvent[] = [];
   private processing = false;
-  private initialized: Promise<void>;
-  private secretOverride?: string;
+  private initialized: Promise<void> = Promise.resolve();
 
-  constructor(secretOverride?: string) {
-    this.secretOverride = secretOverride;
+  constructor() {
+    // Explicit initialization via initialize()
+  }
+
+  initialize(): Promise<void> {
     this.initialized = this.loadFromStorage();
+    return this.initialized;
   }
 
   private async getSecret(): Promise<string> {
-    if (this.secretOverride) return this.secretOverride;
     return getEncryptionSecret();
   }
 
