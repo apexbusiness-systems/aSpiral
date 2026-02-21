@@ -428,6 +428,8 @@ workflows:
       xcode: 16.4
       cocoapods: default
       node: 22
+      groups:
+        - ios_credentials
       vars:
         NODE_OPTIONS: "--max_old_space_size=8192"
         INFO_PLIST_PATH: "ios/App/App/Info.plist"
