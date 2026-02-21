@@ -186,7 +186,7 @@ workflows:
 
           echo "✅ @capacitor/assets generation complete"
 
-      - name: Verify AppIcon assets (≥10 PNGs, no alpha)
+      - name: Verify AppIcon assets (PNG present, no alpha)
         script: |
           set -euo pipefail
 
@@ -200,8 +200,10 @@ workflows:
           PNG_COUNT="$(find "${APPICONSET}" -name '*.png' | wc -l | tr -d ' ')"
           echo "ℹ️  AppIcon PNG count: ${PNG_COUNT}"
 
-          if [ "${PNG_COUNT}" -lt 10 ]; then
-            echo "❌ AppIcon.appiconset has only ${PNG_COUNT} PNGs — expected ≥ 10."
+          # Xcode 14+ supports a single 1024×1024 universal icon — @capacitor/assets
+          # generates exactly one PNG (AppIcon-512@2x.png). Accept ≥1.
+          if [ "${PNG_COUNT}" -lt 1 ]; then
+            echo "❌ AppIcon.appiconset contains no PNGs."
             echo "Contents of ${APPICONSET}:"
             ls -la "${APPICONSET}"
             exit 1
@@ -224,7 +226,7 @@ workflows:
             exit 1
           fi
 
-          echo "✅ AppIcon verified: ${PNG_COUNT} PNGs, no alpha channels"
+          echo "✅ AppIcon verified: ${PNG_COUNT} PNG(s), no alpha channels"
 
       - name: CocoaPods (ONLY if Podfile exists)
         script: |
