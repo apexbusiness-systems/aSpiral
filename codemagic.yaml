@@ -405,3 +405,140 @@ workflows:
           # ⚠  MANUAL STEP: Create this group in App Store Connect → TestFlight → External Testing
           #    before triggering a build, or Codemagic will error on group not found.
           - "aSpiral External"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# aSpiral iOS → Simulator Build
+# Purpose: Produces a zipped .app bundle runnable in any iOS Simulator.
+#          No signing required — simulators don't check signatures.
+#
+# HOW TO USE ARTIFACTS:
+#   1. Download aSpiral-simulator.zip from Codemagic build artifacts
+#   2. Unzip → App.app
+#   3. xcrun simctl install booted App.app   (while a simulator is running)
+#      OR drag App.app onto the Simulator window in Xcode
+#
+# TRIGGER: push/tag or run manually in Codemagic dashboard.
+# ══════════════════════════════════════════════════════════════════════════════
+  aspiral_ios_simulator:
+    name: aSpiral iOS → Simulator Build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      xcode: 16.4
+      cocoapods: default
+      node: 22
+      vars:
+        NODE_OPTIONS: "--max_old_space_size=8192"
+        INFO_PLIST_PATH: "ios/App/App/Info.plist"
+        XCODE_SCHEME: "App"
+        XCODE_WORKSPACE_PRIMARY: "ios/App/App.xcworkspace"
+        XCODE_WORKSPACE_FALLBACK: "ios/App/App.xcodeproj/project.xcworkspace"
+        ICON_SOURCE: "src/assets/app_icon.png"
+        ICON_BACKGROUND_COLOR: "#020617"
+        # Target the latest available iPhone simulator
+        SIM_DESTINATION: "platform=iOS Simulator,name=iPhone 16,OS=latest"
+
+    scripts:
+      - name: Pin npm
+        script: |
+          set -euo pipefail
+          npm install -g npm@10
+
+      - name: Install JS deps
+        script: |
+          set -euo pipefail
+          export NODE_OPTIONS="--max_old_space_size=8192"
+          npm ci
+
+      - name: Build web assets
+        script: |
+          set -euo pipefail
+          export NODE_OPTIONS="--max_old_space_size=8192"
+          npm run build
+
+      - name: Capacitor sync iOS
+        script: |
+          set -euo pipefail
+          npx cap sync ios
+
+      - name: Generate app icon (flatten alpha → solid background)
+        script: |
+          set -euo pipefail
+          if command -v magick &>/dev/null; then IM="magick"; else IM="convert"; fi
+          mkdir -p assets
+          "${IM}" "${ICON_SOURCE}" \
+            -background "${ICON_BACKGROUND_COLOR}" \
+            -flatten -alpha off \
+            assets/icon.png
+          echo "✅ assets/icon.png ready"
+
+      - name: Generate multi-size AppIcon via @capacitor/assets
+        script: |
+          set -euo pipefail
+          test -f assets/icon.png || (echo "❌ assets/icon.png missing" && exit 1)
+          npx @capacitor/assets generate \
+            --ios \
+            --assetPath assets \
+            --iconBackgroundColor "${ICON_BACKGROUND_COLOR}" \
+            --splashBackgroundColor "${ICON_BACKGROUND_COLOR}"
+
+      - name: CocoaPods (ONLY if Podfile exists)
+        script: |
+          set -euo pipefail
+          if [ -f "ios/App/Podfile" ]; then
+            cd ios/App && pod install && cd ../..
+            echo "✅ CocoaPods installed"
+          else
+            echo "ℹ️ No Podfile — skipping pod install"
+          fi
+
+      - name: Resolve iOS workspace
+        script: |
+          set -euo pipefail
+          if [ -d "${XCODE_WORKSPACE_PRIMARY}" ]; then
+            echo "XCODE_WORKSPACE=${XCODE_WORKSPACE_PRIMARY}" >> "$CM_ENV"
+          elif [ -d "${XCODE_WORKSPACE_FALLBACK}" ]; then
+            echo "XCODE_WORKSPACE=${XCODE_WORKSPACE_FALLBACK}" >> "$CM_ENV"
+          else
+            echo "❌ No Xcode workspace found"; exit 1
+          fi
+
+      - name: Build for iOS Simulator (no signing)
+        script: |
+          set -euo pipefail
+          : "${XCODE_WORKSPACE:?XCODE_WORKSPACE not set}"
+
+          xcodebuild \
+            -workspace "${XCODE_WORKSPACE}" \
+            -scheme "${XCODE_SCHEME}" \
+            -configuration Debug \
+            -destination "${SIM_DESTINATION}" \
+            -derivedDataPath build/sim \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build 2>&1 | tee /tmp/xcodebuild_sim.log | xcpretty || {
+              echo "xcpretty not installed — raw log saved to /tmp/xcodebuild_sim.log"
+            }
+
+          # Locate the built .app
+          APP_PATH="$(find build/sim -name '*.app' -not -path '*/PlugIns/*' | head -n 1)"
+          if [ -z "${APP_PATH}" ]; then
+            echo "❌ .app not found in build/sim"
+            find build/sim -name '*.app' || true
+            exit 1
+          fi
+
+          echo "✅ Built: ${APP_PATH}"
+          echo "APP_PATH=${APP_PATH}" >> "$CM_ENV"
+
+          # Zip for artifact download
+          mkdir -p build/sim/artifacts
+          zip -r build/sim/artifacts/aSpiral-simulator.zip "${APP_PATH}"
+          echo "✅ Zipped → build/sim/artifacts/aSpiral-simulator.zip"
+
+    artifacts:
+      - build/sim/artifacts/aSpiral-simulator.zip
+      - /tmp/xcodebuild_sim.log
