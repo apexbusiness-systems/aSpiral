@@ -32,6 +32,7 @@ const Workspaces = lazy(() => import("./pages/Workspaces"));
 const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const NotificationTest = lazy(() => import("./pages/NotificationTest"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const VoiceYourChaos = lazy(() => import("./pages/steps/VoiceYourChaos"));
 const WatchItVisualize = lazy(() => import("./pages/steps/WatchItVisualize"));
 const AnswerQuestions = lazy(() => import("./pages/steps/AnswerQuestions"));
@@ -151,6 +152,7 @@ const App = () => {
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/story" element={<Story />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/steps/voice" element={<VoiceYourChaos />} />
                 <Route path="/steps/visualize" element={<WatchItVisualize />} />
                 <Route path="/steps/questions" element={<AnswerQuestions />} />

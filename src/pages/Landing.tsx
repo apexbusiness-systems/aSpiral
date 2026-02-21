@@ -661,12 +661,17 @@ const Landing = () => {
           </div>
           <div className="text-muted-foreground/60 text-sm text-center md:text-right space-y-1">
             <p>Built during a breakdown • Edmonton, AB</p>
-            <a 
-              href="mailto:info-outreach@aspiral.icu" 
+            <a
+              href="mailto:info-outreach@aspiral.icu"
               className="hover:text-foreground transition-colors inline-block"
             >
               info-outreach@aspiral.icu
             </a>
+            <div>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">
+                Privacy Policy
+              </Link>
+            </div>
           </div>
         </div>
       </footer>
