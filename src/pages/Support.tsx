@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
 import {
   ArrowLeft,
   Mail,
@@ -10,7 +9,6 @@ import {
   Mic,
   Shield,
   Smartphone,
-  Sparkles,
   ChevronRight,
   MessageSquare,
   BookOpen,
@@ -147,6 +145,34 @@ const faqCategories = [
   },
 ];
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function ContactCardCta({ card }: { card: (typeof contactCards)[number] }) {
+  const linkClass = `inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
+    card.accent ? "text-secondary hover:text-secondary/80" : "text-primary hover:text-primary/80"
+  }`;
+
+  if (!card.href) {
+    return <span className="text-sm text-muted-foreground/60">{card.cta}</span>;
+  }
+
+  if ("internal" in card && card.internal) {
+    return (
+      <Link to={card.href} className={linkClass}>
+        {card.cta}
+        <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+      </Link>
+    );
+  }
+
+  return (
+    <a href={card.href} className={linkClass}>
+      {card.cta}
+      <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+    </a>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const Support = () => {
@@ -242,29 +268,7 @@ const Support = () => {
                 </p>
 
                 {/* CTA */}
-                {card.href ? (
-                  card.internal ? (
-                    <Link
-                      to={card.href}
-                      className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors
-                        ${card.accent ? "text-secondary hover:text-secondary/80" : "text-primary hover:text-primary/80"}`}
-                    >
-                      {card.cta}
-                      <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-                  ) : (
-                    <a
-                      href={card.href}
-                      className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors
-                        ${card.accent ? "text-secondary hover:text-secondary/80" : "text-primary hover:text-primary/80"}`}
-                    >
-                      {card.cta}
-                      <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </a>
-                  )
-                ) : (
-                  <span className="text-sm text-muted-foreground/60">{card.cta}</span>
-                )}
+                <ContactCardCta card={card} />
               </motion.div>
             ))}
           </div>
@@ -328,10 +332,10 @@ const Support = () => {
                       transition={{ duration: 0.3 }}
                     >
                       <Accordion type="single" collapsible className="space-y-3">
-                        {cat.items.map((item, idx) => (
+                        {cat.items.map((item) => (
                           <AccordionItem
-                            key={idx}
-                            value={`item-${idx}`}
+                            key={item.q}
+                            value={item.q}
                             className="border border-border/25 rounded-xl bg-card/20 backdrop-blur-sm px-5 data-[state=open]:border-primary/30 data-[state=open]:bg-card/30 transition-all duration-200"
                           >
                             <AccordionTrigger className="text-left text-base font-medium py-5 hover:no-underline hover:text-primary transition-colors [&[data-state=open]]:text-primary">
