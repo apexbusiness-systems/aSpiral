@@ -550,12 +550,17 @@ workflows:
       # They download aSpiral-simulator.zip from the artifact link in the email,
       # then: unzip → xcrun simctl install booted App.app (or drag onto Simulator)
       #
-      # ⚠  Add SIMULATOR_TESTER_EMAILS to Codemagic env vars (group or workflow-level):
-      #    comma-separated list, e.g. "alice@example.com,bob@example.com"
-      #    Or hardcode addresses in the recipients list below.
+      # ⚠  Each recipient must be a separate env var in Codemagic (ios_credentials group).
+      #    A comma-separated list in a single var won't work — Codemagic treats each
+      #    list entry as one literal email address.
+      #    Add SIMULATOR_TESTER_EMAIL_1 … SIMULATOR_TESTER_EMAIL_5 to the ios_credentials group.
       email:
         recipients:
-          - $SIMULATOR_TESTER_EMAILS
+          - $SIMULATOR_TESTER_EMAIL_1
+          - $SIMULATOR_TESTER_EMAIL_2
+          - $SIMULATOR_TESTER_EMAIL_3
+          - $SIMULATOR_TESTER_EMAIL_4
+          - $SIMULATOR_TESTER_EMAIL_5
         notify:
           success: true   # send artifact link on successful build
           failure: false  # don't spam testers with CI failures
