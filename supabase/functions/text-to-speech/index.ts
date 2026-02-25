@@ -13,7 +13,7 @@ const corsHeaders = (origin: string) => ({
 // Available voices
 const VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse'] as const;
 const DEFAULT_VOICE = 'nova';
-const DEFAULT_MODEL = 'tts-1';
+const DEFAULT_MODEL = 'tts-1-hd';
 
 // Key Validation Schema
 const RequestSchema = z.object({

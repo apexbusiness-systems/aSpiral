@@ -177,6 +177,8 @@ interface UseVoiceInputOptions {
 
 // Global Set of known final transcripts to prevent cross-component duplication if multiple hooks mounted
 const globalFinalHistory = new Set<string>();
+// Module-level rolling timeout for globalFinalHistory.clear() — shared across hook instances (Bug 3/Gap C)
+let globalHistoryClearTimerId: ReturnType<typeof setTimeout> | null = null;
 
 function getActiveSpeechLocale(): string {
   const lng = i18n.resolvedLanguage ?? i18n.language ?? "en";
@@ -218,7 +220,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const restartRequestedRef = useRef(false);
   const restartCount60sRef = useRef(0);
   const lastRestartTimeRef = useRef(0);
-  const WATCHDOG_INTERVAL_MS = 90000; // 90s to catch 60-120s stalls
   const MAX_RESTARTS_60S = 3;
   const RESTART_BACKOFF_MS = 250;
 
@@ -228,6 +229,17 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // Ref for stopRecording to avoid circular dependency
   const stopRecordingRef = useRef<() => void>(() => { });
+
+  // Bug 2/Gap B: isPausedRef to avoid stale closure in onEnd callbacks
+  const isPausedRef = useRef(isPaused);
+  isPausedRef.current = isPaused;
+
+  // Bug 6: Stable ref for startRecording to avoid re-registration churn
+  const startRecordingRef = useRef<() => void>(() => { });
+
+  // Bug 5/Gap A: Ref for createRecognition to break circular useCallback dependency
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createRecognitionRef = useRef<any>(null);
 
   // Interim update throttling
   const lastInterimEmitRef = useRef<number>(0);
@@ -312,8 +324,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           // Ignore
         }
       }
-    }, WATCHDOG_INTERVAL_MS);
-  }, [clearWatchdog, stopRecordingRef]);
+    }, watchdogIntervalMs); // Bug 4: Use sanitized prop instead of hard-coded 90s
+  }, [clearWatchdog, stopRecordingRef, watchdogIntervalMs]); // Gap F: added watchdogIntervalMs
 
   // Silence timeout functions
   const clearSilenceTimer = useCallback(() => {
@@ -480,7 +492,12 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           finalCountRef.current += 1;
 
           globalFinalHistory.add(normalized + "_" + Math.floor(now / 5000));
-          setTimeout(() => globalFinalHistory.clear(), 10000);
+          // Bug 3/Gap C: Single rolling timeout — cancels previous, module-level to match globalFinalHistory
+          if (globalHistoryClearTimerId) clearTimeout(globalHistoryClearTimerId);
+          globalHistoryClearTimerId = setTimeout(() => {
+            globalFinalHistory.clear();
+            globalHistoryClearTimerId = null;
+          }, 10000);
 
           setFinalTranscript((prev) => (prev + " " + newFinalText).trim());
           options.onTranscript?.(newFinalText.trim());
@@ -504,9 +521,15 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       const restartableErrors = ['network', 'aborted', 'no-speech'];
 
       if (restartableErrors.includes(error)) {
+        // Bug 1: Reset counter if outside 60s window (prevents permanent failure)
+        const now = Date.now();
+        if (now - lastRestartTimeRef.current > 60000) {
+          restartCount60sRef.current = 0;
+          lastRestartTimeRef.current = now;
+        }
         restartCount60sRef.current++;
-        if (restartCount60sRef.current < 5) {
-          logger.warn(`Aggressive restart for ${error} (${restartCount60sRef.current}/5)`);
+        if (restartCount60sRef.current < MAX_RESTARTS_60S + 2) {
+          logger.warn(`Aggressive restart for ${error} (${restartCount60sRef.current}/${MAX_RESTARTS_60S + 2})`);
           emitDebugEvent({
             type: 'stt.error', data: {
               error,
@@ -516,14 +539,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             }
           });
 
-          // DON'T set isRecording to false - keep UI alive
+          // Bug 5/Gap A: Recreate recognition instance via ref (avoids null ref + circular dep)
           setTimeout(() => {
-            if (recognitionRef.current && isStartedRef.current) {
-              try {
-                recognitionRef.current.start();
-              } catch (restartError) {
-                logger.error("Failed to restart recognition", restartError as Error);
-              }
+            if (!isStartedRef.current) return;
+            const factory = createRecognitionRef.current;
+            if (!factory) return;
+            const newRec = factory({ onErrorContext: 'error_restart' });
+            if (!newRec) return;
+            recognitionRef.current = newRec;
+            try {
+              newRec.start();
+            } catch (restartError) {
+              logger.error("Failed to restart recognition", restartError as Error);
             }
           }, 100);
           return;
@@ -593,6 +620,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
     return recognition;
   }, [handleRecognitionResult, handleRecognitionError, startWatchdog, startSilenceTimer, clearWatchdog, clearSilenceTimer, watchdogIntervalMs]);
+
+  // Bug 5/Gap A: Keep createRecognitionRef in sync (breaks circular dep with handleRecognitionError)
+  useEffect(() => { createRecognitionRef.current = createRecognition; }, [createRecognition]);
 
   const startRecording = useCallback(async () => {
     if (!voiceEnabled) {
@@ -675,7 +705,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         },
         onEnd: () => {
           audioDebug.log("session_end", { intentional: isIntentionalStop.current });
-          if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
+          // Bug 2: Use isPausedRef to avoid stale closure
+          if (!isIntentionalStop.current && !isPausedRef.current && isStartedRef.current) {
             try {
               // Refresh language on restart
               if (recognition) {
@@ -711,8 +742,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     cleanup,
     createRecognition,
     setRecording,
-    isPaused,
     clearWatchdog,
+    // Bug 2: isPaused removed — now accessed via isPausedRef
   ]);
 
   const pauseRecording = useCallback(() => {
@@ -735,7 +766,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           emitDebugEvent({ type: 'stt.start', data: { action: 'resume' } });
         },
         onEnd: () => {
-          if (!isPaused) {
+          // Bug 2/Gap B: Use isPausedRef to avoid stale closure (same fix as startRecording)
+          if (!isPausedRef.current) {
             commitInterimAsFinal();
             setRecording(false);
             isStartedRef.current = false;
@@ -772,14 +804,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     }
   }, [isPaused, resumeRecording, pauseRecording]);
 
-  // Register with AudioSession for TTS coordination
+  // Bug 6: Keep startRecordingRef in sync
+  useEffect(() => { startRecordingRef.current = startRecording; }, [startRecording]);
+
+  // Bug 6: Register once on mount using stable refs (no churn on state changes)
   useEffect(() => {
     registerSTTController({
-      stopListening: stopRecording,
-      resumeListening: startRecording,
-      isListening: () => isRecording && !isPaused,
+      stopListening: () => stopRecordingRef.current(),
+      resumeListening: () => startRecordingRef.current(),
+      isListening: () => isStartedRef.current,
     });
-  }, [stopRecording, startRecording, isRecording, isPaused]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync Global State
   useEffect(() => {

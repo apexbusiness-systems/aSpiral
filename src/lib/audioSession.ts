@@ -440,7 +440,10 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
   audioElement = audio;
 
   let sourceBuffer: SourceBuffer | null = null;
-  let isFirstChunk = true;
+  // Bug 9: Buffer minimum bytes before starting playback to avoid stutter
+  const MIN_BUFFER_BYTES = 16384; // 16KB ≈ ~500ms of MP3 at 128kbps
+  let bufferedBytes = 0;
+  let playbackStarted = false;
   const bufferQueue: Uint8Array[] = [];
   let isAppending = false;
 
@@ -474,10 +477,12 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
           done = readerDone;
 
           if (value) {
-            if (isFirstChunk) {
-              // Start playback immediately after first chunk
+            bufferedBytes += value.byteLength;
+
+            // Bug 9: Wait for sufficient buffer before playing to eliminate stutter
+            if (!playbackStarted && bufferedBytes >= MIN_BUFFER_BYTES) {
               await audio.play();
-              isFirstChunk = false;
+              playbackStarted = true;
               updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
               useAssistantSpeakingStore.getState().startSpeaking();
               addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai', streaming: true } });
@@ -492,6 +497,16 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
               bufferQueue.push(value);
             }
           }
+        }
+
+        // Gap D: Start playback if total response was smaller than MIN_BUFFER_BYTES
+        if (!playbackStarted && bufferedBytes > 0) {
+          await audio.play();
+          playbackStarted = true;
+          updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
+          useAssistantSpeakingStore.getState().startSpeaking();
+          addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai', streaming: true, smallResponse: true } });
+          options.onStart?.();
         }
 
         // Mark end of stream
@@ -515,7 +530,11 @@ async function playOpenAiAudioFallback(blob: Blob, requestId: number, options: S
   audio.volume = options.volume ?? 1;
   audioElement = audio;
 
+  // Bug 12/Gap E: Apply sync delay right before playback, not before fetch
+  await waitForSyncDelay(options.text.length);
+
   return new Promise<void>((resolve, reject) => {
+
     audio.onplay = () => {
       if (requestId !== status.requestId) return;
       // Mark playback start for adaptive sync latency measurement
@@ -545,11 +564,12 @@ function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): S
 
   const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
 
+  // Bug 11: Prioritize Google neural voices over robotic OS defaults
   return (
-    pickFrom.find((v) => v.default) ||
     pickFrom.find((v) => v.name.includes("Google")) ||
     pickFrom.find((v) => v.name.includes("Samantha")) ||
     pickFrom.find((v) => v.name.includes("Daniel")) ||
+    pickFrom.find((v) => v.default) ||
     pickFrom[0]
   );
 }
@@ -668,10 +688,7 @@ async function processQueue() {
       updateStatus({ requestId });
       cancelActive('superseded', false);
 
-      // Apply adaptive sync delay before starting TTS (max 1.5s)
-      // This makes agent responses feel more natural and conversational
-      const textLength = entry.options.text.length;
-      await waitForSyncDelay(textLength);
+      // Bug 12/Gap E: Sync delay removed from here — relocated to pre-play (playOpenAiAudioFallback)
 
       updateStatus({ isLoading: true, backend: 'none' });
       pauseListeningForRequest(requestId);
@@ -679,6 +696,7 @@ async function processQueue() {
       // Mark request start for latency measurement
       markSpeakRequestStart();
 
+      const textLength = entry.options.text.length;
       audioDebug.log('tts_enqueue', { queueLength: ttsQueue.length, requestId, textLength });
 
       try {
@@ -687,13 +705,13 @@ async function processQueue() {
           await speakWithWebSpeech(requestId, entry.options);
           entry.resolve();
         } else {
-          // Try OpenAI first, fallback to WebSpeech
-          const blob = await fetchOpenAiAudio(entry.options);
+          // Bug 10: renamed blob → response (fetchOpenAiAudio returns Response, not Blob)
+          const response = await fetchOpenAiAudio(entry.options);
           if (requestId !== status.requestId) {
             entry.resolve();
             continue;
           }
-          await playOpenAiAudio(blob, requestId, entry.options);
+          await playOpenAiAudio(response, requestId, entry.options);
           entry.resolve();
         }
       } catch (error) {

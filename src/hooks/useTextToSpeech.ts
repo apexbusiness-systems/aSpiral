@@ -69,7 +69,7 @@ interface TextToSpeechState {
 export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const {
     voice = 'nova',
-    speed = 1.1,
+    speed = 1.0, // Bug 8: 1.1 caused subtle formant shift; 1.0 = natural cadence
     volume = 1,
     forceWebSpeech = false,
     fallbackToWebSpeech = true,
