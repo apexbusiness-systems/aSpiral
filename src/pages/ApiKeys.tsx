@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
+import { generateSecureToken } from '@/lib/crypto';
 
 interface ApiKey {
   id: string;
@@ -93,14 +94,7 @@ const ApiKeys = () => {
   }, [user, toast]);
 
   const generateApiKey = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const array = new Uint8Array(40);
-    crypto.getRandomValues(array);
-    let key = 'sp_';
-    for (let i = 0; i < 40; i++) {
-      key += chars.charAt(array[i] % chars.length);
-    }
-    return key;
+    return `sp_${generateSecureToken(40)}`;
   };
 
   const hashApiKey = async (key: string): Promise<string> => {

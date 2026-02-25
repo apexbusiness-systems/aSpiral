@@ -1,5 +1,33 @@
 workflows:
   aspiral_ios_testflight:
+    # ╔══════════════════════════════════════════════════════════════════════╗
+    # ║  aSpiral iOS → TestFlight (Green Lane)                              ║
+    # ║                                                                      ║
+    # ║  HOW TO RUN — REQUIRED ENV VAR GROUPS                               ║
+    # ║  ─────────────────────────────────────────────────────────────────  ║
+    # ║  Group: ios_credentials                                              ║
+    # ║    TEAM_ID                  Apple Developer Team ID (10-char)        ║
+    # ║    CERTIFICATE_PRIVATE_KEY  Signing key (.p8 file contents)          ║
+    # ║                                                                      ║
+    # ║  Group: appstore_credentials                                         ║
+    # ║    APP_STORE_CONNECT_ISSUER_ID       ASC API issuer UUID             ║
+    # ║    APP_STORE_CONNECT_KEY_IDENTIFIER  ASC API key ID                  ║
+    # ║      (also accepted as KEY_ID or KEY_iD — normalized in Preflight)   ║
+    # ║    APP_STORE_CONNECT_PRIVATE_KEY     ASC API .p8 key contents        ║
+    # ║                                                                      ║
+    # ║  Optional env overrides                                              ║
+    # ║    ALLOW_CREATE_SIGNING=true   Allow CI to mint new signing assets   ║
+    # ║                                Default: false (safe — fetch only)    ║
+    # ║    APP_STORE_APPLE_ID          Numeric Apple ID for the app record   ║
+    # ║                                                                      ║
+    # ║  ⚠  ONE-TIME MANUAL STEPS IN APP STORE CONNECT:                     ║
+    # ║     Internal: TestFlight → Internal Groups → "aSpiral Internal"      ║
+    # ║       Set distribution type to MANUAL (not Automatic).               ║
+    # ║       Automatic distribution can silently block group assignments.   ║
+    # ║     External: TestFlight → External Testing → create group           ║
+    # ║       "aSpiral External" before first build. First build per new     ║
+    # ║       marketing version requires Beta App Review (~1 day).           ║
+    # ╚══════════════════════════════════════════════════════════════════════╝
     name: aSpiral iOS → TestFlight (Green Lane)
     instance_type: mac_mini_m2
     max_build_duration: 90
@@ -21,6 +49,17 @@ workflows:
         # Workspace candidates
         XCODE_WORKSPACE_PRIMARY: "ios/App/App.xcworkspace"
         XCODE_WORKSPACE_FALLBACK: "ios/App/App.xcodeproj/project.xcworkspace"
+
+        # Hard-lock aSpiral bundle id — prevents TradeLine / "NO" drift
+        BUNDLE_ID_OVERRIDE: "com.apex.aspiral"
+
+        # Safe signing: CI never mints new certs/profiles unless explicitly enabled
+        # Set to "true" only when you need to create new signing assets
+        ALLOW_CREATE_SIGNING: "false"
+
+        # App icon source (RGBA PNG with alpha → will be flattened)
+        ICON_SOURCE: "src/assets/app_icon.png"
+        ICON_BACKGROUND_COLOR: "#020617"
 
     scripts:
       - name: Preflight (fail fast + normalize env)
@@ -54,10 +93,17 @@ workflows:
             fi
           done
 
-          test -f package.json || (echo "❌ package.json missing at repo root" && exit 1)
+          test -f package.json        || (echo "❌ package.json missing at repo root" && exit 1)
           test -f "${INFO_PLIST_PATH}" || (echo "❌ Info.plist missing at ${INFO_PLIST_PATH}" && exit 1)
+          test -f "${ICON_SOURCE}"     || (echo "❌ Source icon missing: ${ICON_SOURCE}" && exit 1)
 
-          echo "✅ Preflight OK"
+          # Validate BUNDLE_ID_OVERRIDE format at preflight (fail before any CI work)
+          if ! echo "${BUNDLE_ID_OVERRIDE}" | grep -qE '^[A-Za-z0-9.-]+\.[A-Za-z0-9.-]+$'; then
+            echo "❌ BUNDLE_ID_OVERRIDE='${BUNDLE_ID_OVERRIDE}' is not a valid bundle id format."
+            exit 1
+          fi
+
+          echo "✅ Preflight OK — bundle_id=${BUNDLE_ID_OVERRIDE} allow_create_signing=${ALLOW_CREATE_SIGNING}"
 
       - name: Pin npm
         script: |
@@ -83,6 +129,105 @@ workflows:
           set -euo pipefail
           npx cap sync ios
 
+      - name: Generate app icon (flatten alpha → #020617, strip transparency)
+        script: |
+          set -euo pipefail
+
+          # Resolve ImageMagick binary (v7 'magick' or v6 'convert')
+          if command -v magick &>/dev/null; then
+            IM="magick"
+          elif command -v convert &>/dev/null; then
+            IM="convert"
+          else
+            echo "❌ ImageMagick not found. Cannot flatten app icon."
+            exit 1
+          fi
+          echo "ℹ️  ImageMagick binary: $($IM --version | head -1)"
+
+          mkdir -p assets
+
+          # Flatten: composite RGBA PNG onto solid dark background, remove alpha channel
+          "${IM}" "${ICON_SOURCE}" \
+            -background "${ICON_BACKGROUND_COLOR}" \
+            -flatten \
+            -alpha off \
+            assets/icon.png
+
+          # Verify: no alpha channel remains
+          CHANNELS="$("${IM}" identify -format '%[channels]' assets/icon.png)"
+          if echo "${CHANNELS}" | grep -qi 'a'; then
+            echo "❌ assets/icon.png still contains alpha channel (channels=${CHANNELS})"
+            exit 1
+          fi
+
+          # Verify: correct dimensions
+          DIMS="$("${IM}" identify -format '%wx%h' assets/icon.png)"
+          if [ "${DIMS}" != "1024x1024" ]; then
+            echo "❌ Icon dimensions unexpected: ${DIMS} (expected 1024x1024)"
+            exit 1
+          fi
+
+          echo "✅ assets/icon.png ready — dims=${DIMS}, channels=${CHANNELS} (no alpha)"
+
+      - name: Generate multi-size AppIcon via @capacitor/assets
+        script: |
+          set -euo pipefail
+
+          # assets/icon.png must exist (created by previous step)
+          test -f assets/icon.png || (echo "❌ assets/icon.png missing — icon generation step failed?" && exit 1)
+
+          # Generate complete AppIcon.appiconset for iOS (all required sizes)
+          # @capacitor/assets writes directly into ios/App/App/Assets.xcassets/
+          npx @capacitor/assets generate \
+            --ios \
+            --assetPath assets \
+            --iconBackgroundColor "${ICON_BACKGROUND_COLOR}" \
+            --splashBackgroundColor "${ICON_BACKGROUND_COLOR}"
+
+          echo "✅ @capacitor/assets generation complete"
+
+      - name: Verify AppIcon assets (PNG present, no alpha)
+        script: |
+          set -euo pipefail
+
+          APPICONSET="ios/App/App/Assets.xcassets/AppIcon.appiconset"
+
+          if [ ! -d "${APPICONSET}" ]; then
+            echo "❌ AppIcon.appiconset directory missing: ${APPICONSET}"
+            exit 1
+          fi
+
+          PNG_COUNT="$(find "${APPICONSET}" -name '*.png' | wc -l | tr -d ' ')"
+          echo "ℹ️  AppIcon PNG count: ${PNG_COUNT}"
+
+          # Xcode 14+ supports a single 1024×1024 universal icon — @capacitor/assets
+          # generates exactly one PNG (AppIcon-512@2x.png). Accept ≥1.
+          if [ "${PNG_COUNT}" -lt 1 ]; then
+            echo "❌ AppIcon.appiconset contains no PNGs."
+            echo "Contents of ${APPICONSET}:"
+            ls -la "${APPICONSET}"
+            exit 1
+          fi
+
+          # Resolve ImageMagick binary
+          IM="$(command -v magick 2>/dev/null || command -v convert)"
+
+          ALPHA_FOUND=0
+          while IFS= read -r png; do
+            CHANNELS="$("${IM}" identify -format '%[channels]' "${png}")"
+            if echo "${CHANNELS}" | grep -qi 'a'; then
+              echo "⚠️  Alpha detected: ${png} (channels=${CHANNELS})"
+              ALPHA_FOUND=1
+            fi
+          done < <(find "${APPICONSET}" -name '*.png')
+
+          if [ "${ALPHA_FOUND}" -eq 1 ]; then
+            echo "❌ One or more AppIcon PNGs contain an alpha channel — TestFlight will show placeholder icon."
+            exit 1
+          fi
+
+          echo "✅ AppIcon verified: ${PNG_COUNT} PNG(s), no alpha channels"
+
       - name: CocoaPods (ONLY if Podfile exists)
         script: |
           set -euo pipefail
@@ -95,7 +240,7 @@ workflows:
             echo "ℹ️ No Podfile found. Skipping pod install (SPM-only Capacitor project)."
           fi
 
-      - name: Resolve iOS build target + resolve VALID bundle id (never NO)
+      - name: Resolve iOS workspace + HARD-LOCK bundle id (never TradeLine, never NO)
         script: |
           set -euo pipefail
 
@@ -113,54 +258,44 @@ workflows:
           echo "XCODE_WORKSPACE=${XCODE_WORKSPACE}" >> "$CM_ENV"
           echo "✅ Using workspace: ${XCODE_WORKSPACE}"
 
-          # 2) Bundle ID — prefer project.pbxproj values (most reliable)
+          # 2) BUNDLE_ID_OVERRIDE hard-lock (format already validated in Preflight)
           PBXPROJ="ios/App/App.xcodeproj/project.pbxproj"
-          CANDIDATES=""
-
           if [ -f "${PBXPROJ}" ]; then
-            CANDIDATES="$(grep -oE 'PRODUCT_BUNDLE_IDENTIFIER = [^;]+' "${PBXPROJ}" \
+            PBXPROJ_IDS="$(grep -oE 'PRODUCT_BUNDLE_IDENTIFIER = [^;]+' "${PBXPROJ}" \
               | sed -E 's/PRODUCT_BUNDLE_IDENTIFIER = //g' \
               | tr -d '"' \
               | awk '{$1=$1};1' \
+              | grep -v '^NO$' \
               | sort -u || true)"
+
+            echo "ℹ️  Bundle IDs in pbxproj:"
+            echo "${PBXPROJ_IDS}"
+
+            if ! echo "${PBXPROJ_IDS}" | grep -qxF "${BUNDLE_ID_OVERRIDE}"; then
+              echo "❌ BUNDLE_ID mismatch: BUNDLE_ID_OVERRIDE='${BUNDLE_ID_OVERRIDE}' not found in pbxproj."
+              echo "   Found: ${PBXPROJ_IDS}"
+              echo "   Fix: update BUNDLE_ID_OVERRIDE or fix the Xcode project bundle id."
+              exit 1
+            fi
+            echo "✅ Bundle ID cross-checked against pbxproj: OK"
+          else
+            echo "⚠️  pbxproj not found at ${PBXPROJ} — skipping cross-check (override still applied)"
           fi
 
-          # Helper: pick the first value that looks like a real bundle id and is not NO
-          pick_from_list() {
-            echo "$1" \
-              | tr -d '\r' \
-              | grep -E '^[A-Za-z0-9.-]+\.[A-Za-z0-9.-]+$' \
-              | grep -v '^NO$' \
-              | head -n 1 || true
-          }
+          echo "BUNDLE_ID=${BUNDLE_ID_OVERRIDE}" >> "$CM_ENV"
+          echo "✅ Bundle ID hard-locked: ${BUNDLE_ID_OVERRIDE}"
 
-          BUNDLE_ID_DETECTED="$(pick_from_list "${CANDIDATES}")"
-
-          # 3) Fallback: xcodebuild build settings (filter out NO)
-          if [ -z "${BUNDLE_ID_DETECTED}" ]; then
-            BUNDLE_ID_DETECTED="$(xcodebuild -showBuildSettings \
-              -workspace "${XCODE_WORKSPACE}" \
-              -scheme "${XCODE_SCHEME}" \
-              -configuration Release 2>/dev/null \
-              | awk -F' = ' '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2}' \
-              | awk '{$1=$1};1' \
-              | sort -u \
-              | grep -v '^NO$' \
-              | grep -E '^[A-Za-z0-9.-]+\.[A-Za-z0-9.-]+$' \
-              | head -n 1 || true)"
+      - name: Ensure CFBundleIconName = AppIcon in Info.plist
+        script: |
+          set -euo pipefail
+          CURRENT="$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "${INFO_PLIST_PATH}" 2>/dev/null || echo "")"
+          if [ "${CURRENT}" = "AppIcon" ]; then
+            echo "✅ CFBundleIconName already = AppIcon"
+          else
+            /usr/libexec/PlistBuddy -c "Set :CFBundleIconName AppIcon" "${INFO_PLIST_PATH}" 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" "${INFO_PLIST_PATH}"
+            echo "✅ CFBundleIconName set to AppIcon (was: '${CURRENT:-<missing>}')"
           fi
-
-          # 4) FINAL validation (prevents the exact 409 you hit)
-          if [ -z "${BUNDLE_ID_DETECTED}" ] || [ "${BUNDLE_ID_DETECTED}" = "NO" ] || ! echo "${BUNDLE_ID_DETECTED}" | grep -q '\.'; then
-            echo "❌ Failed to resolve a valid BUNDLE_ID (got: '${BUNDLE_ID_DETECTED:-EMPTY}')."
-            echo "PBXPROJ candidates were:"
-            echo "${CANDIDATES}"
-            echo "Tip: Your repo still has TradeLine bundle env vars set; we must sign the actual aSpiral bundle id."
-            exit 1
-          fi
-
-          echo "BUNDLE_ID=${BUNDLE_ID_DETECTED}" >> "$CM_ENV"
-          echo "✅ Bundle ID: ${BUNDLE_ID_DETECTED}"
 
       - name: Set unique build number (TestFlight-safe)
         script: |
@@ -170,17 +305,17 @@ workflows:
             || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${BUILD}" "${INFO_PLIST_PATH}"
           echo "✅ Build number set: ${BUILD}"
 
-      - name: Initialize keychain + fetch/create signing files (explicit key vars)
+      - name: Initialize keychain + fetch signing files (safe — no --create by default)
         script: |
           set -euo pipefail
 
-          : "${BUNDLE_ID:?BUNDLE_ID missing}"
+          : "${BUNDLE_ID:?BUNDLE_ID missing — Resolve step did not run?}"
           : "${APP_STORE_CONNECT_ISSUER_ID:?APP_STORE_CONNECT_ISSUER_ID missing}"
           : "${APP_STORE_CONNECT_KEY_IDENTIFIER:?APP_STORE_CONNECT_KEY_IDENTIFIER missing}"
           : "${APP_STORE_CONNECT_PRIVATE_KEY:?APP_STORE_CONNECT_PRIVATE_KEY missing}"
           : "${CERTIFICATE_PRIVATE_KEY:?CERTIFICATE_PRIVATE_KEY missing}"
 
-          # HARD GUARD: never call Apple with NO again
+          # Hard guard: refuse to call Apple with invalid bundle id
           if [ "${BUNDLE_ID}" = "NO" ] || ! echo "${BUNDLE_ID}" | grep -q '\.'; then
             echo "❌ Invalid BUNDLE_ID='${BUNDLE_ID}'. Refusing to call App Store Connect."
             exit 1
@@ -188,29 +323,45 @@ workflows:
 
           keychain initialize
 
-          app-store-connect fetch-signing-files "${BUNDLE_ID}" \
-            --type IOS_APP_STORE \
-            --create \
-            --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}" \
-            --key-id "${APP_STORE_CONNECT_KEY_IDENTIFIER}" \
-            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY \
+          # Build fetch-signing-files args
+          # --create is DISABLED by default (ALLOW_CREATE_SIGNING=false)
+          # CI must not mint new signing assets without explicit operator approval
+          FETCH_ARGS=(
+            "${BUNDLE_ID}"
+            --type IOS_APP_STORE
+            --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}"
+            --key-id "${APP_STORE_CONNECT_KEY_IDENTIFIER}"
+            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY
             --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+          )
+
+          if [ "${ALLOW_CREATE_SIGNING:-false}" = "true" ]; then
+            FETCH_ARGS+=(--create)
+            echo "⚠️  ALLOW_CREATE_SIGNING=true — CI will create signing assets if they are missing."
+          else
+            echo "ℹ️  ALLOW_CREATE_SIGNING=false — fetching existing signing assets only (safe default)."
+            echo "    Set ALLOW_CREATE_SIGNING=true in Codemagic env vars to create new assets."
+          fi
+
+          app-store-connect fetch-signing-files "${FETCH_ARGS[@]}"
 
           keychain add-certificates
           echo "✅ Signing assets ready"
 
-      - name: Configure code signing (Internal Testing Only)
+      - name: Configure code signing
         script: |
           set -euo pipefail
-          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
+          xcode-project use-profiles
           echo "✅ Profiles applied"
 
       - name: Build IPA
         script: |
           set -euo pipefail
-          xcode-project build-ipa --workspace "${XCODE_WORKSPACE}" --scheme "${XCODE_SCHEME}"
+          xcode-project build-ipa \
+            --workspace "${XCODE_WORKSPACE}" \
+            --scheme "${XCODE_SCHEME}"
 
-      - name: Verify IPA + export IPA_PATH
+      - name: Verify IPA artifact exists + export IPA_PATH
         script: |
           set -euo pipefail
           IPA="$(ls -1 build/ios/ipa/*.ipa 2>/dev/null | head -n 1 || true)"
@@ -223,6 +374,19 @@ workflows:
           echo "✅ IPA: ${IPA}"
           echo "IPA_PATH=${IPA}" >> "$CM_ENV"
 
+      - name: Verify AppIcon present inside IPA
+        script: |
+          set -euo pipefail
+          : "${IPA_PATH:?IPA_PATH missing — IPA verification step did not run?}"
+          ICON_COUNT="$(unzip -l "${IPA_PATH}" | grep -i 'AppIcon' | wc -l | tr -d ' ')"
+          if [ "${ICON_COUNT}" -eq 0 ]; then
+            echo "❌ No AppIcon entries found inside IPA. TestFlight will show placeholder."
+            echo "All icon-related entries in IPA:"
+            unzip -l "${IPA_PATH}" | grep -i 'icon' || echo "(none)"
+            exit 1
+          fi
+          echo "✅ IPA contains ${ICON_COUNT} AppIcon entries"
+
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -233,4 +397,172 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: false
+        # Distribute to TestFlight internal group — no Apple review required for internal testers
+        # ⚠  MANUAL STEP: In App Store Connect → TestFlight → "aSpiral Internal" group,
+        #    set distribution type to MANUAL (not Automatic). Automatic can block assignments.
+        submit_to_testflight: true
+        beta_groups:
+          - "aSpiral Internal"
+          # External testers — requires Beta App Review (Apple reviews first build per new version)
+          # ⚠  MANUAL STEP: Create this group in App Store Connect → TestFlight → External Testing
+          #    before triggering a build, or Codemagic will error on group not found.
+          - "aSpiral External"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# aSpiral iOS → Simulator Build
+# Purpose: Produces a zipped .app bundle runnable in any iOS Simulator.
+#          No signing required — simulators don't check signatures.
+#
+# HOW TO USE ARTIFACTS:
+#   1. Download aSpiral-simulator.zip from Codemagic build artifacts
+#   2. Unzip → App.app
+#   3. xcrun simctl install booted App.app   (while a simulator is running)
+#      OR drag App.app onto the Simulator window in Xcode
+#
+# TRIGGER: push/tag or run manually in Codemagic dashboard.
+# ══════════════════════════════════════════════════════════════════════════════
+  aspiral_ios_simulator:
+    name: aSpiral iOS → Simulator Build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      xcode: 16.4
+      cocoapods: default
+      node: 22
+      groups:
+        - ios_credentials
+      vars:
+        NODE_OPTIONS: "--max_old_space_size=8192"
+        INFO_PLIST_PATH: "ios/App/App/Info.plist"
+        XCODE_SCHEME: "App"
+        XCODE_WORKSPACE_PRIMARY: "ios/App/App.xcworkspace"
+        XCODE_WORKSPACE_FALLBACK: "ios/App/App.xcodeproj/project.xcworkspace"
+        ICON_SOURCE: "src/assets/app_icon.png"
+        ICON_BACKGROUND_COLOR: "#020617"
+        # Target the latest available iPhone simulator
+        SIM_DESTINATION: "platform=iOS Simulator,name=iPhone 16,OS=latest"
+
+    scripts:
+      - name: Pin npm
+        script: |
+          set -euo pipefail
+          npm install -g npm@10
+
+      - name: Install JS deps
+        script: |
+          set -euo pipefail
+          export NODE_OPTIONS="--max_old_space_size=8192"
+          npm ci
+
+      - name: Build web assets
+        script: |
+          set -euo pipefail
+          export NODE_OPTIONS="--max_old_space_size=8192"
+          npm run build
+
+      - name: Capacitor sync iOS
+        script: |
+          set -euo pipefail
+          npx cap sync ios
+
+      - name: Generate app icon (flatten alpha → solid background)
+        script: |
+          set -euo pipefail
+          if command -v magick &>/dev/null; then IM="magick"; else IM="convert"; fi
+          mkdir -p assets
+          "${IM}" "${ICON_SOURCE}" \
+            -background "${ICON_BACKGROUND_COLOR}" \
+            -flatten -alpha off \
+            assets/icon.png
+          echo "✅ assets/icon.png ready"
+
+      - name: Generate multi-size AppIcon via @capacitor/assets
+        script: |
+          set -euo pipefail
+          test -f assets/icon.png || (echo "❌ assets/icon.png missing" && exit 1)
+          npx @capacitor/assets generate \
+            --ios \
+            --assetPath assets \
+            --iconBackgroundColor "${ICON_BACKGROUND_COLOR}" \
+            --splashBackgroundColor "${ICON_BACKGROUND_COLOR}"
+
+      - name: CocoaPods (ONLY if Podfile exists)
+        script: |
+          set -euo pipefail
+          if [ -f "ios/App/Podfile" ]; then
+            cd ios/App && pod install && cd ../..
+            echo "✅ CocoaPods installed"
+          else
+            echo "ℹ️ No Podfile — skipping pod install"
+          fi
+
+      - name: Resolve iOS workspace
+        script: |
+          set -euo pipefail
+          if [ -d "${XCODE_WORKSPACE_PRIMARY}" ]; then
+            echo "XCODE_WORKSPACE=${XCODE_WORKSPACE_PRIMARY}" >> "$CM_ENV"
+          elif [ -d "${XCODE_WORKSPACE_FALLBACK}" ]; then
+            echo "XCODE_WORKSPACE=${XCODE_WORKSPACE_FALLBACK}" >> "$CM_ENV"
+          else
+            echo "❌ No Xcode workspace found"; exit 1
+          fi
+
+      - name: Build for iOS Simulator (no signing)
+        script: |
+          set -euo pipefail
+          : "${XCODE_WORKSPACE:?XCODE_WORKSPACE not set}"
+
+          xcodebuild \
+            -workspace "${XCODE_WORKSPACE}" \
+            -scheme "${XCODE_SCHEME}" \
+            -configuration Debug \
+            -destination "${SIM_DESTINATION}" \
+            -derivedDataPath build/sim \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build 2>&1 | tee /tmp/xcodebuild_sim.log | xcpretty || {
+              echo "xcpretty not installed — raw log saved to /tmp/xcodebuild_sim.log"
+            }
+
+          # Locate the built .app
+          APP_PATH="$(find build/sim -name '*.app' -not -path '*/PlugIns/*' | head -n 1)"
+          if [ -z "${APP_PATH}" ]; then
+            echo "❌ .app not found in build/sim"
+            find build/sim -name '*.app' || true
+            exit 1
+          fi
+
+          echo "✅ Built: ${APP_PATH}"
+          echo "APP_PATH=${APP_PATH}" >> "$CM_ENV"
+
+          # Zip for artifact download
+          mkdir -p build/sim/artifacts
+          zip -r build/sim/artifacts/aSpiral-simulator.zip "${APP_PATH}"
+          echo "✅ Zipped → build/sim/artifacts/aSpiral-simulator.zip"
+
+    artifacts:
+      - build/sim/artifacts/aSpiral-simulator.zip
+      - /tmp/xcodebuild_sim.log
+
+    publishing:
+      # Notify external testers when a simulator build is ready.
+      # They download aSpiral-simulator.zip from the artifact link in the email,
+      # then: unzip → xcrun simctl install booted App.app (or drag onto Simulator)
+      #
+      # ⚠  Each recipient must be a separate env var in Codemagic (ios_credentials group).
+      #    A comma-separated list in a single var won't work — Codemagic treats each
+      #    list entry as one literal email address.
+      #    Add SIMULATOR_TESTER_EMAIL_1 … SIMULATOR_TESTER_EMAIL_5 to the ios_credentials group.
+      email:
+        recipients:
+          - $SIMULATOR_TESTER_EMAIL_1
+          - $SIMULATOR_TESTER_EMAIL_2
+          - $SIMULATOR_TESTER_EMAIL_3
+          - $SIMULATOR_TESTER_EMAIL_4
+          - $SIMULATOR_TESTER_EMAIL_5
+        notify:
+          success: true   # send artifact link on successful build
+          failure: false  # don't spam testers with CI failures
