@@ -180,6 +180,27 @@ const globalFinalHistory = new Set<string>();
 // Module-level rolling timeout for globalFinalHistory.clear() — shared across hook instances (Bug 3/Gap C)
 let globalHistoryClearTimerId: ReturnType<typeof setTimeout> | null = null;
 
+// Helper to reduce cognitive complexity of handleRecognitionResult
+function processSpeechResults(results: SpeechRecognitionResultList, startIndex: number) {
+  let finalText = "";
+  let interimText = "";
+  let shouldStop = false;
+
+  for (let i = startIndex; i < results.length; i++) {
+    const text = results[i][0].transcript;
+    if (VOICE_STOP_KEYWORDS.some((k) => text.toLowerCase().includes(k))) {
+      shouldStop = true;
+      break;
+    }
+    if (results[i].isFinal) {
+      finalText += text;
+    } else {
+      interimText += text;
+    }
+  }
+  return { finalText, interimText, shouldStop };
+}
+
 function getActiveSpeechLocale(): string {
   const lng = i18n.resolvedLanguage ?? i18n.language ?? "en";
   return getSpeechLocale(lng);
@@ -439,24 +460,14 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         return;
       }
 
-      let newFinalText = "";
-      let newInterimText = "";
+      const { finalText: newFinalText, interimText: newInterimText, shouldStop } = processSpeechResults(
+        speechEvent.results,
+        speechEvent.resultIndex
+      );
 
-      // Process results
-      for (let i = speechEvent.resultIndex; i < speechEvent.results.length; i++) {
-        const result = speechEvent.results[i];
-        const text = result[0].transcript;
-
-        if (VOICE_STOP_KEYWORDS.some((k) => text.toLowerCase().includes(k))) {
-          stopRecording();
-          return;
-        }
-
-        if (result.isFinal) {
-          newFinalText += text;
-        } else {
-          newInterimText += text;
-        }
+      if (shouldStop) {
+        stopRecording();
+        return;
       }
 
       // Always replace interim (this is the key fix for "rapping")
