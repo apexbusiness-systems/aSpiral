@@ -3,16 +3,25 @@ import { supabase } from '@/integrations/supabase/client';
 const DEVICE_FINGERPRINT_KEY = 'aspiral_device_fingerprint';
 const APP_SALT = 'aspiral-v1-secure-storage-salt-2024';
 
+function getStorage(): Storage | null {
+  if (globalThis.localStorage !== undefined) {
+    return globalThis.localStorage;
+  }
+
+  return null;
+}
+
 /**
  * Gets or creates a persistent device fingerprint
  */
 export function getDeviceFingerprint(): string {
-  if (typeof window === 'undefined') return 'server-side';
+  const storage = getStorage();
+  if (!storage) return 'server-side';
 
-  let fingerprint = localStorage.getItem(DEVICE_FINGERPRINT_KEY);
+  let fingerprint = storage.getItem(DEVICE_FINGERPRINT_KEY);
   if (!fingerprint) {
-    fingerprint = crypto.randomUUID();
-    localStorage.setItem(DEVICE_FINGERPRINT_KEY, fingerprint);
+    fingerprint = globalThis.crypto.randomUUID();
+    storage.setItem(DEVICE_FINGERPRINT_KEY, fingerprint);
   }
   return fingerprint;
 }
@@ -28,13 +37,16 @@ export async function getEncryptionSecret(): Promise<string> {
   let userId = 'anonymous';
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session?.user?.id) {
       userId = session.user.id;
     }
   } catch (error) {
     // Fallback to anonymous if auth check fails
-    console.debug('Auth check failed, using anonymous secret context');
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('Auth check failed, using anonymous secret context', { message });
   }
 
   const deviceId = getDeviceFingerprint();
@@ -43,9 +55,9 @@ export async function getEncryptionSecret(): Promise<string> {
   // We use SHA-256 to create a uniform-length seed for PBKDF2
   const contextString = `${userId}:${deviceId}:${APP_SALT}`;
   const msgUint8 = new TextEncoder().encode(contextString);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', msgUint8);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
   return hashHex;
 }

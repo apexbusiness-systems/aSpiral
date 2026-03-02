@@ -1,12 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-
-// Test the clamping functions directly since we can't easily test the hook without @testing-library/react
+import { describe, it, expect } from 'vitest';
 
 describe('Voice Pipeline Integration', () => {
   describe('Silence Timeout Clamping', () => {
     it('should clamp silence timeout between 800ms and 10000ms', () => {
-      // Since we can't test the hook directly without proper setup,
-      // we'll test the logic conceptually
       const testClamp = (value: number) => Math.max(800, Math.min(10000, value));
 
       expect(testClamp(500)).toBe(800);
@@ -27,12 +23,15 @@ describe('Voice Pipeline Integration', () => {
 
   describe('TTS Fallback Default', () => {
     it('should default fallbackToWebSpeech to true', () => {
-       
-      const options = { text: 'test', voice: 'test', speed: 1 } as any;
+      const options: { text: string; voice: string; speed: number; fallbackToWebSpeech?: boolean } = {
+        text: 'test',
+        voice: 'test-voice',
+        speed: 1,
+      };
       const { fallbackToWebSpeech = true, ...rest } = options;
 
       expect(fallbackToWebSpeech).toBe(true);
-      expect(rest).toEqual({ text: 'test', voice: 'test', speed: 1 });
+      expect(rest).toEqual({ text: 'test', voice: 'test-voice', speed: 1 });
     });
   });
 });
