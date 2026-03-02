@@ -5,6 +5,18 @@ All notable changes to the aSpiral project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-03-02
+
+### Added
+- **CI Coverage**: Added first-class `lint`, `typecheck`, and `test` npm scripts so PR and local checks execute consistently across environments.
+
+### Changed
+- **Security Runtime**: Updated secure storage fingerprint resolution to use `globalThis.localStorage` detection, making browser and test runtime behavior consistent.
+- **Tests**: Hardened secure storage tests with typed Supabase mock signatures and deterministic localStorage overrides.
+
+### Fixed
+- **Test Stability**: Resolved `secureStorage` failures for device fingerprint persistence and per-device secret derivation under Vitest node runtime.
+
 ## [1.0.2] - 2026-02-11
 
 ### Added
