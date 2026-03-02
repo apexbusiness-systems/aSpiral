@@ -18,6 +18,8 @@ import {
   registerSTTController,
   updateListeningState,
   isGated,
+  beginSTTSession,
+  endSTTSession,
 } from "@/lib/audioSession";
 import { featureFlags } from "@/lib/featureFlags";
 import { toast } from "sonner";
@@ -228,6 +230,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // Ref for stopRecording to avoid circular dependency
   const stopRecordingRef = useRef<() => void>(() => { });
+  const sttSessionIdRef = useRef<number | null>(null);
 
   // Interim update throttling
   const lastInterimEmitRef = useRef<number>(0);
@@ -342,6 +345,13 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     setInterimTranscript(text);
   }, []);
 
+
+  const releaseSttSession = useCallback((reason: string) => {
+    if (sttSessionIdRef.current !== null) {
+      endSTTSession(sttSessionIdRef.current, reason);
+      sttSessionIdRef.current = null;
+    }
+  }, []);
   const commitInterimAsFinal = useCallback(() => {
     const interim = interimTranscriptRef.current.trim();
     if (!interim) return;
@@ -352,6 +362,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [emitInterimUpdate, options]);
 
   const stopRecording = useCallback(() => {
+    releaseSttSession("user_stop");
+
     setVoiceState('Idle');
     emitDebugEvent({ type: 'stt.stop', data: { action: 'user_stop' } });
     commitInterimAsFinal();
@@ -387,7 +399,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     } catch {
       // Ignore audio context errors during stop
     }
-  }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate]);
+  }, [setRecording, cleanup, commitInterimAsFinal, emitInterimUpdate, releaseSttSession]);
 
   // Update stopRecordingRef
   useEffect(() => {
@@ -535,6 +547,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       logger.error(`Recognition error`, new Error(error));
       emitDebugEvent({ type: 'stt.error', data: { error, context } });
       setError(`Voice recognition error: ${error}`);
+      releaseSttSession(`error_${error}`);
       setRecording(false);
       setIsPaused(false);
       isStartedRef.current = false;
@@ -601,7 +614,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       return;
     }
     if (isStartedRef.current) return;
+
+    const sttSessionId = beginSTTSession('useVoiceInput.startRecording');
+    if (sttSessionId === null) {
+      setError("Microphone busy");
+      toast.error("Another voice session is active");
+      return;
+    }
+    sttSessionIdRef.current = sttSessionId;
+
     if (assistantIsSpeakingRef.current) {
+      endSTTSession(sttSessionId, "assistant_speaking");
+      sttSessionIdRef.current = null;
       toast.error("Wait for playback to finish");
       return;
     }
@@ -612,6 +636,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
         if (permissionStatus.state === 'denied') {
           setError("Microphone permission denied");
+          endSTTSession(sttSessionId, "permission_denied");
+          sttSessionIdRef.current = null;
           toast.error("Microphone access denied. Please enable in browser settings.");
           return;
         }
@@ -623,6 +649,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError("Not supported");
+      endSTTSession(sttSessionId, "not_supported");
+      sttSessionIdRef.current = null;
       toast.error("Speech recognition not supported");
       return;
     }
@@ -688,6 +716,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           } else {
             setRecording(false);
             isStartedRef.current = false;
+            releaseSttSession("recognition_end");
             // Ensure watchdog is stopped
             clearWatchdog();
           }
@@ -701,6 +730,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       }
 
     } catch (e) {
+      endSTTSession(sttSessionId, "start_failed");
+      sttSessionIdRef.current = null;
       audioDebug.error("session_start", { error: (e as Error).message });
       setError("Failed to start");
       toast.error("Failed to start recording");
@@ -713,6 +744,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     setRecording,
     isPaused,
     clearWatchdog,
+    releaseSttSession,
   ]);
 
   const pauseRecording = useCallback(() => {
@@ -787,8 +819,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }, [isRecording, isPaused]);
 
   useEffect(() => {
-    return () => cleanup();
-  }, [cleanup]);
+    return () => {
+      releaseSttSession("unmount");
+      cleanup();
+    };
+  }, [cleanup, releaseSttSession]);
 
   return {
     isRecording,
