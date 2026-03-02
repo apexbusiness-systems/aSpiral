@@ -43,7 +43,7 @@ export async function getEncryptionSecret(): Promise<string> {
     if (session?.user?.id) {
       userId = session.user.id;
     }
-  } catch (error) {
+  } catch (_error) {
     // Fallback to anonymous if auth check fails
     const message = error instanceof Error ? error.message : String(error);
     console.warn('Auth check failed, using anonymous secret context', { message });
