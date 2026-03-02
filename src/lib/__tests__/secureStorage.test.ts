@@ -1,13 +1,30 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDeviceFingerprint, getEncryptionSecret } from '../secureStorage';
 
+type SessionResponse = {
+  data: {
+    session: {
+      user: { id: string };
+    } | null;
+  };
+};
+
+type SessionGetter = () => Promise<SessionResponse>;
+
+type StorageMock = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+  clear: () => void;
+};
+
 // Mock localStorage
-const localStorageMock = (() => {
+const localStorageMock: StorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: (key: string) => store[key] || null,
+    getItem: (key: string) => store[key] ?? null,
     setItem: (key: string, value: string) => {
-      store[key] = value.toString();
+      store[key] = value;
     },
     removeItem: (key: string) => {
       delete store[key];
@@ -18,15 +35,19 @@ const localStorageMock = (() => {
   };
 })();
 
-if (typeof global !== 'undefined' && !global.localStorage) {
-  (global as any).localStorage = localStorageMock;
-}
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  configurable: true,
+  writable: true,
+});
 
 // Mock Supabase
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     auth: {
-      getSession: vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'test-user-id' } } } })),
+      getSession: vi.fn<SessionGetter>(() =>
+        Promise.resolve({ data: { session: { user: { id: 'test-user-id' } } } })
+      ),
     },
   },
 }));
@@ -55,10 +76,14 @@ describe('SecureStorage', () => {
   it('should derive different secrets for different users', async () => {
     const { supabase } = await import('@/integrations/supabase/client');
 
-    (supabase.auth.getSession as any).mockResolvedValueOnce({ data: { session: { user: { id: 'user-1' } } } });
+    vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
+      data: { session: { user: { id: 'user-1' } } },
+    });
     const s1 = await getEncryptionSecret();
 
-    (supabase.auth.getSession as any).mockResolvedValueOnce({ data: { session: { user: { id: 'user-2' } } } });
+    vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
+      data: { session: { user: { id: 'user-2' } } },
+    });
     const s2 = await getEncryptionSecret();
 
     expect(s1).not.toBe(s2);
@@ -66,7 +91,9 @@ describe('SecureStorage', () => {
 
   it('should derive different secrets for different devices', async () => {
     const { supabase } = await import('@/integrations/supabase/client');
-    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } });
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: 'user-1' } } },
+    });
 
     const s1 = await getEncryptionSecret();
 

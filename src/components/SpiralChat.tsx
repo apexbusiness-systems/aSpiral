@@ -185,14 +185,36 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   );
   const [ttsEnabled, setTtsEnabled] = useState(true); // User can toggle TTS
 
+  const [voiceProfile, setVoiceProfile] = useState(() => {
+    const stored = loadStoredSettings();
+    return resolveVoiceProfile(stored ?? {});
+  });
+
+  useEffect(() => {
+    const refreshVoiceProfile = () => {
+      const stored = loadStoredSettings();
+      setVoiceProfile(resolveVoiceProfile(stored ?? {}));
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'aspiral_settings_v1') {
+        refreshVoiceProfile();
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   // Text-to-Speech for AI responses
   const {
     speak: speakText,
     isSpeaking: isTTSSpeaking,
     isLoading: isTTSLoading,
   } = useTextToSpeech({
-    voice: 'nova', // Warm, friendly voice
-    speed: 1.0,
+    voice: voiceProfile.voice,
+    speed: voiceProfile.speed,
+    volume: voiceProfile.volume,
     fallbackToWebSpeech: true,
     onError: (error) => {
       console.warn('[TTS] Error:', error.message);

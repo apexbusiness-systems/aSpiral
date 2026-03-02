@@ -5,6 +5,31 @@ All notable changes to the aSpiral project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-03-02
+
+### Added
+- **Voice Personalization**: Added a typed `voiceProfile` resolver that maps user voice preferences to production-safe TTS voice/speed/volume values with Zod validation.
+
+### Changed
+- **STT Reliability**: Integrated explicit STT session leasing in `useVoiceInput` to prevent overlapping microphone sessions and orphaned listeners under restart/error paths.
+- **TTS Reliability**: Updated the text-to-speech Edge Function to include deterministic timeout + retry behavior for transient OpenAI failures.
+
+### Fixed
+- **Voice Quality**: Wired chat playback to persisted voice settings instead of hardcoded `nova@1.0`, reducing robotic monotone output.
+- **TTS API Contract**: Added missing `nova` voice to the validated enum so default requests no longer fail validation and silently degrade to fallback speech engines.
+
+## [1.0.3] - 2026-03-02
+
+### Added
+- **CI Coverage**: Added first-class `lint`, `typecheck`, and `test` npm scripts so PR and local checks execute consistently across environments.
+
+### Changed
+- **Security Runtime**: Updated secure storage fingerprint resolution to use `globalThis.localStorage` detection, making browser and test runtime behavior consistent.
+- **Tests**: Hardened secure storage tests with typed Supabase mock signatures and deterministic localStorage overrides.
+
+### Fixed
+- **Test Stability**: Resolved `secureStorage` failures for device fingerprint persistence and per-device secret derivation under Vitest node runtime.
+
 ## [1.0.2] - 2026-02-11
 
 ### Added

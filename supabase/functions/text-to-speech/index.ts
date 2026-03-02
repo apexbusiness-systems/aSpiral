@@ -2,36 +2,80 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { z } from "https://esm.sh/zod@3.22.4";
 
-// Configuration
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "*").split(",");
+const OPENAI_TTS_URL = 'https://api.openai.com/v1/audio/speech';
+const OPENAI_TIMEOUT_MS = 12_000;
+const OPENAI_MAX_ATTEMPTS = 2;
 
 const corsHeaders = (origin: string) => ({
-  'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*") ? origin : ALLOWED_ORIGINS[0],
+  'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*") ? origin || '*' : ALLOWED_ORIGINS[0],
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 });
 
-// Available voices
-const VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse'] as const;
-const DEFAULT_VOICE = 'nova';
+const VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'nova'] as const;
+const DEFAULT_VOICE = 'nova' as const;
 const DEFAULT_MODEL = 'tts-1';
 
-// Key Validation Schema
 const RequestSchema = z.object({
   text: z.string().min(1).max(4000),
   voice: z.enum(VOICES).optional().default(DEFAULT_VOICE),
   speed: z.number().min(0.25).max(4).optional().default(1),
 });
 
+async function fetchWithTimeoutAndRetry(payload: { model: string; input: string; voice: string; speed: number }, apiKey: string): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= OPENAI_MAX_ATTEMPTS; attempt += 1) {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), OPENAI_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(OPENAI_TTS_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: abortController.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        return response;
+      }
+
+      const errText = await response.text();
+      console.error(`[TTS] OpenAI API error attempt=${attempt} status=${response.status}`, errText);
+      if (response.status >= 500 && attempt < OPENAI_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        continue;
+      }
+
+      throw new Error(`OpenAI API error: ${response.status}`);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      const normalized = error instanceof Error ? error : new Error('Unknown fetch error');
+      lastError = normalized;
+      if (attempt < OPENAI_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        continue;
+      }
+    }
+  }
+
+  throw lastError ?? new Error('TTS request failed after retries');
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin") || "";
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(origin) });
   }
 
   try {
-    // 1. Auth Guard (Supabase JWT)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -41,23 +85,20 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
 
     if (authError || !user) {
-      console.error("Unauthorized access attempt");
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Valid Supabase JWT required' }),
         { status: 401, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } }
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY not configured');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ error: 'TTS service not configured' }),
         { status: 503, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Input Validation (Zod)
     const body = await req.json().catch(() => ({}));
     const parseResult = RequestSchema.safeParse(body);
 
@@ -69,51 +110,33 @@ serve(async (req) => {
     }
 
     const { text, voice, speed } = parseResult.data;
+    console.log(`[TTS] user=${user.id} chars=${text.length} voice=${voice} speed=${speed}`);
 
-    console.log(`[TTS] Generating speech for user ${user.id} (${text.length} chars), voice: ${voice}`);
-
-    // 3. Rate Limiting (Optimistic)
-    // In a real production scenario, use Redis/Upstash here. 
-    // For now, logging usage is a minimal guardrail.
-
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const openaiResponse = await fetchWithTimeoutAndRetry(
+      {
         model: DEFAULT_MODEL,
         input: text,
-        voice: voice,
-        response_format: 'mp3',
-        speed: speed,
-      }),
-    });
+        voice,
+        speed,
+      },
+      openaiApiKey,
+    );
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`[TTS] OpenAI API error: ${response.status}`, errText);
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    // Return audio as binary
-    return new Response(response.body, {
+    return new Response(openaiResponse.body, {
       headers: {
         ...corsHeaders(origin),
         'Content-Type': 'audio/mpeg',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
-
   } catch (error) {
-    console.error('[TTS] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[TTS] Error:', errorMessage);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {
         status: 500,
-        headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
       }
     );
   }
