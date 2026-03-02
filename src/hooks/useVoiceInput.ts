@@ -83,7 +83,7 @@ function checkVoiceSupport(): {
   if (typeof globalThis === "undefined") {
     return { supported: false, requiresFallback: false, reason: "no_window" };
   }
-  const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
+  const SpeechRecognition = getSpeechRecognitionConstructor();
   if (!SpeechRecognition) {
     return { supported: false, requiresFallback: false, reason: "no_speech_api" };
   }
@@ -170,6 +170,39 @@ interface SpeechRecognitionAlternative {
 }
 
 
+
+type SpeechRecognitionInstance = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: Event) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+type AudioContextConstructor = new () => AudioContext;
+
+type GlobalVoiceApis = typeof globalThis & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  AudioContext?: AudioContextConstructor;
+  webkitAudioContext?: AudioContextConstructor;
+};
+
+function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+  const voiceApis = globalThis as GlobalVoiceApis;
+  return voiceApis.SpeechRecognition ?? voiceApis.webkitSpeechRecognition ?? null;
+}
+
+function getAudioContextConstructor(): AudioContextConstructor | null {
+  const voiceApis = globalThis as GlobalVoiceApis;
+  return voiceApis.AudioContext ?? voiceApis.webkitAudioContext ?? null;
+}
+
 interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
@@ -201,7 +234,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const transcript = (finalTranscript + " " + interimTranscript).trim();
 
   // Refs
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const isStartedRef = useRef(false);
   const isIntentionalStop = useRef(false);
 
@@ -376,9 +409,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     // Sound Effect
     try {
       if (shouldPlayFeedback()) {
-        const AudioContext =
-          (globalThis as any).AudioContext ||
-          (globalThis as any).webkitAudioContext;
+        const AudioContext = getAudioContextConstructor();
         if (AudioContext) {
           const ctx = new AudioContext();
           const osc = ctx.createOscillator();
@@ -561,8 +592,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     onEnd?: () => void;
     onErrorContext: string;
   }) => {
-    const SpeechRecognition =
-      (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
+    const SpeechRecognition = getSpeechRecognitionConstructor();
 
     if (!SpeechRecognition) return null;
 
@@ -607,12 +637,58 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     return recognition;
   }, [handleRecognitionResult, handleRecognitionError, startWatchdog, startSilenceTimer, clearWatchdog, clearSilenceTimer, watchdogIntervalMs]);
 
+
+  const ensureMicrophonePermission = useCallback(async (sttSessionId: number): Promise<boolean> => {
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        if (permissionStatus.state === 'denied') {
+          setError("Microphone permission denied");
+          endSTTSession(sttSessionId, "permission_denied");
+          sttSessionIdRef.current = null;
+          toast.error("Microphone access denied. Please enable in browser settings.");
+          return false;
+        }
+      }
+    } catch (permError) {
+      logger.debug("Permission API not available", { error: permError });
+    }
+
+    return true;
+  }, [setError]);
+
+  const playStartFeedback = useCallback(() => {
+    try {
+      if (!shouldPlayFeedback()) return;
+
+      const AudioContext = getAudioContextConstructor();
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      }
+      triggerHaptic(12);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const startRecording = useCallback(async () => {
     if (!voiceEnabled) {
       setError("Voice disabled");
       toast.error("Voice input disabled");
       return;
     }
+
     if (isStartedRef.current) return;
 
     const sttSessionId = beginSTTSession('useVoiceInput.startRecording');
@@ -624,33 +700,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     sttSessionIdRef.current = sttSessionId;
 
     if (assistantIsSpeakingRef.current) {
-      endSTTSession(sttSessionId, "assistant_speaking");
-      sttSessionIdRef.current = null;
+      releaseSttSession("assistant_speaking");
       toast.error("Wait for playback to finish");
       return;
     }
 
-    // Check microphone permission before starting
-    try {
-      if (navigator.permissions && navigator.permissions.query) {
-        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-        if (permissionStatus.state === 'denied') {
-          setError("Microphone permission denied");
-          endSTTSession(sttSessionId, "permission_denied");
-          sttSessionIdRef.current = null;
-          toast.error("Microphone access denied. Please enable in browser settings.");
-          return;
-        }
-      }
-    } catch (permError) {
-      logger.debug("Permission API not available", { error: permError });
-    }
+    const hasMicPermission = await ensureMicrophonePermission(sttSessionId);
+    if (!hasMicPermission) return;
 
-    const SpeechRecognition = (globalThis as any).SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
+    const SpeechRecognition = getSpeechRecognitionConstructor();
     if (!SpeechRecognition) {
       setError("Not supported");
-      endSTTSession(sttSessionId, "not_supported");
-      sttSessionIdRef.current = null;
+      releaseSttSession("not_supported");
       toast.error("Speech recognition not supported");
       return;
     }
@@ -658,32 +719,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     interimCountRef.current = 0;
     finalCountRef.current = 0;
     audioDebug.log("session_start", { source: "user" });
-
-    // Start feedback
-    try {
-      if (shouldPlayFeedback()) {
-        const AudioContext =
-          (globalThis as any).AudioContext ||
-          (globalThis as any).webkitAudioContext;
-        if (AudioContext) {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(440, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
-          gain.gain.setValueAtTime(0.08, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.15);
-        }
-        triggerHaptic(12);
-      }
-    } catch {
-      // ignore
-    }
+    playStartFeedback();
 
     try {
       cleanup();
@@ -705,7 +741,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           audioDebug.log("session_end", { intentional: isIntentionalStop.current });
           if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
             try {
-              // Refresh language on restart
               if (recognition) {
                 recognition.lang = getActiveSpeechLocale();
                 recognition.start();
@@ -717,7 +752,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             setRecording(false);
             isStartedRef.current = false;
             releaseSttSession("recognition_end");
-            // Ensure watchdog is stopped
             clearWatchdog();
           }
         },
@@ -730,8 +764,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       }
 
     } catch (e) {
-      endSTTSession(sttSessionId, "start_failed");
-      sttSessionIdRef.current = null;
+      releaseSttSession("start_failed");
       audioDebug.error("session_start", { error: (e as Error).message });
       setError("Failed to start");
       toast.error("Failed to start recording");
@@ -745,6 +778,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     isPaused,
     clearWatchdog,
     releaseSttSession,
+    ensureMicrophonePermission,
+    playStartFeedback,
   ]);
 
   const pauseRecording = useCallback(() => {

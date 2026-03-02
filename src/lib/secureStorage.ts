@@ -4,7 +4,7 @@ const DEVICE_FINGERPRINT_KEY = 'aspiral_device_fingerprint';
 const APP_SALT = 'aspiral-v1-secure-storage-salt-2024';
 
 function getStorage(): Storage | null {
-  if (typeof globalThis.localStorage !== 'undefined') {
+  if (globalThis.localStorage !== undefined) {
     return globalThis.localStorage;
   }
 
@@ -45,7 +45,8 @@ export async function getEncryptionSecret(): Promise<string> {
     }
   } catch (_error) {
     // Fallback to anonymous if auth check fails
-    console.debug('Auth check failed, using anonymous secret context');
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('Auth check failed, using anonymous secret context', { message });
   }
 
   const deviceId = getDeviceFingerprint();
