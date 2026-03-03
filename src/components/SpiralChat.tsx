@@ -40,10 +40,17 @@ export interface SpiralChatHandle {
   openSettings: () => void;
 }
 
- 
-interface SpiralChatProps { }
+// Define non-standard PWA event type
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
 
-export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref) => {
+export const SpiralChat = forwardRef<SpiralChatHandle, Record<string, unknown>>((_, ref) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [input, setInput] = useState("");
@@ -58,12 +65,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const { toast } = useToast();
 
   // Audit Fix: PWA Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   // Audit Fix: Global listener for PWA install
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Optional: Show a toast that app is ready to install
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -404,13 +411,13 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   }, [currentSession, isRecordingPaused, currentStage]);
 
   // Derive session state for menu
-  const sessionState = !currentSession
-    ? "idle"
-    : currentStage === "breakthrough" || showBreakthroughCard
-      ? "breakthrough"
-      : isRecordingPaused
-        ? "paused"
-        : "active";
+  const getSessionState = () => {
+    if (!currentSession) return "idle";
+    if (currentStage === "breakthrough" || showBreakthroughCard) return "breakthrough";
+    if (isRecordingPaused) return "paused";
+    return "active";
+  };
+  const sessionState = getSessionState();
 
   // Menu handlers - now tied to recording pause
   const handlePause = useCallback(() => {
@@ -660,17 +667,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
                   </Button>
                 )}
 
-                {!activeFriction ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={demoFriction}
-                    className="glass-card rounded-xl text-xs text-warning hover:text-warning"
-                  >
-                    <Cog className="h-3 w-3 mr-1.5" />
-                    Friction
-                  </Button>
-                ) : (
+                {activeFriction ? (
                   <>
                     <Button
                       variant="ghost"
@@ -691,6 +688,16 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
                       Breakthrough
                     </Button>
                   </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={demoFriction}
+                    className="glass-card rounded-xl text-xs text-warning hover:text-warning"
+                  >
+                    <Cog className="h-3 w-3 mr-1.5" />
+                    Friction
+                  </Button>
                 )}
               </>
             )}

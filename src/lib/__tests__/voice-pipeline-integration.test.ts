@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Test the clamping functions directly since we can't easily test the hook without @testing-library/react
 

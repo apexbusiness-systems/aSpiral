@@ -90,9 +90,9 @@ const createMockVariant = (overrides: Partial<MutatedVariant> = {}): MutatedVari
 // ============================================================================
 describe('Breakthrough Director Lifecycle', () => {
     let director: BreakthroughDirector;
-    let onCompleteMock: ReturnType<typeof vi.fn>;
-    let onAbortMock: ReturnType<typeof vi.fn>;
-    let onPhaseChangeMock: ReturnType<typeof vi.fn>;
+    let onCompleteMock: any;
+    let onAbortMock: any;
+    let onPhaseChangeMock: any;
 
     beforeEach(() => {
         onCompleteMock = vi.fn();
@@ -250,7 +250,7 @@ describe('Breakthrough Director Lifecycle', () => {
 // ============================================================================
 describe('FPS Monitoring and Safe Mode', () => {
     let director: BreakthroughDirector;
-    let onPhaseChangeMock: ReturnType<typeof vi.fn>;
+    let onPhaseChangeMock: any;
 
     beforeEach(() => {
         onPhaseChangeMock = vi.fn();
@@ -286,8 +286,8 @@ describe('FPS Monitoring and Safe Mode', () => {
 // ============================================================================
 describe('Physics Worker Pause/Resume', () => {
     let director: BreakthroughDirector;
-    let onPauseMock: ReturnType<typeof vi.fn>;
-    let onResumeMock: ReturnType<typeof vi.fn>;
+    let onPauseMock: any;
+    let onResumeMock: any;
 
     beforeEach(() => {
         onPauseMock = vi.fn();

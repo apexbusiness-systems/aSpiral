@@ -1,26 +1,26 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Text, Float, Html } from "@react-three/drei";
+import { Float, Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
 import { getEntityVisualConfig, getColorByValence } from "@/lib/visualVariety";
 
 interface AdaptiveEntityProps {
-  entity: Entity;
-  position: [number, number, number];
-  isVisible: boolean;
-  onClick?: (entity: Entity) => void;
-  showLabel?: "always" | "hover" | "important";
+  readonly entity: Entity;
+  readonly position: [number, number, number];
+  readonly isVisible: boolean;
+  readonly onClick?: (entity: Entity) => void;
+  readonly showLabel?: "always" | "hover" | "important";
   /** Callback to register mesh ref for direct position updates (60FPS physics) */
-  onMeshRef?: (mesh: THREE.Mesh | null) => void;
+  readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
 function EntityGeometry({
   type,
   size
 }: {
-  type: "sphere" | "cube" | "octahedron" | "torus" | "cone";
-  size: number;
+  readonly type: "sphere" | "cube" | "octahedron" | "torus" | "cone";
+  readonly size: number;
 }) {
   switch (type) {
     case "cube":

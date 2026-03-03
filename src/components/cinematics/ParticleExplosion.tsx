@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /**
  * Particle Explosion Cinematic Variant
  * Camera zooms in while particles explode outward with shockwave

@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { InstancedFlow } from "three/examples/jsm/modifiers/CurveModifier.js";
 import { detectDeviceCapabilities, prefersReducedMotion } from "@/lib/performance/optimizer";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
+import { useMobileDetect, throttleMobileFrame } from "@/hooks/useMobileDetect";
 import * as THREE from "three";
 
 interface PremiumSpiralProps {
@@ -13,7 +14,7 @@ interface PremiumSpiralProps {
 }
 
 const SPIRAL_HEIGHT = 3.8; // Taller for more grandeur
-const SPIRAL_RADIUS = 2.0; // Wider for better spacing
+const SPIRAL_RADIUS = 2; // Wider for better spacing
 
 function createSpiralCurve(points: number): THREE.CatmullRomCurve3 {
   const curvePoints: THREE.Vector3[] = [];
@@ -37,6 +38,7 @@ export function PremiumSpiral({
   reducedMotion: reducedMotionOverride,
 }: PremiumSpiralProps) {
   const invalidate = useThree((state) => state.invalidate);
+  const isMobile = useMobileDetect();
   const reducedMotion = useMemo(
     () => reducedMotionOverride ?? prefersReducedMotion(),
     [reducedMotionOverride]
@@ -53,9 +55,15 @@ export function PremiumSpiral({
     return 360;
   }, [resolvedCapabilities, instanceCount]);
 
+  // Keep references to geometry and material for strict unmount disposal
+  const geometryRef = useRef<THREE.TetrahedronGeometry>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+
   const flow = useMemo(() => {
     // Audit Fix: Changed from Sphere to Tetrahedron for "Crystalline/Stardust" look
-    const geometry = new THREE.TetrahedronGeometry(0.08, 0);
+    const geometry = new THREE.TetrahedronGeometry(isMobile ? 0.09 : 0.08, isMobile ? 0 : 1);
+    geometryRef.current = geometry;
+    
     // Audit Fix: Organic material settings
     const material = new THREE.MeshStandardMaterial({
       color: new THREE.Color("#b8c1ec"),
@@ -65,6 +73,7 @@ export function PremiumSpiral({
       metalness: 0.9,
       flatShading: true, // Enhances the crystal look
     });
+    materialRef.current = material;
 
     const instancedFlow = new InstancedFlow(count, 1, geometry, material);
     // Audit Fix: Randomize scales and rotations for natural variety
@@ -73,7 +82,7 @@ export function PremiumSpiral({
         instancedFlow.object3D.instanceMatrix.needsUpdate = true;
     }
     return instancedFlow;
-  }, [count]);
+  }, [count, isMobile]);
 
   const curve = useMemo(() => createSpiralCurve(160), []);
   const speedRef = useRef(0.12); // Slower, more majestic speed
@@ -92,10 +101,18 @@ export function PremiumSpiral({
     }
 
     invalidate();
+
+    // VRAM Cleanup memory leak prevention
+    return () => {
+      geometryRef.current?.dispose();
+      materialRef.current?.dispose();
+    };
   }, [flow, curve, count, invalidate]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (isPaused || reducedMotion) return;
+    if (throttleMobileFrame(isMobile, state.clock.elapsedTime)) return;
+
     const speed = speedRef.current * delta;
     flow.moveAlongCurve(speed);
     // Audit Fix: Slowly rotate the entire spiral container for "drift"

@@ -89,7 +89,7 @@ function createThreeColor(varName: CssVarKey, fallback: string, style: CSSStyleD
  * Builds the full theme colors object
  */
 function buildThemeColors(): ThemeColors {
-    const style = typeof document !== 'undefined' ? getComputedStyle(document.documentElement) : null
+    const style = typeof document === 'undefined' ? null : getComputedStyle(document.documentElement)
 
     return Object.freeze({
         primary: createThreeColor('primary', FALLBACK_COLORS.primary, style),

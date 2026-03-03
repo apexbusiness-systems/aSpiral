@@ -8,14 +8,39 @@ if [[ ! -f "$TARGET" ]]; then
   exit 1
 fi
 
-if ! rg -n "loadAspiralMindcore|const systemPrompt = mindcore\.systemPrompt" "$TARGET" >/dev/null; then
+SEARCH_TOOL="grep -E"
+if command -v rg >/dev/null 2>&1; then
+  SEARCH_TOOL="rg"
+fi
+
+has_match() {
+  local pattern="$1"
+  local target="$2"
+  if [[ "$SEARCH_TOOL" == "rg" ]]; then
+    rg -n "$pattern" "$target" >/dev/null
+  else
+    grep -E -n "$pattern" "$target" >/dev/null
+  fi
+}
+
+find_matches() {
+  local pattern="$1"
+  local target="$2"
+  if [[ "$SEARCH_TOOL" == "rg" ]]; then
+    rg -n "$pattern" "$target"
+  else
+    grep -E -n "$pattern" "$target"
+  fi
+}
+
+if ! has_match "loadAspiralMindcore|const systemPrompt = mindcore\.systemPrompt" "$TARGET"; then
   echo "❌ MindCore loader injection not found in $TARGET"
   exit 1
 fi
 
-if rg -n "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET" >/dev/null; then
+if has_match "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"; then
   echo "❌ Legacy directive tokens found in active prompt assembly path"
-  rg -n "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"
+  find_matches "You are ASPIRAL's discovery engine|Synthesize the breakthrough from this conversation|const QUESTION_PATTERNS" "$TARGET"
   exit 1
 fi
 

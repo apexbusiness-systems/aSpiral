@@ -59,6 +59,11 @@ export function useEntities() {
     }, [fallbackPositions]);
 
     // Progressive Disclosure
+    const revealEntity = useCallback((entityId: string) => {
+        setVisibleEntityIds(prev => new Set([...prev, entityId]));
+        invalidate();
+    }, [invalidate]);
+
     useEffect(() => {
         if (entities.length === 0) {
             setVisibleEntityIds(new Set());
@@ -81,17 +86,14 @@ export function useEntities() {
         const remainingEntities = sorted.slice(visibleLimit);
         const timeoutIds = remainingEntities.map((entity, index) => {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
-            return setTimeout(() => {
-                setVisibleEntityIds(prev => new Set([...prev, entity.id]));
-                invalidate();
-            }, delay);
+            return setTimeout(() => revealEntity(entity.id), delay);
         });
 
         // Cleanup timeouts on unmount or dependency change
         return () => {
             timeoutIds.forEach(clearTimeout);
         };
-    }, [entities, profile, invalidate]);
+    }, [entities, profile, revealEntity]);
 
     return {
         entities,

@@ -26,24 +26,24 @@ import { toast } from "sonner";
 import { ConfirmationModal } from "./ConfirmationModal";
 
 interface MainMenuProps {
-  isOpen: boolean;
-  onClose: () => void;
-  sessionState: "idle" | "active" | "paused" | "breakthrough";
-  onPause: () => void;
-  onResume: () => void;
-  onStop: () => void;
-  onRestart: () => void;
-  onSkipToBreakthrough: () => void;
-  onSave: () => void;
-  onExport: () => void;
-  onViewHistory: () => void;
-  onSettings: () => void;
-  onHelp: () => void;
-  installPwa?: () => void;
-  sessionProgress?: {
-    questionCount: number;
-    entityCount: number;
-    timeElapsed: number;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly sessionState: "idle" | "active" | "paused" | "breakthrough";
+  readonly onPause: () => void;
+  readonly onResume: () => void;
+  readonly onStop: () => void;
+  readonly onRestart: () => void;
+  readonly onSkipToBreakthrough: () => void;
+  readonly onSave: () => void;
+  readonly onExport: () => void;
+  readonly onViewHistory: () => void;
+  readonly onSettings: () => void;
+  readonly onHelp: () => void;
+  readonly installPwa?: () => void;
+  readonly sessionProgress?: {
+    readonly questionCount: number;
+    readonly entityCount: number;
+    readonly timeElapsed: number;
   };
 }
 
@@ -71,7 +71,7 @@ export function MainMenu({
   const isPaused = sessionState === "paused";
   const isBreakthrough = sessionState === "breakthrough";
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(globalThis as any).MSStream;
 
   function handleActionWithConfirmation(action: string, handler: () => void) {
     const needsConfirmation = ["stop", "restart"];
@@ -386,7 +386,7 @@ export function MainMenu({
                     Install App
                   </h3>
 
-                  {installPwa ? (
+                  {installPwa && (
                     <Button
                       variant="secondary"
                       className="w-full justify-start gap-2"
@@ -395,11 +395,12 @@ export function MainMenu({
                       <Download size={16} />
                       Add to Home Screen
                     </Button>
-                  ) : isIOS ? (
+                  )}
+                  {!installPwa && isIOS && (
                     <p className="text-xs text-muted-foreground">
                       Tap <span className="text-white font-bold">Share</span> then <span className="text-white font-bold">"Add to Home Screen"</span> to install.
                     </p>
-                  ) : null}
+                  )}
                 </div>
               )}
             </div>

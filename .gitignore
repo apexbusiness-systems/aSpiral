@@ -55,6 +55,10 @@ capacitor.config.ts.bak
 node_modules
 coverage
 
+# Lockfile: bun.lockb is canonical — reject npm/yarn lockfiles
+package-lock.json
+yarn.lock
+
 # Build/lint/test output files (never commit)
 *_output.txt
 *_results.txt
@@ -62,7 +66,12 @@ coverage
 *_check.txt
 lint_*.txt
 lint_*.json
+lint_*.log
 test-results.json
 build_output.txt
 errors.md
 temp_repo/
+
+# Report artifacts (CI/local tool output — never commit)
+full_lint_report*
+typecheck_strict*

@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 import react from "eslint-plugin-react";
 
 export default tseslint.config(
-  { ignores: ["dist", "supabase/functions"] },
+  { ignores: ["dist", "supabase/functions", "check_r.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -31,6 +31,7 @@ export default tseslint.config(
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-unused-expressions": "off",
       "react/prop-types": "off",
+      "react/no-unknown-property": "off",
     },
   },
 );

@@ -355,7 +355,7 @@ export class ComplianceLogger {
   private hashIdentifier(id: string): string {
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
-      const char = id.charCodeAt(i);
+      const char = id.codePointAt(i) || 0;
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash;
     }
@@ -483,7 +483,7 @@ export class ComplianceLogger {
       entry.errorCode === "SYSTEM_COMPROMISE",
     ];
 
-    if (escalationTriggers.some(t => t)) {
+    if (escalationTriggers.some(Boolean)) {
       this.escalate(entry, "Critical content violation");
     }
   }
@@ -567,12 +567,20 @@ export function detectJurisdiction(request: Request): string {
   // Check Accept-Language for hints
   const acceptLang = request.headers.get("Accept-Language");
   if (acceptLang) {
-    if (acceptLang.includes("en-GB")) return "UK";
-    if (acceptLang.includes("en-AU")) return "AU";
-    if (acceptLang.includes("en-CA") || acceptLang.includes("fr-CA")) return "CA";
-    if (acceptLang.includes("pt-BR")) return "BR";
-    if (acceptLang.includes("de") || acceptLang.includes("fr") || acceptLang.includes("es")) return "EU";
-    if (acceptLang.includes("ja")) return "JP";
+    const langMap = [
+      { key: "en-GB", val: "UK" },
+      { key: "en-AU", val: "AU" },
+      { key: "en-CA", val: "CA" },
+      { key: "fr-CA", val: "CA" },
+      { key: "pt-BR", val: "BR" },
+      { key: "de", val: "EU" },
+      { key: "fr", val: "EU" },
+      { key: "es", val: "EU" },
+      { key: "ja", val: "JP" },
+    ];
+    for (const { key, val } of langMap) {
+      if (acceptLang.includes(key)) return val;
+    }
   }
 
   // Default to most restrictive

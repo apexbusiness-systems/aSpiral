@@ -18,6 +18,7 @@ const log = (level: string, message: string, data?: unknown) => {
 // Configuration
 const OPENAI_REALTIME_MODEL = Deno.env.get("OPENAI_REALTIME_MODEL") || "gpt-4o-realtime-preview-2024-10-01";
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const SYSTEM_PROMPT = Deno.env.get("SYSTEM_PROMPT") || "You are a helpful APEX Business Systems assistant.";
 const MAX_CONCURRENT_CONNECTIONS = 50; // Simple in-memory limit per instance
 
 let activeConnections = 0;

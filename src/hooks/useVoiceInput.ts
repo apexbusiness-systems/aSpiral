@@ -259,7 +259,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const startRecordingRef = useRef<() => void>(() => { });
 
   // Bug 5/Gap A: Ref for createRecognition to break circular useCallback dependency
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const createRecognitionRef = useRef<any>(null);
 
   // Interim update throttling
@@ -825,7 +824,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       resumeListening: () => startRecordingRef.current(),
       isListening: () => isStartedRef.current,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync Global State

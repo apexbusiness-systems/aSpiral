@@ -1,6 +1,7 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
+import { useMobileDetect, throttleMobileFrame } from "@/hooks/useMobileDetect";
 import * as THREE from "three";
 
 // Helper to suppress SonarQube security warning for visual-only random values
@@ -11,17 +12,16 @@ const visualRandom = () => {
 };
 
 interface GrindingGearsProps {
-  topLabel: string;
-  bottomLabel: string;
-  intensity?: number; // 0-1, how hard they're grinding
-  isActive: boolean;
-  position?: [number, number, number];
+  readonly topLabel: string;
+  readonly bottomLabel: string;
+  readonly intensity?: number; // 0-1, how hard they're grinding
+  readonly isActive: boolean;
+  readonly position?: [number, number, number];
 }
 
 // Create gear geometry
 function createGearShape(innerRadius: number, outerRadius: number, teeth: number) {
   const shape = new THREE.Shape();
-  const toothDepth = (outerRadius - innerRadius) * 0.3;
   const toothWidth = (Math.PI * 2) / teeth / 2;
 
   for (let i = 0; i < teeth; i++) {
@@ -69,7 +69,7 @@ function createGearShape(innerRadius: number, outerRadius: number, teeth: number
 }
 
 // Spark particle
-function Spark({ position, velocity }: { position: THREE.Vector3; velocity: THREE.Vector3 }) {
+function Spark({ position, velocity }: { readonly position: THREE.Vector3; readonly velocity: THREE.Vector3 }) {
   const ref = useRef<THREE.Mesh>(null);
   const life = useRef(1);
 
@@ -103,20 +103,27 @@ export function GrindingGears({
   const groupRef = useRef<THREE.Group>(null);
   const sparkTime = useRef(0);
   const sparksRef = useRef<Array<{ id: number; pos: THREE.Vector3; vel: THREE.Vector3 }>>([]);
+  const isMobile = useMobileDetect();
+
+  // Keep references to geometry and material for strict unmount disposal
+  const geometryRef = useRef<THREE.ExtrudeGeometry>(null);
 
   // Create gear geometry
   const gearGeometry = useMemo(() => {
-    const shape = createGearShape(0.3, 0.5, 12);
+    // Audit Fix: Simplify geometry on mobile
+    const shape = createGearShape(0.3, 0.5, isMobile ? 8 : 12);
     const extrudeSettings = {
       steps: 1,
       depth: 0.15,
-      bevelEnabled: true,
+      bevelEnabled: !isMobile,
       bevelThickness: 0.02,
       bevelSize: 0.02,
       bevelSegments: 2,
     };
-    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  }, []);
+    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geometryRef.current = geo;
+    return geo;
+  }, [isMobile]);
 
   // Heat color based on intensity
   const heatColor = useMemo(() => {
@@ -126,8 +133,15 @@ export function GrindingGears({
     return new THREE.Color(r, g, b);
   }, [intensity]);
 
+  useEffect(() => {
+    return () => {
+      geometryRef.current?.dispose();
+    };
+  }, []);
+
   useFrame((state, delta) => {
     if (!isActive) return;
+    if (throttleMobileFrame(isMobile, state.clock.elapsedTime)) return;
 
     const speed = 1 + intensity * 2;
 
@@ -147,9 +161,9 @@ export function GrindingGears({
       groupRef.current.position.y = position[1] + (visualRandom() - 0.5) * shake;
     }
 
-    // Generate sparks
+    // Generate sparks (reduce heavily on mobile)
     sparkTime.current += delta;
-    if (sparkTime.current > 0.1 / intensity && sparksRef.current.length < 20) {
+    if (sparkTime.current > (isMobile ? 0.3 : 0.1) / intensity && sparksRef.current.length < (isMobile ? 8 : 20)) {
       sparkTime.current = 0;
       const angle = visualRandom() * Math.PI * 2;
       const sparkPos = new THREE.Vector3(
@@ -170,7 +184,7 @@ export function GrindingGears({
     }
 
     // Clean old sparks
-    sparksRef.current = sparksRef.current.slice(-15);
+    sparksRef.current = sparksRef.current.slice(isMobile ? -5 : -15);
   });
 
   if (!isActive) return null;
@@ -241,12 +255,14 @@ export function GrindingGears({
       ))}
 
       {/* Grinding point glow */}
-      <pointLight
-        position={[0, 0, 0.5]}
-        color="#ff6600"
-        intensity={intensity * 2}
-        distance={3}
-      />
+      {!isMobile && (
+        <pointLight
+          position={[0, 0, 0.5]}
+          color="#ff6600"
+          intensity={intensity * 2}
+          distance={3}
+        />
+      )}
     </group>
   );
 }

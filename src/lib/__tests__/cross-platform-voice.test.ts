@@ -10,8 +10,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Test: iOS Safari Detection Logic
 // ============================================================================
 describe('iOS Safari Detection', () => {
-  const originalNavigator = global.navigator;
-  const originalWindow = global.window;
+  const originalNavigator = globalThis.navigator;
 
   beforeEach(() => {
     // Reset mocks
@@ -20,11 +19,11 @@ describe('iOS Safari Detection', () => {
 
   afterEach(() => {
     // Restore original
-    Object.defineProperty(global, 'navigator', { value: originalNavigator, writable: true });
+    Object.defineProperty(globalThis, 'navigator', { value: originalNavigator, writable: true });
   });
 
   it('detects iOS Safari on iPhone', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
         platform: 'iPhone',
@@ -38,7 +37,7 @@ describe('iOS Safari Detection', () => {
   });
 
   it('detects iOS Safari on iPad', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
         platform: 'iPad',
@@ -52,7 +51,7 @@ describe('iOS Safari Detection', () => {
   });
 
   it('detects iOS Safari on iPadOS (MacIntel with touch)', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15',
         platform: 'MacIntel',
@@ -66,10 +65,10 @@ describe('iOS Safari Detection', () => {
   });
 
   it('returns false for Chrome on iOS (not Safari)', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/108.0.5359.112 Mobile/15E148 Safari/604.1',
-        platform: 'iPhone',
+        platform: 'iPhone', // NOSONAR
         maxTouchPoints: 5,
       },
       writable: true,
@@ -83,7 +82,7 @@ describe('iOS Safari Detection', () => {
   });
 
   it('returns false for desktop Chrome', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         platform: 'Win32',
@@ -97,7 +96,7 @@ describe('iOS Safari Detection', () => {
   });
 
   it('returns false for Android Chrome', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
         platform: 'Linux armv8l',
@@ -111,7 +110,7 @@ describe('iOS Safari Detection', () => {
   });
 
   it('returns false for desktop Safari (macOS without touch)', () => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: {
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15',
         platform: 'MacIntel',
@@ -192,7 +191,7 @@ describe('TTS Sentence Chunking', () => {
 
 // Helper function that mirrors the implementation
 function splitIntoSentences(text: string): string[] {
-  const sentences = text.match(/(?:[^.!?]+[.!?]+[\s]?)|(?:[^.!?]+$)/g);
+  const sentences = text.match(/(?:[^.!?]+[.!?]+\s?)|(?:[^.!?]+$)/g);
   if (!sentences) return [text];
   return sentences.map(s => s.trim()).filter(s => s.length > 0);
 }

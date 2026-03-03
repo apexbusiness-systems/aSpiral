@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { Suspense } from "react";
 import { createRoot, useFrame, useThree } from "@react-three/fiber";
 import { SceneLighting } from "@/components/3d/SceneLighting";

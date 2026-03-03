@@ -55,7 +55,7 @@ function validateTranslationValue(value: unknown, key: string, language: string)
   }
 
   if (typeof value !== "string") {
-    throw new Error(`Non-string value for key "${key}" in ${language}: ${typeof value}`);
+    throw new TypeError(`Non-string value for key "${key}" in ${language}: ${typeof value}`);
   }
 
   if (value.trim() === "") {
@@ -66,13 +66,13 @@ function validateTranslationValue(value: unknown, key: string, language: string)
 /**
  * Recursively validate all leaf values in a translation object
  */
-function validateAllValues(obj: Record<string, unknown>, prefix = "", language: string): void {
+function validateAllValues(obj: Record<string, unknown>, language: string, prefix = ""): void {
   for (const key in obj) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
     const value = obj[key];
 
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      validateAllValues(value as Record<string, unknown>, fullKey, language);
+      validateAllValues(value as Record<string, unknown>, language, fullKey);
     } else {
       validateTranslationValue(value, fullKey, language);
     }
@@ -124,7 +124,7 @@ describe("Translation Keys Parity", () => {
 
   it("should have only non-empty string values in all locales", () => {
     supportedLanguages.forEach((lang) => {
-      validateAllValues(locales[lang], "", lang);
+      validateAllValues(locales[lang], lang);
     });
   });
 

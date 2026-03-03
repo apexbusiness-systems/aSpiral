@@ -21,10 +21,10 @@ import { assertEquals, assert, assertExists } from "https://deno.land/std@0.168.
 
 // Import security modules
 import { detectPromptInjection, validateOutput, detectAnomaly, INJECTION_RESPONSES } from "./prompt-shield.ts";
-import { validateInput, parseRequestBody, validateHeaders } from "./input-validator.ts";
-import { moderateContent, SAFE_RESPONSES } from "./content-guard.ts";
+import { validateInput } from "./input-validator.ts";
+import { moderateContent } from "./content-guard.ts";
 import { checkRateLimit, checkSessionLimit, TIER_LIMITS } from "./rate-limiter.ts";
-import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
+import { ComplianceLogger } from "./compliance-logger.ts";
 
 // =============================================================================
 // TEST CONFIGURATION
@@ -113,13 +113,13 @@ interface MemorySnapshot {
 // LOAD TESTING - Concurrent Request Handling
 // =============================================================================
 
-Deno.test("LoadTest: handles concurrent injection detection", async () => {
+Deno.test("LoadTest: handles concurrent injection detection", () => {
   const concurrentRequests = TEST_CONFIG.CONCURRENT_USERS;
   const latencies: number[] = [];
   let successes = 0;
   let failures = 0;
 
-  const requests = Array.from({ length: concurrentRequests }, async (_, i) => {
+  const requests = Array.from({ length: concurrentRequests }, (_, i) => {
     const start = performance.now();
     try {
       const transcript = i % 5 === 0 ? generateMaliciousPayload() : generateRealisticTranscript();
@@ -139,7 +139,7 @@ Deno.test("LoadTest: handles concurrent injection detection", async () => {
     }
   });
 
-  const results = await Promise.all(requests);
+  // Synchronous execution completes here
   
   const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
   const sortedLatencies = latencies.sort((a, b) => a - b);
@@ -153,12 +153,12 @@ Deno.test("LoadTest: handles concurrent injection detection", async () => {
   assert(avgLatency < 50, `Average latency should be under 50ms, got ${avgLatency.toFixed(2)}ms`);
 });
 
-Deno.test("LoadTest: handles concurrent content moderation", async () => {
+Deno.test("LoadTest: handles concurrent content moderation", () => {
   const concurrentRequests = TEST_CONFIG.CONCURRENT_USERS;
   const latencies: number[] = [];
   let successes = 0;
 
-  const requests = Array.from({ length: concurrentRequests }, async () => {
+  const requests = Array.from({ length: concurrentRequests }, () => {
     const start = performance.now();
     const transcript = generateRealisticTranscript();
     const result = moderateContent(transcript, generateRequestId(), "US");
@@ -171,7 +171,7 @@ Deno.test("LoadTest: handles concurrent content moderation", async () => {
     return result;
   });
 
-  await Promise.all(requests);
+  // Synchronous execution completes here
   
   const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
   
@@ -183,12 +183,12 @@ Deno.test("LoadTest: handles concurrent content moderation", async () => {
   assert(avgLatency < 20, `Average latency should be under 20ms, got ${avgLatency.toFixed(2)}ms`);
 });
 
-Deno.test("LoadTest: handles concurrent input validation", async () => {
+Deno.test("LoadTest: handles concurrent input validation", () => {
   const concurrentRequests = TEST_CONFIG.CONCURRENT_USERS;
   let successes = 0;
   let validationPasses = 0;
 
-  const requests = Array.from({ length: concurrentRequests }, async (_, i) => {
+  const requests = Array.from({ length: concurrentRequests }, (_, i) => {
     const input = {
       transcript: generateRealisticTranscript(),
       userTier: ["free", "pro", "enterprise"][i % 3],
@@ -205,7 +205,7 @@ Deno.test("LoadTest: handles concurrent input validation", async () => {
     return result;
   });
 
-  await Promise.all(requests);
+  // Synchronous execution completes here
   
   console.log(`[LoadTest] Concurrent input validation:`);
   console.log(`  Total: ${concurrentRequests}, Passed: ${validationPasses}`);
@@ -306,7 +306,7 @@ Deno.test("StressTest: handles deep conversation history", () => {
 // SPIKE TESTING - Sudden Traffic Bursts
 // =============================================================================
 
-Deno.test("SpikeTest: handles sudden traffic burst", async () => {
+Deno.test("SpikeTest: handles sudden traffic burst", () => {
   const spikeSize = TEST_CONFIG.SPIKE_USERS;
   const latencies: number[] = [];
   let successes = 0;
@@ -315,7 +315,7 @@ Deno.test("SpikeTest: handles sudden traffic burst", async () => {
   // Simulate a sudden spike of requests
   const burstStart = performance.now();
   
-  const requests = Array.from({ length: spikeSize }, async () => {
+  const requests = Array.from({ length: spikeSize }, () => {
     const start = performance.now();
     try {
       const result = detectPromptInjection(generateRealisticTranscript(), generateRequestId());
@@ -328,7 +328,7 @@ Deno.test("SpikeTest: handles sudden traffic burst", async () => {
     }
   });
 
-  await Promise.all(requests);
+  // Synchronous execution completes here
   
   const burstDuration = performance.now() - burstStart;
   const requestsPerSecond = (spikeSize / burstDuration) * 1000;
@@ -342,14 +342,14 @@ Deno.test("SpikeTest: handles sudden traffic burst", async () => {
   assert(requestsPerSecond > 100, `Should handle > 100 req/s, got ${requestsPerSecond.toFixed(2)}`);
 });
 
-Deno.test("SpikeTest: rate limiter responds correctly under spike", async () => {
+Deno.test("SpikeTest: rate limiter responds correctly under spike", () => {
   const userIds = Array.from({ length: 10 }, generateUserId);
   const requestsPerUser = 20;
   let totalBlocked = 0;
   let totalAllowed = 0;
 
   const allRequests = userIds.flatMap(userId =>
-    Array.from({ length: requestsPerUser }, async () => {
+    Array.from({ length: requestsPerUser }, () => {
       const result = checkRateLimit(userId, "free", 100);
       if (result.allowed) {
         totalAllowed++;
@@ -360,7 +360,7 @@ Deno.test("SpikeTest: rate limiter responds correctly under spike", async () => 
     })
   );
 
-  await Promise.all(allRequests);
+  // Synchronous execution completes here
   
   console.log(`[SpikeTest] Rate limiter under spike:`);
   console.log(`  Users: ${userIds.length}, Requests/user: ${requestsPerUser}`);
@@ -374,7 +374,7 @@ Deno.test("SpikeTest: rate limiter responds correctly under spike", async () => 
 // ENDURANCE TESTING - Sustained Load Over Time
 // =============================================================================
 
-Deno.test("EnduranceTest: sustained validation load", async () => {
+Deno.test("EnduranceTest: sustained validation load", () => {
   const duration = TEST_CONFIG.ENDURANCE_DURATION_MS;
   const startTime = Date.now();
   let requestCount = 0;
@@ -486,7 +486,7 @@ Deno.test("ChaosTest: handles unicode edge cases", () => {
   }
 });
 
-Deno.test("ChaosTest: handles rapid user switching", async () => {
+Deno.test("ChaosTest: handles rapid user switching", () => {
   const iterations = 100;
   let successes = 0;
 

@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /**
  * Space Warp Cinematic Variant
  * Camera accelerates through light tunnel with star streaks

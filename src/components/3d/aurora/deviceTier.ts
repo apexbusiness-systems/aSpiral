@@ -139,8 +139,8 @@ export function getOptimalParticleCount(explicitCount?: number): number {
  * Respects prefers-reduced-motion media query.
  */
 export function prefersReducedMotion(): boolean {
-    if (typeof globalThis.window === 'undefined') return false
-    return globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (globalThis.window === undefined) return false
+    return globalThis.window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**

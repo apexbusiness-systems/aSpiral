@@ -266,8 +266,8 @@ function sanitizeTranscript(transcript: string): string {
 
   // Normalize quotes
   sanitized = sanitized
-    .replaceAll(/[""]/g, '"')
-    .replaceAll(/['']/g, "'");
+    .replaceAll(/[“”]/g, '"')
+    .replaceAll(/[‘’]/g, "'");
 
   return sanitized;
 }
@@ -312,6 +312,7 @@ export async function parseRequestBody(
       return { success: false, error: "Failed to parse request" };
     }
   } catch (error) {
+    console.error("[INPUT-VALIDATOR] Request parsing failed:", error);
     return { success: false, error: "Request parsing failed" };
   }
 }

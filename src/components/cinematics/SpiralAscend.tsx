@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /**
  * Spiral Ascend Cinematic Variant
  * Camera spirals upward with green vortex particles

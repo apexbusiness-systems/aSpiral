@@ -59,7 +59,7 @@ function testTransition(
  * Transitions context to a specific state for setup
  */
 function transitionTo(ctx: SpiralContext, events: EventType[]): SpiralContext {
-    return events.reduce((c, event) => spiralReducer(c, { type: event }), ctx);
+    return events.reduce((c, event) => spiralReducer(c, { type: event } as any), ctx);
 }
 
 // ============================================================================

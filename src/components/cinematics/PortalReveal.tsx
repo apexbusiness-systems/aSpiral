@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /**
  * Portal Reveal Cinematic Variant
  * Camera glides through rotating portal ring with energy particles

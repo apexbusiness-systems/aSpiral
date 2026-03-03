@@ -57,7 +57,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
       analytics.trackFatalUiError({
         message: error.message || 'Unknown error',
         stack: trimmedStack,
-        route: window.location.href,
+        route: globalThis.window.location.href,
         userAgent: navigator.userAgent,
         deviceMemory,
       });
@@ -65,7 +65,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   handleReload = (): void => {
-    window.location.reload();
+    globalThis.window.location.reload();
   };
 
   render(): ReactNode {

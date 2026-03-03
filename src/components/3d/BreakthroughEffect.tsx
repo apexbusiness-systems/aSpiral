@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
+import { useMobileDetect, throttleMobileFrame } from "@/hooks/useMobileDetect";
 import * as THREE from "three";
 
 interface BreakthroughEffectProps {
-  isActive: boolean;
-  onComplete?: () => void;
+  readonly isActive: boolean;
+  readonly onComplete?: () => void;
 }
 
 // Particle for explosion
@@ -14,10 +15,10 @@ function Particle({
   velocity,
   size,
 }: {
-  initialPosition: THREE.Vector3;
-  color: string;
-  velocity: THREE.Vector3;
-  size: number;
+  readonly initialPosition: THREE.Vector3;
+  readonly color: string;
+  readonly velocity: THREE.Vector3;
+  readonly size: number;
 }) {
   const ref = useRef<THREE.Mesh>(null);
   const life = useRef(1);
@@ -52,9 +53,11 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
   const [ringScale, setRingScale] = useState(0);
   const ringRef = useRef<THREE.Mesh>(null);
   const hasTriggered = useRef(false);
+  const isMobile = useMobileDetect();
 
   // Trigger effect
   useEffect(() => {
+    const currentScene = sceneRef.current;
     if (isActive && !hasTriggered.current) {
       hasTriggered.current = true;
 
@@ -70,10 +73,13 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
       const newParticles = [];
       const colors = ["#22c55e", "#10b981", "#34d399", "#6ee7b7", "#ffffff", "#fbbf24"];
 
-      for (let i = 0; i < 50; i++) {
+      // Audit Fix: Scale down particles on mobile for performance
+      const particleCount = isMobile ? 20 : 50;
+
+      for (let i = 0; i < particleCount; i++) {
         const angle = Math.random() * Math.PI * 2; // nosonar:typescript:S2245
         const elevation = (Math.random() - 0.5) * Math.PI; // nosonar:typescript:S2245
-        const speed = 2 + Math.random() * 4; // nosonar:typescript:S2245
+        const speed = 2 + Math.random() * (isMobile ? 2 : 4); // nosonar:typescript:S2245
 
         newParticles.push({
           id: i,
@@ -93,7 +99,7 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
       setRingScale(0.1);
 
       // Haptic feedback (mobile)
-      if (navigator.vibrate) {
+      if (typeof globalThis.window !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
 
@@ -110,15 +116,16 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
 
     return () => {
       // Strict cleanup on unmount
-      const scene = sceneRef.current;
-      if (scene) {
-        scene.clear();
+      if (currentScene) {
+        currentScene.clear();
       }
     };
-  }, [isActive, onComplete]);
+  }, [isActive, onComplete, isMobile]);
 
   // Animate flash and ring
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    if (throttleMobileFrame(isMobile, state.clock.elapsedTime)) return;
+
     if (flashOpacity > 0) {
       setFlashOpacity((prev) => Math.max(0, prev - delta * 4));
     }
@@ -135,11 +142,11 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
   if (!isActive && particles.length === 0) return null;
 
   return (
-    <group>
+    <group ref={sceneRef}>
       {/* Flash sphere */}
       {flashOpacity > 0 && (
         <mesh>
-          <sphereGeometry args={[10, 32, 32]} />
+          <sphereGeometry args={[10, isMobile ? 16 : 32, isMobile ? 16 : 32]} />
           <meshBasicMaterial
             color="#ffffff"
             transparent
@@ -151,7 +158,7 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
 
       {/* Expanding ring */}
       <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.8, 1, 64]} />
+        <ringGeometry args={[0.8, 1, isMobile ? 32 : 64]} />
         <meshBasicMaterial
           color="#22c55e"
           transparent
@@ -172,12 +179,14 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
       ))}
 
       {/* Central glow */}
-      <pointLight
-        position={[0, 0, 0]}
-        color="#22c55e"
-        intensity={flashOpacity * 10}
-        distance={15}
-      />
+      {!isMobile && (
+        <pointLight
+          position={[0, 0, 0]}
+          color="#22c55e"
+          intensity={flashOpacity * 10}
+          distance={15}
+        />
+      )}
     </group>
   );
 }

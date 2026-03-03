@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /**
  * Matrix Decode Cinematic Variant
  * Digital matrix rain with grid and glitch effects

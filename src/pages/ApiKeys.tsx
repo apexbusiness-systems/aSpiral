@@ -62,12 +62,6 @@ const ApiKeys = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadApiKeys();
-    }
-  }, [user, loadApiKeys]);
-
   const loadApiKeys = React.useCallback(async () => {
     if (!user) return;
     
@@ -79,7 +73,6 @@ const ApiKeys = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      // Force cast to known type since supabase types might be loose currently
       setApiKeys(data as unknown as ApiKey[] || []);
     } catch (error) {
       console.error('Error loading API keys:', error);
@@ -91,6 +84,12 @@ const ApiKeys = () => {
       setIsLoading(false);
     }
   }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadApiKeys();
+    }
+  }, [user, loadApiKeys]);
 
   const generateApiKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -133,7 +132,7 @@ const ApiKeys = () => {
           name: newKeyName.trim(),
           key_hash: keyHash,
           expires_at: expiresAt
-        });
+        } as any);
 
       if (error) throw error;
 
