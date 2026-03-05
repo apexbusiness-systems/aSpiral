@@ -7,6 +7,17 @@ import type { Entity, Connection } from "./types";
 
 type Position = [number, number, number];
 
+// Hoisted constants for performance
+const ITERATIONS = 50;
+const REPULSION_STRENGTH = 0.8;
+const ATTRACTION_STRENGTH = 0.05;
+const DAMPING = 0.9;
+const MIN_DISTANCE = 1.5;
+const MIN_DISTANCE_SQ = MIN_DISTANCE * MIN_DISTANCE;
+const IDEAL_DISTANCE = 2;
+const EPSILON = 0.1;
+const EPSILON_SQ = EPSILON * EPSILON;
+
 /**
  * Calculate optimal layout using force-directed algorithm
  */
@@ -40,38 +51,37 @@ export function calculateOptimalLayout(
   });
   
   // Apply force-directed iterations
-  const iterations = 50;
-  const repulsionStrength = 0.8;
-  const attractionStrength = 0.05;
-  const damping = 0.9;
-  
-  for (let i = 0; i < iterations; i++) {
+  for (let i = 0; i < ITERATIONS; i++) {
     const forces = new Map<string, Position>();
     entities.forEach(e => forces.set(e.id, [0, 0, 0]));
     
     // Repulsive forces between all entities
     entities.forEach((e1, idx1) => {
+      const pos1 = positions.get(e1.id);
+      if (!pos1) return;
+
       entities.forEach((e2, idx2) => {
         if (idx1 >= idx2) return;
 
-        const pos1 = positions.get(e1.id);
         const pos2 = positions.get(e2.id);
-        if (!pos1 || !pos2) return;
+        if (!pos2) return;
 
         const dx = pos1[0] - pos2[0];
         const dy = pos1[1] - pos2[1];
         const dz = pos1[2] - pos2[2];
-        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const distSq = dx * dx + dy * dy + dz * dz;
 
-        if (distance < 0.1) return; // Avoid division by zero
+        if (distSq < EPSILON_SQ) return; // Avoid division by zero
 
         // Repulsion force (inverse square)
-        const minDistance = 1.5;
-        if (distance < minDistance) {
-          const force = repulsionStrength / (distance * distance);
-          const fx = (dx / distance) * force;
-          const fy = (dy / distance) * force;
-          const fz = (dz / distance) * force * 0.3; // Reduce Z force
+        if (distSq < MIN_DISTANCE_SQ) {
+          const distance = Math.sqrt(distSq);
+          // force = REPULSION_STRENGTH / distSq
+          // fx = (dx / distance) * force = dx * (REPULSION_STRENGTH / (distSq * distance))
+          const common = REPULSION_STRENGTH / (distSq * distance);
+          const fx = dx * common;
+          const fy = dy * common;
+          const fz = dz * common * 0.3; // Reduce Z force
 
           const f1 = forces.get(e1.id);
           if (f1) forces.set(e1.id, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
@@ -92,18 +102,21 @@ export function calculateOptimalLayout(
       const dx = pos2[0] - pos1[0];
       const dy = pos2[1] - pos1[1];
       const dz = pos2[2] - pos1[2];
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const distSq = dx * dx + dy * dy + dz * dz;
       
-      if (distance < 0.1) return;
+      if (distSq < EPSILON_SQ) return;
+
+      const distance = Math.sqrt(distSq);
       
       // Attraction force (linear spring)
-      const idealDistance = 2;
-      const displacement = distance - idealDistance;
-      const force = displacement * attractionStrength * conn.strength;
+      const displacement = distance - IDEAL_DISTANCE;
+      // force = displacement * ATTRACTION_STRENGTH * conn.strength
+      // fx = (dx / distance) * force = dx * (force / distance)
+      const common = (displacement * ATTRACTION_STRENGTH * conn.strength) / distance;
       
-      const fx = (dx / distance) * force;
-      const fy = (dy / distance) * force;
-      const fz = (dz / distance) * force * 0.3;
+      const fx = dx * common;
+      const fy = dy * common;
+      const fz = dz * common * 0.3;
 
       const f1 = forces.get(conn.fromEntityId);
       if (f1) forces.set(conn.fromEntityId, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
@@ -126,17 +139,18 @@ export function calculateOptimalLayout(
     });
     
     // Apply forces with damping
+    const decay = 1 - (i / ITERATIONS) * 0.5; // Reduce movement over time
+    const stepDamping = DAMPING * decay;
+
     entities.forEach(entity => {
       const pos = positions.get(entity.id);
       const force = forces.get(entity.id);
       if (!pos || !force) return;
 
-      const decay = 1 - (i / iterations) * 0.5; // Reduce movement over time
-
       positions.set(entity.id, [
-        pos[0] + force[0] * damping * decay,
-        pos[1] + force[1] * damping * decay,
-        pos[2] + force[2] * damping * decay,
+        pos[0] + force[0] * stepDamping,
+        pos[1] + force[1] * stepDamping,
+        pos[2] + force[2] * stepDamping,
       ]);
     });
   }
