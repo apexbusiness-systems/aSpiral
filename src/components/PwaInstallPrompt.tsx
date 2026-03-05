@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
+import { usePwaInstall } from "@/hooks/usePwaInstall";
 
 const DISMISS_KEY = "pwa-install-dismissed-at";
 const DISMISS_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 7;
@@ -21,9 +17,8 @@ const isIosDevice = () => {
 };
 
 const PwaInstallPrompt = () => {
-  const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const { canInstall, install, isInstalled } = usePwaInstall();
   const [dismissed, setDismissed] = useState(false);
-  const [installed, setInstalled] = useState(false);
 
   const isiOS = useMemo(() => isIosDevice(), []);
 
@@ -34,53 +29,18 @@ const PwaInstallPrompt = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const updateInstalled = () => setInstalled(isStandaloneMode());
-    updateInstalled();
-
-    const media = window.matchMedia("(display-mode: standalone)");
-    const onChange = () => updateInstalled();
-    media.addEventListener("change", onChange);
-
-    const onInstalled = () => setInstalled(true);
-    window.addEventListener("appinstalled", onInstalled);
-
-    return () => {
-      media.removeEventListener("change", onChange);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
-
-  useEffect(() => {
-    const onBeforeInstallPrompt = (event: Event) => {
-      if (installed) return;
-      event.preventDefault();
-      setPromptEvent(event as BeforeInstallPromptEvent);
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-  }, [installed]);
-
-  if (installed || dismissed) return null;
+  if (isInstalled || dismissed) return null;
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, Date.now().toString());
     setDismissed(true);
-    setPromptEvent(null);
   };
 
   const handleInstall = async () => {
-    if (!promptEvent) return;
-    await promptEvent.prompt();
-    const choice = await promptEvent.userChoice;
-    setPromptEvent(null);
-    if (choice.outcome === "dismissed") {
-      handleDismiss();
-    }
+    await install();
   };
 
-  if (isiOS && !promptEvent) {
+  if (isiOS && !canInstall) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-white/15 bg-black/80 p-4 text-white shadow-lg backdrop-blur">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -100,7 +60,7 @@ const PwaInstallPrompt = () => {
     );
   }
 
-  if (!promptEvent) return null;
+  if (!canInstall) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-white/15 bg-black/80 p-4 text-white shadow-lg backdrop-blur">

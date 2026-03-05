@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmationModal } from "./ConfirmationModal";
+import { usePwaStore } from "@/stores/pwaStore";
 
 interface MainMenuProps {
   isOpen: boolean;
@@ -70,6 +71,7 @@ export function MainMenu({
   const hasActiveSession = sessionState !== "idle";
   const isPaused = sessionState === "paused";
   const isBreakthrough = sessionState === "breakthrough";
+  const isInstalled = usePwaStore((state) => state.isInstalled);
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
@@ -379,7 +381,7 @@ export function MainMenu({
               </div>
 
               {/* Audit Fix: PWA Static CTA Section */}
-              {(installPwa || isIOS) && (
+              {!isInstalled && (installPwa || isIOS) && (
                 <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-white/10">
                   <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
                     <Smartphone size={16} />
