@@ -3,6 +3,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePhysicsWorker, useFallbackLayout } from "@/hooks/usePhysicsWorker";
 import { getVisibleLimit, getStaggerDelay } from "@/lib/entityLimits";
+import { useDeepCompareMemo } from "./useDeepCompareMemo";
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 
@@ -15,21 +16,47 @@ export function useEntities() {
 
     const [visibleEntityIds, setVisibleEntityIds] = useState<Set<string>>(new Set());
 
-    // Position refs for 60FPS updates
+    // Position refs for 60FPS updates (bypass React state)
     const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
+    const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
 
-    const entities = useMemo(() => currentSession?.entities || [], [currentSession?.entities]);
-    const connections = useMemo(() => currentSession?.connections || [], [currentSession?.connections]);
+    const entities = useDeepCompareMemo(
+        () => currentSession?.entities || [],
+        [currentSession?.entities]
+    );
+
+    const connections = useDeepCompareMemo(
+        () => currentSession?.connections || [],
+        [currentSession?.connections]
+    );
+
+    // DEV-ONLY: Track memoization effectiveness
+    useEffect(() => {
+        if (import.meta.env.DEV) {
+            console.log('[useEntities] entities/connections updated', {
+                entitiesCount: entities.length,
+                connectionsCount: connections.length,
+                timestamp: Date.now()
+            });
+        }
+    }, [entities, connections]);
 
     // Physics integration
     const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {
         positions.forEach((pos, id) => {
+            // Update position ref
             let vec = positionRefs.current.get(id);
-            if (vec) {
-                vec.set(pos[0], pos[1], pos[2]);
-            } else {
+            if (!vec) {
                 vec = new THREE.Vector3(pos[0], pos[1], pos[2]);
                 positionRefs.current.set(id, vec);
+            } else {
+                vec.set(pos[0], pos[1], pos[2]);
+            }
+
+            // Directly update mesh position for 60FPS if available
+            const mesh = meshRefs.current.get(id);
+            if (mesh) {
+                mesh.position.lerp(vec, 0.15); // Smooth interpolation
             }
         });
         invalidate();
@@ -93,11 +120,38 @@ export function useEntities() {
         };
     }, [entities, profile, invalidate]);
 
-    return {
+    // Register mesh ref for direct physics updates
+    const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {
+        if (mesh) {
+            meshRefs.current.set(id, mesh);
+        } else {
+            meshRefs.current.delete(id);
+        }
+    }, []);
+
+    // Memoize filtered connections for performance
+    const visibleConnections = useMemo(() => {
+        return connections.filter(conn =>
+            visibleEntityIds.has(conn.fromEntityId) &&
+            visibleEntityIds.has(conn.toEntityId)
+        );
+    }, [connections, visibleEntityIds]);
+
+    return useMemo(() => ({
         entities,
         connections,
+        visibleConnections,
         visibleEntityIds,
         getEntityPosition,
+        handleMeshRef,
         workerState
-    };
+    }), [
+        entities,
+        connections,
+        visibleConnections,
+        visibleEntityIds,
+        getEntityPosition,
+        handleMeshRef,
+        workerState
+    ]);
 }
