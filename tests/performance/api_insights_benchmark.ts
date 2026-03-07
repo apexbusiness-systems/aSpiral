@@ -1,15 +1,13 @@
 
-import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-
 // Mock data
 const mockEntities = Array.from({ length: 50 }, (_, i) => ({
   id: `ent-${i}`,
   session_id: "sess-123",
   type: i % 2 === 0 ? "problem" : "emotion",
   label: "This is a relatively long label for an entity to simulate real data",
-  position_x: Math.random(),
-  position_y: Math.random(),
-  position_z: Math.random(),
+  position_x: i * 0.1,
+  position_y: i * 0.2,
+  position_z: i * 0.3,
   metadata: { role: "desire", valence: 0.5, importance: 0.8 },
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

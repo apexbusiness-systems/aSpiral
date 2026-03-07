@@ -1,11 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders as defaultCorsHeaders } from "../_shared/cors.ts";
 import { validateAuth } from "../_shared/auth.ts";
 
+// Configuration for secure CORS
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "*").split(",");
+
+const getCorsHeaders = (origin: string) => ({
+  ...defaultCorsHeaders,
+  'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*") ? origin : ALLOWED_ORIGINS[0],
+});
+
 serve(async (req) => {
+  const origin = req.headers.get("origin") || "";
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: getCorsHeaders(origin) });
   }
 
   try {
@@ -17,7 +27,7 @@ serve(async (req) => {
     if (!userId) {
       return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
       });
     }
 
@@ -27,7 +37,7 @@ serve(async (req) => {
     if (req.method !== 'GET') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
       });
     }
 
@@ -43,7 +53,7 @@ serve(async (req) => {
       if (!session) {
         return new Response(JSON.stringify({ error: 'Session not found' }), {
           status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
         });
       }
 
@@ -75,7 +85,7 @@ serve(async (req) => {
       };
 
       return new Response(JSON.stringify({ insights }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
       });
     } else {
       // Get overall user insights
@@ -112,7 +122,7 @@ serve(async (req) => {
       };
 
       return new Response(JSON.stringify({ insights }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
       });
     }
 
@@ -121,7 +131,7 @@ serve(async (req) => {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
     });
   }
 });
