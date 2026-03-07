@@ -92,7 +92,7 @@ export default defineConfig(({ mode }) => ({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        globIgnores: ["**/demo-video*", "**/aspiral-heromark*"],
+        globIgnores: ["**/demo-video*", "**/aspiral-heromark*", "**/aSpiral_Brand_Anthem*"],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/supabase/],

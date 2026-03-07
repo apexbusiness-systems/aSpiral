@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { SplashScreen } from '@capacitor/splash-screen';
 import PremiumSplash from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import BrandAnthemPlayer from "@/components/BrandAnthemPlayer";
 import { unlockAudioFromGesture } from "@/lib/audioSession";
 import { createLogger } from "@/lib/logger";
 
@@ -45,6 +46,18 @@ const audioLogger = createLogger('Audio');
 // Module-level flag to prevent race conditions across multiple event types
 // (touchstart + pointerdown both fire on mobile taps)
 let audioUnlockAttempted = false;
+
+// Marketing routes where the brand anthem plays (excludes /app and protected routes)
+const MARKETING_PATHS = ['/', '/how-it-works', '/story', '/support', '/steps/', '/privacy', '/auth'];
+
+function MarketingAudioWrapper() {
+  const location = useLocation();
+  const isMarketing = MARKETING_PATHS.some(p =>
+    p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
+  );
+  if (!isMarketing) return null;
+  return <BrandAnthemPlayer />;
+}
 
 /**
  * PWA Update Handler (Auto-Update Mode)
@@ -146,6 +159,7 @@ const App = () => {
             <HashRouter>
               <StandaloneModeRedirect />
               <DebugOverlay />
+              <MarketingAudioWrapper />
               <Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
               <Routes>
                 <Route path="/" element={<Landing />} />
