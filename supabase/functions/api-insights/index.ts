@@ -49,9 +49,9 @@ serve(async (req) => {
 
       const [breakthroughs, entities, frictionPoints, messages] = await Promise.all([
         supabase.from('breakthroughs').select('*').eq('session_id', sessionId),
-        supabase.from('entities').select('*').eq('session_id', sessionId),
-        supabase.from('friction_points').select('*').eq('session_id', sessionId),
-        supabase.from('messages').select('*').eq('session_id', sessionId),
+        supabase.from('entities').select('type, energy').eq('session_id', sessionId),
+        supabase.from('friction_points').select('resolved').eq('session_id', sessionId),
+        supabase.from('messages').select('*', { count: 'exact', head: true }).eq('session_id', sessionId),
       ]);
 
       const insights = {
@@ -61,7 +61,7 @@ serve(async (req) => {
           total_entities: entities.data?.length || 0,
           total_friction_points: frictionPoints.data?.length || 0,
           resolved_friction_points: frictionPoints.data?.filter(f => f.resolved).length || 0,
-          total_messages: messages.data?.length || 0,
+          total_messages: messages.count || 0,
         },
         breakthroughs: breakthroughs.data || [],
         entity_types: entities.data?.reduce((acc: Record<string, number>, e) => {
@@ -79,18 +79,30 @@ serve(async (req) => {
       });
     } else {
       // Get overall user insights
-      const [sessions, breakthroughs] = await Promise.all([
-        supabase.from('sessions').select('id, created_at').eq('user_id', userId),
-        supabase.from('breakthroughs').select('id, session_id, created_at'),
-      ]);
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id, created_at')
+        .eq('user_id', userId);
 
-      const sessionIds = sessions.data?.map(s => s.id) || [];
-      const userBreakthroughs = breakthroughs.data?.filter(b => sessionIds.includes(b.session_id)) || [];
+      if (sessionsError) throw sessionsError;
+
+      const sessionIds = sessions?.map(s => s.id) || [];
+      let userBreakthroughs = [];
+
+      if (sessionIds.length > 0) {
+        const { data: breakthroughs, error: breakthroughsError } = await supabase
+          .from('breakthroughs')
+          .select('id, session_id, created_at')
+          .in('session_id', sessionIds);
+
+        if (breakthroughsError) throw breakthroughsError;
+        userBreakthroughs = breakthroughs || [];
+      }
 
       const insights = {
-        total_sessions: sessions.data?.length || 0,
+        total_sessions: sessions?.length || 0,
         total_breakthroughs: userBreakthroughs.length,
-        sessions_this_week: sessions.data?.filter(s => {
+        sessions_this_week: sessions?.filter(s => {
           const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
           return new Date(s.created_at) > weekAgo;
         }).length || 0,
