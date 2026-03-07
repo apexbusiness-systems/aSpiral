@@ -56,11 +56,12 @@ export const SilentSentinel = {
 
   emergencyProtocol: () => {
     logger.error('EXECUTE TACTICAL NUKE: EMERGENCY PROTOCOL ENGAGED');
-    const authToken = localStorage.getItem('supabase.auth.token');
+    const authToken = sessionStorage.getItem('supabase.auth.token');
     
-    // Clear storage but preserve auth
+    // Clear all storage but preserve auth token
     localStorage.clear();
-    if (authToken) localStorage.setItem('supabase.auth.token', authToken);
+    sessionStorage.clear();
+    if (authToken) sessionStorage.setItem('supabase.auth.token', authToken);
     
     // Reset crash count
     localStorage.setItem(SENTINEL_KEYS.CRASH_COUNT, '0');
