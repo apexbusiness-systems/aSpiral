@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { Session, Message, Entity, Connection, FrictionPoint, SessionStatus } from "@/lib/types";
 import { createLogger } from "@/lib/logger";
 import { generateIdempotencyKey } from "@/lib/idempotent";
@@ -332,6 +332,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: "aspiral-session",
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         currentSession: state.currentSession,
         messages: state.messages,
