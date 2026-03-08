@@ -133,9 +133,11 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
         completed_at: null,
       };
 
-      const promise = this.client
-        .from("compliance_request_runs")
-        .upsert(record, { onConflict: "request_id" })
+      const promise = Promise.resolve(
+        this.client
+          .from("compliance_request_runs")
+          .upsert(record, { onConflict: "request_id" })
+      )
         .then(({ error }) => {
           if (error) {
             console.error("[COMPLIANCE-STORE] Failed to write run start:", error.message);
