@@ -28,10 +28,52 @@ const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const AI_TIMEOUT_MS = 30000; // 30 second timeout for AI gateway
 const ENABLE_DETAILED_ERRORS = Deno.env.get("ENABLE_DETAILED_ERRORS") === "true";
 
+// Breakthrough Quality V2 feature flag (default: ON)
+const BREAKTHROUGH_QUALITY_V2 = Deno.env.get("BREAKTHROUGH_QUALITY_V2") !== "false";
+
 // Flush timeouts (ms)
 const FLUSH_START_MS = 250;
 const FLUSH_BLOCK_MS = 400;
 const FLUSH_SUCCESS_MS = 500;
+
+// =============================================================================
+// BREAKTHROUGH QUALITY V2: Anti-generic validation
+// =============================================================================
+
+const BANNED_BREAKTHROUGH_PHRASES = [
+  "trust the process",
+  "move forward with clarity",
+  "one small step",
+  "take a deep breath",
+  "the answer is within you",
+  "path forward is becoming clear",
+  "challenge you're working through",
+  "let's cut to what matters",
+];
+
+/**
+ * Returns true if text contains banned generic motivational filler.
+ * Exported for testing.
+ */
+export function isGenericBreakthroughText(text: string): boolean {
+  const lower = text.toLowerCase();
+  return BANNED_BREAKTHROUGH_PHRASES.some(p => lower.includes(p));
+}
+
+/**
+ * Returns true if a response has complete, non-empty, non-generic breakthrough fields.
+ * Exported for testing.
+ */
+export function hasValidBreakthrough(data: SpiralAIResponse): boolean {
+  return !!(
+    data.friction?.trim() &&
+    data.grease?.trim() &&
+    data.insight?.trim() &&
+    !isGenericBreakthroughText(data.friction) &&
+    !isGenericBreakthroughText(data.grease) &&
+    !isGenericBreakthroughText(data.insight)
+  );
+}
 
 // =============================================================================
 // CRYPTO HASHING - SHA-256 for identifier hashing
@@ -153,17 +195,30 @@ async function callAIWithValidation(
     }
 
     const result = ResponseSchema.safeParse(parsed);
-    if (result.success) {
-      console.log(`[SPIRAL-AI] ✅ Validation passed on attempt ${attempt + 1}`);
-      return { data: result.data as SpiralAIResponse, retryCount: attempt };
+    if (!result.success) {
+      lastError = result.error;
+      retryCount = attempt + 1;
+      console.warn(`[SPIRAL-AI] ⚠️ Validation failed:`, result.error.errors.slice(0, 3));
+      continue;
     }
 
-    lastError = result.error;
-    retryCount = attempt + 1;
-    console.warn(`[SPIRAL-AI] ⚠️ Validation failed:`, result.error.errors.slice(0, 3));
+    const validatedData = result.data as SpiralAIResponse;
+
+    // V2: If breakthrough expected, check for generic/incomplete content
+    if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough) {
+      if (!hasValidBreakthrough(validatedData)) {
+        console.warn(`[SPIRAL-AI] ⚠️ Breakthrough content is generic/incomplete on attempt ${attempt + 1} — retrying`);
+        lastError = new Error("Breakthrough content is generic or incomplete. Provide specific, personalized friction, grease, and insight based on the user's actual situation.");
+        retryCount = attempt + 1;
+        continue;
+      }
+    }
+
+    console.log(`[SPIRAL-AI] ✅ Validation passed on attempt ${attempt + 1}`);
+    return { data: validatedData, retryCount: attempt };
   }
 
-  // All retries failed - return safe fallback
+  // All retries failed - return safe fallback (no fake breakthrough data)
   console.error(`[SPIRAL-AI] ❌ Validation failed after ${MAX_VALIDATION_RETRIES + 1} attempts`);
   return { data: createFallbackResponse(shouldBreakthrough), retryCount };
 }
@@ -573,6 +628,7 @@ serve(async (req) => {
       ultraFast,
       userTier,
       piiRedacted: piiFound.length > 0,
+      breakthroughQualityV2: BREAKTHROUGH_QUALITY_V2,
       processingMs: Date.now() - startTime,
     });
 
@@ -628,6 +684,10 @@ serve(async (req) => {
     const outputValidation = validateOutput(validatedResult.question || "");
     const responseValidation = validateOutput(validatedResult.response || "");
     const insightValidation = validatedResult.insight ? validateOutput(validatedResult.insight) : { safe: true, filtered: validatedResult.insight };
+    
+    // V2: Also validate friction and grease output
+    const frictionValidation = validatedResult.friction ? validateOutput(validatedResult.friction) : { safe: true, filtered: validatedResult.friction };
+    const greaseValidation = validatedResult.grease ? validateOutput(validatedResult.grease) : { safe: true, filtered: validatedResult.grease };
 
     const result = {
       ...validatedResult,
@@ -635,6 +695,8 @@ serve(async (req) => {
       question: shouldBreakthrough ? "" : (outputValidation.filtered || validatedResult.question),
       response: responseValidation.filtered || validatedResult.response,
       insight: insightValidation.filtered,
+      friction: frictionValidation.filtered,
+      grease: greaseValidation.filtered,
     };
 
     const processingTime = Date.now() - startTime;
@@ -643,9 +705,11 @@ serve(async (req) => {
       hasQuestion: !!result.question,
       isBreakthrough: shouldBreakthrough,
       hasInsight: !!result.insight,
+      hasFriction: !!result.friction,
+      hasGrease: !!result.grease,
       validationRetries: retryCount,
       piiRedacted: piiFound.length > 0,
-      outputFiltered: !outputValidation.safe || !responseValidation.safe,
+      outputFiltered: !outputValidation.safe || !responseValidation.safe || !frictionValidation.safe || !greaseValidation.safe,
       processingMs: processingTime,
     });
 
@@ -707,7 +771,7 @@ serve(async (req) => {
         "X-Processing-Time": `${processingTime}ms`,
         "X-Validation-Retries": `${retryCount}`,
         "X-PII-Redacted": piiFound.length > 0 ? "true" : "false",
-        "X-Output-Filtered": (!outputValidation.safe || !responseValidation.safe) ? "true" : "false",
+        "X-Output-Filtered": (!outputValidation.safe || !responseValidation.safe || !frictionValidation.safe || !greaseValidation.safe) ? "true" : "false",
       },
     });
   } catch (error) {
