@@ -44,6 +44,7 @@ export const TranscriptSchema = z.object({
 
   ultraFast: z.boolean().optional().default(false),
   forceBreakthrough: z.boolean().optional().default(false),
+  stream: z.boolean().optional().default(false),
 
   stagePrompt: z.string()
     .max(500, "Stage prompt too long")

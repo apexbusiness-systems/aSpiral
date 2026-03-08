@@ -653,6 +653,53 @@ serve(async (req) => {
     await complianceLogger.finalizeRun({ status: "SUCCESS" });
     await complianceLogger.flush(FLUSH_SUCCESS_MS);
 
+    // =======================================================================
+    // SSE STREAMING MODE
+    // =======================================================================
+    if (streamRequested && result.response) {
+      const encoder = new TextEncoder();
+      const responseText = result.response;
+      const metadata = {
+        entities: result.entities,
+        connections: result.connections,
+        question: result.question,
+        friction: result.friction,
+        grease: result.grease,
+        insight: result.insight,
+      };
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          // Stream response text in chunks
+          const chunkSize = 4;
+          for (let i = 0; i < responseText.length; i += chunkSize) {
+            const chunk = responseText.slice(i, i + chunkSize);
+            const event = `data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`;
+            controller.enqueue(encoder.encode(event));
+          }
+
+          // Send metadata as final event
+          const metaEvent = `data: ${JSON.stringify({ type: "metadata", ...metadata })}\n\n`;
+          controller.enqueue(encoder.encode(metaEvent));
+
+          // Send done signal
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "X-Processing-Time": `${processingTime}ms`,
+          "X-Validation-Retries": `${retryCount}`,
+        },
+      });
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { 
         ...corsHeaders, 

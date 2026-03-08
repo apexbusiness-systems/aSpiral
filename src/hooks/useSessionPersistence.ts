@@ -24,7 +24,6 @@ interface SessionRecord {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  ended_at: string | null;
 }
 
 interface PersistenceState {
@@ -34,8 +33,8 @@ interface PersistenceState {
   isLoading: boolean;
 }
 
-const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
-const DEBOUNCE_DELAY = 2000; // 2 seconds debounce for rapid changes
+const AUTO_SAVE_INTERVAL = 30000;
+const DEBOUNCE_DELAY = 2000;
 
 import { saveSessionData } from '@/lib/sessionPersistence';
 
@@ -53,7 +52,6 @@ export function useSessionPersistence() {
   const lastSavedDataRef = useRef<string>('');
   const autoSaveIntervalRef = useRef<NodeJS.Timeout>();
 
-  // Generate a hash of current state for comparison
   const getStateHash = useCallback(() => {
     if (!currentSession) return '';
     return JSON.stringify({
@@ -65,7 +63,6 @@ export function useSessionPersistence() {
     });
   }, [currentSession, messages]);
 
-  // Save session to Supabase
   const saveSession = useCallback(async (force = false) => {
     if (!user || !currentSession) {
       logger.debug('Skip save: no user or session');
@@ -82,7 +79,6 @@ export function useSessionPersistence() {
     logger.info('Saving session...', { sessionId: currentSession.id });
 
     try {
-      // Using 'as any' because tables may not be in generated types yet
       const db = supabase as any;
       await saveSessionData(db, user, currentSession, messages);
 
@@ -104,7 +100,6 @@ export function useSessionPersistence() {
     }
   }, [user, currentSession, messages, getStateHash]);
 
-  // Debounced save
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -114,7 +109,6 @@ export function useSessionPersistence() {
     }, DEBOUNCE_DELAY);
   }, [saveSession]);
 
-  // Auto-save interval
   useEffect(() => {
     if (user && currentSession) {
       autoSaveIntervalRef.current = setInterval(() => {
@@ -129,7 +123,6 @@ export function useSessionPersistence() {
     }
   }, [user, currentSession, saveSession]);
 
-  // Save on session changes (debounced) - deps intentionally track only data length changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user && currentSession) {
@@ -137,11 +130,9 @@ export function useSessionPersistence() {
     }
   }, [currentSession?.entities.length, currentSession?.connections.length, messages.length, debouncedSave]);
 
-  // Save on page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (user && currentSession) {
-        // Use sendBeacon for reliable unload saving
         const payload = JSON.stringify({
           sessionId: currentSession.id,
           userId: user.id,
@@ -159,10 +150,10 @@ export function useSessionPersistence() {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally captures current user/session at effect time
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, currentSession?.id]);
 
-  // Load user's sessions
+  // Load user's sessions with entity counts and breakthrough data
   const loadSessions = useCallback(async (): Promise<SessionRecord[]> => {
     if (!user) return [];
 
@@ -192,7 +183,7 @@ export function useSessionPersistence() {
     }
   }, [user]);
 
-  // Load a specific session with all related data
+  // Load a specific session with entities and connections
   const loadSession = useCallback(async (sessionId: string): Promise<Session | null> => {
     if (!user) return null;
 
@@ -212,34 +203,14 @@ export function useSessionPersistence() {
       if (sessionError) throw sessionError;
       if (!sessionData) return null;
 
-      // Load entities
-      const { data: entities } = await db
-        .from('entities')
-        .select('*')
-        .eq('session_id', sessionId);
-
-      // Load connections
-      const { data: connections } = await db
-        .from('connections')
-        .select('*')
-        .eq('session_id', sessionId);
-
-      // Load friction points
-      const { data: frictionPoints } = await db
-        .from('friction_points')
-        .select('*')
-        .eq('session_id', sessionId);
-
-      // Load messages
-      const { data: messagesData } = await db
-        .from('messages')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
+      // Load entities and connections in parallel
+      const [entitiesResult, connectionsResult] = await Promise.all([
+        db.from('session_entities').select('*').eq('session_id', sessionId),
+        db.from('session_connections').select('*').eq('session_id', sessionId),
+      ]);
 
       setState(prev => ({ ...prev, isLoading: false }));
 
-      // Transform to Session type
       const session: Session = {
         id: sessionData.id,
         userId: sessionData.user_id,
@@ -247,30 +218,22 @@ export function useSessionPersistence() {
         metadata: sessionData.metadata,
         createdAt: new Date(sessionData.created_at),
         updatedAt: new Date(sessionData.updated_at),
-        endedAt: sessionData.ended_at ? new Date(sessionData.ended_at) : undefined,
-        entities: (entities || []).map((e: any) => ({
+        entities: (entitiesResult.data || []).map((e: any) => ({
           id: e.id,
           type: e.type,
           label: e.label,
-          position: e.position,
           metadata: e.metadata,
           createdAt: new Date(e.created_at),
           updatedAt: new Date(e.updated_at),
         })),
-        connections: (connections || []).map((c: any) => ({
+        connections: (connectionsResult.data || []).map((c: any) => ({
           id: c.id,
           fromEntityId: c.from_entity_id,
           toEntityId: c.to_entity_id,
           type: c.type,
           strength: c.strength,
         })),
-        frictionPoints: (frictionPoints || []).map((f: any) => ({
-          id: f.id,
-          entityIds: f.entity_ids,
-          intensity: f.intensity,
-          description: f.description,
-          discovered: f.discovered,
-        })),
+        frictionPoints: [],
       };
 
       return session;
@@ -322,6 +285,7 @@ export function useSessionPersistence() {
         .from('breakthroughs')
         .insert({
           session_id: sessionId,
+          user_id: user.id,
           friction,
           grease,
           insight,
@@ -336,12 +300,21 @@ export function useSessionPersistence() {
     }
   }, [user]);
 
-  // Delete a session
+  // Delete a session and related data
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) return;
 
     try {
       const db = supabase as any;
+      
+      // Delete related data first (connections, entities, breakthroughs)
+      await Promise.all([
+        db.from('session_connections').delete().eq('session_id', sessionId),
+        db.from('session_entities').delete().eq('session_id', sessionId),
+        db.from('breakthroughs').delete().eq('session_id', sessionId),
+      ]);
+
+      // Then delete the session
       const { error } = await db
         .from('sessions')
         .delete()
@@ -357,7 +330,6 @@ export function useSessionPersistence() {
     }
   }, [user]);
 
-  // Manual save trigger
   const save = useCallback(() => {
     return saveSession(true);
   }, [saveSession]);

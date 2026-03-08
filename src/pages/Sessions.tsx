@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useSessionStore } from '@/stores/sessionStore';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -28,6 +29,8 @@ import {
   MessageSquare,
   Download,
   FileText,
+  Layers,
+  Zap,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
@@ -40,7 +43,8 @@ interface SessionListItem {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  ended_at: string | null;
+  entityCount?: number;
+  hasBreakthrough?: boolean;
 }
 
 const Sessions = () => {
@@ -56,20 +60,55 @@ const Sessions = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState<string | null>(null);
 
-  // Load sessions on mount
-  useEffect(() => {
-    if (user) {
-      loadSessions().then(setSessions);
+  // Load sessions with entity counts and breakthrough data
+  const loadSessionsWithMetadata = useCallback(async () => {
+    if (!user) return;
+    
+    const rawSessions = await loadSessions();
+    if (!rawSessions.length) {
+      setSessions([]);
+      return;
     }
+
+    const db = supabase as any;
+    const sessionIds = rawSessions.map(s => s.id);
+
+    // Load entity counts and breakthrough flags in parallel
+    const [entityResult, breakthroughResult] = await Promise.all([
+      db.from('session_entities').select('session_id').in('session_id', sessionIds),
+      db.from('breakthroughs').select('session_id').in('session_id', sessionIds),
+    ]);
+
+    // Count entities per session
+    const entityCounts: Record<string, number> = {};
+    (entityResult.data || []).forEach((e: any) => {
+      entityCounts[e.session_id] = (entityCounts[e.session_id] || 0) + 1;
+    });
+
+    // Track which sessions have breakthroughs
+    const breakthroughSessions = new Set(
+      (breakthroughResult.data || []).map((b: any) => b.session_id)
+    );
+
+    const enriched: SessionListItem[] = rawSessions.map(s => ({
+      ...s,
+      entityCount: entityCounts[s.id] || (s.metadata as any)?.entityCount || 0,
+      hasBreakthrough: breakthroughSessions.has(s.id) || s.status === 'breakthrough',
+    }));
+
+    setSessions(enriched);
   }, [user, loadSessions]);
+
+  useEffect(() => {
+    loadSessionsWithMetadata();
+  }, [loadSessionsWithMetadata]);
 
   const handleResumeSession = async (sessionId: string) => {
     const session = await loadSession(sessionId);
     if (session) {
-      // Load session into store
       useSessionStore.setState({
         currentSession: session,
-        messages: [], // Messages are loaded separately
+        messages: [],
       });
       navigate('/app');
     }
@@ -82,8 +121,10 @@ const Sessions = () => {
     try {
       await deleteSession(deleteTarget);
       setSessions(prev => prev.filter(s => s.id !== deleteTarget));
+      toast({ title: 'Session deleted', description: 'Session and related data removed.' });
     } catch (error) {
       console.error('Failed to delete session:', error);
+      toast({ title: 'Delete failed', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
@@ -105,18 +146,11 @@ const Sessions = () => {
           messages: [],
           breakthroughs: [],
         });
-        toast({
-          title: 'PDF exported',
-          description: 'Your session has been exported successfully.',
-        });
+        toast({ title: 'PDF exported', description: 'Your session has been exported.' });
       }
     } catch (error) {
       console.error('Export failed:', error);
-      toast({
-        title: 'Export failed',
-        description: 'Could not export the session.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Export failed', variant: 'destructive' });
     } finally {
       setIsExporting(null);
     }
@@ -132,24 +166,18 @@ const Sessions = () => {
           messages: [],
           breakthroughs: [],
         });
-        toast({
-          title: 'CSV exported',
-          description: 'Your session has been exported successfully.',
-        });
+        toast({ title: 'CSV exported', description: 'Your session has been exported.' });
       }
     } catch (error) {
       console.error('Export failed:', error);
-      toast({
-        title: 'Export failed',
-        description: 'Could not export the session.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Export failed', variant: 'destructive' });
     } finally {
       setIsExporting(null);
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, hasBreakthrough?: boolean) => {
+    if (hasBreakthrough) return 'text-accent bg-accent/20';
     switch (status) {
       case 'breakthrough':
         return 'text-accent bg-accent/20';
@@ -164,7 +192,8 @@ const Sessions = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, hasBreakthrough?: boolean) => {
+    if (hasBreakthrough) return <Sparkles className="w-3 h-3" />;
     switch (status) {
       case 'breakthrough':
         return <Sparkles className="w-3 h-3" />;
@@ -175,6 +204,11 @@ const Sessions = () => {
       default:
         return <Clock className="w-3 h-3" />;
     }
+  };
+
+  const getStatusLabel = (status: string, hasBreakthrough?: boolean) => {
+    if (hasBreakthrough) return 'Breakthrough ✨';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   return (
@@ -197,16 +231,16 @@ const Sessions = () => {
             </Button>
             <div>
               <h1 className="font-display text-2xl font-bold text-foreground">
-                {t('sessions.title')}
+                Session History
               </h1>
               <p className="text-sm text-muted-foreground">
-                {t('sessions.subtitle')}
+                Your exploration journey
               </p>
             </div>
           </div>
           <Button onClick={handleNewSession} className="rounded-xl">
             <Sparkles className="w-4 h-4 mr-2" />
-            {t('sessions.newSession')}
+            New Session
           </Button>
         </div>
 
@@ -219,14 +253,14 @@ const Sessions = () => {
           <div className="glass-card p-12 text-center">
             <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-lg font-medium text-foreground mb-2">
-              {t('sessions.empty')}
+              No sessions yet
             </h2>
             <p className="text-muted-foreground mb-6">
-              {t('sessions.emptyDescription')}
+              Start your first session to begin exploring
             </p>
             <Button onClick={handleNewSession}>
               <Sparkles className="w-4 h-4 mr-2" />
-              {t('sessions.newSession')}
+              Start First Session
             </Button>
           </div>
         ) : (
@@ -235,16 +269,23 @@ const Sessions = () => {
               {sessions.map((session) => (
                 <div
                   key={session.id}
-                  className="glass-card p-4 hover:bg-glass-hover transition-colors"
+                  className="glass-card p-4 hover:bg-glass-hover transition-colors cursor-pointer group"
+                  onClick={() => handleResumeSession(session.id)}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      {/* Status Badge */}
+                      {/* Status Badge + Entity Count */}
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(session.status)}`}>
-                          {getStatusIcon(session.status)}
-                          {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(session.status, session.hasBreakthrough)}`}>
+                          {getStatusIcon(session.status, session.hasBreakthrough)}
+                          {getStatusLabel(session.status, session.hasBreakthrough)}
                         </span>
+                        {(session.entityCount ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-muted-foreground bg-muted">
+                            <Layers className="w-3 h-3" />
+                            {session.entityCount} entities
+                          </span>
+                        )}
                       </div>
 
                       {/* Session Info */}
@@ -258,15 +299,10 @@ const Sessions = () => {
                           {formatDistanceToNow(new Date(session.updated_at), { addSuffix: true })}
                         </span>
                       </div>
-
-                      {/* Session ID (truncated) */}
-                      <p className="text-xs text-muted-foreground/60 mt-1 font-mono truncate">
-                        ID: {session.id}
-                      </p>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -274,7 +310,7 @@ const Sessions = () => {
                         className="rounded-lg"
                       >
                         <Play className="w-4 h-4 mr-1.5" />
-                        {t('sessions.resume')}
+                        Resume
                       </Button>
                       <Button
                         variant="ghost"
@@ -321,13 +357,13 @@ const Sessions = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent className="bg-popover border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">{t('sessions.deleteConfirm')}</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">Delete Session?</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('sessions.deleteWarning')}
+              This will permanently delete this session, all entities, connections, and breakthroughs. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-border">{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteSession}
               disabled={isDeleting}
@@ -336,7 +372,7 @@ const Sessions = () => {
               {isDeleting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                t('common.delete')
+                'Delete'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
