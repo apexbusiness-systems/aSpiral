@@ -800,6 +800,12 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             } else {
               // V2: No valid breakthrough data — stay in recoverable state
               logger.warn("No valid breakthrough data found — NOT faking breakthrough");
+              trackBreakthroughRejected({
+                reason: findMatchedGenericPhrase(btData) ? 'generic_phrase' : 'parse_no_data',
+                source: 'parse',
+                friction: btData?.friction, grease: btData?.grease, insight: btData?.insight,
+                matchedPhrase: findMatchedGenericPhrase(btData),
+              });
               sendEvent({ type: "RESPONSE_COMPLETE" });
             }
           } catch (error) {
