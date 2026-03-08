@@ -76,10 +76,10 @@ export function createResponseSchema(limits: TierLimits) {
       `Maximum ${limits.maxConnections} connections allowed`
     ),
     question: z.string().max(100, "Question must be under 100 characters"),
-    response: z.string().max(50, "Response must be under 50 characters"),
-    friction: z.string().max(100).optional(),
-    grease: z.string().max(100).optional(),
-    insight: z.string().max(150).optional(),
+    response: z.string().max(500, "Response must be under 500 characters"),
+    friction: z.string().max(300).optional(),
+    grease: z.string().max(300).optional(),
+    insight: z.string().max(500).optional(),
   });
 }
 
