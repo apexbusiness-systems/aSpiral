@@ -101,9 +101,9 @@ describe('Breakthrough Director Lifecycle', () => {
 
         director = new BreakthroughDirector();
         director.setCallbacks({
-            onComplete: onCompleteMock,
-            onAbort: onAbortMock,
-            onPhaseChange: onPhaseChangeMock,
+            onComplete: onCompleteMock as unknown as () => void,
+            onAbort: onAbortMock as unknown as (reason: string) => void,
+            onPhaseChange: onPhaseChangeMock as unknown as (phase: DirectorPhase) => void,
         });
     });
 
