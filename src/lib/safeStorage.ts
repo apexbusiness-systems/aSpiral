@@ -36,14 +36,14 @@ function createSafeStorage(storage: Storage, storageName: string): StorageAdapte
         // Handle quota exceeded or other storage errors
         if (error instanceof DOMException) {
           if (error.name === 'QuotaExceededError') {
-            logger.error(`${storageName} quota exceeded`, { key, valueLength: value.length });
+            logger.error(`${storageName} quota exceeded`, { key, valueLength: value.length } as any);
           } else if (error.name === 'SecurityError') {
-            logger.warn(`${storageName} access denied (private browsing?)`, { key });
+            logger.warn(`${storageName} access denied (private browsing?)`, { key } as any);
           } else {
-            logger.error(`${storageName} setItem failed`, { key, error });
+            logger.error(`${storageName} setItem failed`, { key, errorName: error.name } as any);
           }
         } else {
-          logger.error(`${storageName} setItem failed`, { key, error });
+          logger.error(`${storageName} setItem failed`, { key } as any);
         }
       }
     },
