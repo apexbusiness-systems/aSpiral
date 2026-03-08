@@ -94,12 +94,20 @@ export function isValidBreakthroughData(
 
   if (featureFlags.breakthroughQualityV2) {
     const combined = `${friction} ${grease} ${insight}`.toLowerCase();
-    if (GENERIC_BREAKTHROUGH_PHRASES.some(phrase => combined.includes(phrase))) {
+    const matchedPhrase = GENERIC_BREAKTHROUGH_PHRASES.find(phrase => combined.includes(phrase));
+    if (matchedPhrase) {
       return false;
     }
   }
 
   return true;
+}
+
+/** Returns the first banned phrase found in the data, or undefined. */
+function findMatchedGenericPhrase(data: { friction?: string; grease?: string; insight?: string } | null | undefined): string | undefined {
+  if (!data) return undefined;
+  const combined = `${data.friction ?? ''} ${data.grease ?? ''} ${data.insight ?? ''}`.toLowerCase();
+  return GENERIC_BREAKTHROUGH_PHRASES.find(phrase => combined.includes(phrase));
 }
 
 // =============================================================================
