@@ -220,7 +220,10 @@ async function callAIWithValidation(
     // V2: If breakthrough expected, check for generic/incomplete content
     if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough) {
       if (!hasValidBreakthrough(validatedData)) {
-        console.warn(`[SPIRAL-AI] ⚠️ Breakthrough content is generic/incomplete on attempt ${attempt + 1} — retrying`);
+        const rejectionReason = !validatedData.friction?.trim() || !validatedData.grease?.trim() || !validatedData.insight?.trim()
+          ? 'empty_or_partial' : 'generic_phrase';
+        console.warn(`[SPIRAL-AI] ⚠️ Breakthrough content is generic/incomplete on attempt ${attempt + 1} (${rejectionReason}) — retrying`);
+        onBreakthroughRejected?.({ attempt: attempt + 1, reason: rejectionReason });
         lastError = new Error("Breakthrough content is generic or incomplete. Provide specific, personalized friction, grease, and insight based on the user's actual situation.");
         retryCount = attempt + 1;
         continue;
