@@ -246,6 +246,13 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         grease: d?.grease?.substring(0, 30),
         insight: d?.insight?.substring(0, 30),
       });
+      const matched = findMatchedGenericPhrase(d);
+      trackBreakthroughRejected({
+        reason: matched ? 'generic_phrase' : 'empty_or_partial',
+        source: 'forceBreakthrough',
+        friction: d?.friction, grease: d?.grease, insight: d?.insight,
+        matchedPhrase: matched,
+      });
       return;
     }
 
