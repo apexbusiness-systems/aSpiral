@@ -809,6 +809,7 @@ serve(async (req) => {
         "X-Validation-Retries": `${retryCount}`,
         "X-PII-Redacted": piiFound.length > 0 ? "true" : "false",
         "X-Output-Filtered": (!outputValidation.safe || !responseValidation.safe || !frictionValidation.safe || !greaseValidation.safe) ? "true" : "false",
+        ...(breakthroughRejected ? { "X-Breakthrough-Rejected": "true" } : {}),
       },
     });
   } catch (error) {

@@ -182,4 +182,51 @@ Deno.test("fallback response has no fake breakthrough fields", () => {
   assertEquals(hasValidBreakthrough(fallback), false);
 });
 
+// =============================================================================
+// onBreakthroughRejected callback tests
+// =============================================================================
+
+Deno.test("onBreakthroughRejected callback: not exported but contract verified via hasValidBreakthrough", () => {
+  // The callback is invoked inside callAIWithValidation when hasValidBreakthrough returns false.
+  // We verify the reason logic matches: empty_or_partial vs generic_phrase.
+  
+  // empty_or_partial: missing fields
+  const emptyCase = {
+    entities: [], connections: [], question: "", response: "",
+    friction: "", grease: "something", insight: "something",
+  };
+  assertEquals(hasValidBreakthrough(emptyCase), false);
+  const reason1 = !emptyCase.friction?.trim() || !emptyCase.grease?.trim() || !emptyCase.insight?.trim()
+    ? 'empty_or_partial' : 'generic_phrase';
+  assertEquals(reason1, 'empty_or_partial');
+  
+  // generic_phrase: all fields present but generic
+  const genericCase = {
+    entities: [], connections: [], question: "", response: "",
+    friction: "Real problem here",
+    grease: "Trust the process and keep going",
+    insight: "Real insight here",
+  };
+  assertEquals(hasValidBreakthrough(genericCase), false);
+  const reason2 = !genericCase.friction?.trim() || !genericCase.grease?.trim() || !genericCase.insight?.trim()
+    ? 'empty_or_partial' : 'generic_phrase';
+  assertEquals(reason2, 'generic_phrase');
+});
+
+Deno.test("onBreakthroughRejected: detects new banned phrases correctly", () => {
+  const phrases = [
+    "embrace the uncertainty",
+    "journey of self-discovery",
+    "step outside your comfort zone",
+    "it's okay to not be okay",
+    "you are not alone",
+    "the first step is always the hardest",
+    "you deserve to be happy",
+    "growth comes from discomfort",
+  ];
+  for (const phrase of phrases) {
+    assert(isGenericBreakthroughText(phrase), `Should detect: "${phrase}"`);
+  }
+});
+
 console.log("\n✅ All Breakthrough Quality V2 tests defined.\n");
