@@ -5,6 +5,12 @@
  * - Uses SpiralMachine for strict state transitions
  * - Maintains backward-compatible API surface
  * - Prevents race conditions via event-driven state management
+ * 
+ * BREAKTHROUGH QUALITY V2:
+ * - No generic breakthrough fallback strings
+ * - Stale breakthrough data cannot leak into cinematics
+ * - forceBreakthrough() / skipToBreakthrough() gated by validation
+ * - Frustration/skip paths request real synthesis instead of faking
  */
 
 import { useState, useCallback, useRef, useReducer, useMemo, useEffect } from "react";
@@ -15,6 +21,7 @@ import { validateCoherence, deduplicateEntities, prioritizeEntities } from "@/li
 import { getEntityLimit, type UserTier } from "@/lib/entityLimits";
 import { matchEnergy, adjustQuestionEnergy } from "@/lib/energyMatcher";
 import { antiRepetition } from "@/lib/antiRepetition";
+import { featureFlags } from "@/lib/featureFlags";
 import { 
   detectPatternsEarly, 
   shouldStopAsking, 
@@ -44,6 +51,47 @@ const SPIRAL_AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/spiral-
 
 // Hard cap: 3 questions max
 const MAX_QUESTIONS = 3;
+
+// =============================================================================
+// BREAKTHROUGH QUALITY V2: Anti-generic validation
+// =============================================================================
+
+const GENERIC_BREAKTHROUGH_PHRASES = [
+  "trust the process",
+  "move forward with clarity",
+  "one small step",
+  "take a deep breath",
+  "the answer is within you",
+  "path forward is becoming clear",
+  "challenge you're working through",
+  "let's cut to what matters",
+];
+
+/**
+ * Validates breakthrough data is complete, non-empty, and non-generic.
+ * Returns true only if all three fields exist, are non-empty after trim,
+ * and do not contain known generic filler phrases.
+ */
+export function isValidBreakthroughData(
+  data: BreakthroughData | null | undefined
+): data is BreakthroughData {
+  if (!data) return false;
+  const { friction, grease, insight } = data;
+  if (!friction?.trim() || !grease?.trim() || !insight?.trim()) return false;
+
+  if (featureFlags.breakthroughQualityV2) {
+    const combined = `${friction} ${grease} ${insight}`.toLowerCase();
+    if (GENERIC_BREAKTHROUGH_PHRASES.some(phrase => combined.includes(phrase))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface EntityResult {
   type: EntityType;
@@ -144,6 +192,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const fastTrackRef = useRef<FastTrackState>(createFastTrackState());
   const patternsRef = useRef<Pattern[]>([]);
   const lastFlushRef = useRef<{ text: string; ts: number } | null>(null);
+  const synthesisInProgressRef = useRef(false);
 
   const {
     currentSession,
@@ -167,6 +216,17 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
 
   // Force breakthrough with cinematic sequence
   const forceBreakthrough = useCallback((data?: BreakthroughData) => {
+    // V2: Gate - require valid data when flag is ON
+    if (featureFlags.breakthroughQualityV2 && !isValidBreakthroughData(data)) {
+      logger.warn("FORCE_BREAKTHROUGH blocked: no valid breakthrough data", {
+        hasData: !!data,
+        friction: data?.friction?.substring(0, 30),
+        grease: data?.grease?.substring(0, 30),
+        insight: data?.insight?.substring(0, 30),
+      });
+      return;
+    }
+
     logger.info("FORCING BREAKTHROUGH", {
       reason: data ? "synthesis_complete" : "user_action",
       patterns: patternsRef.current.map(p => p.name),
@@ -178,7 +238,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     setCurrentStage("breakthrough");
     fastTrackRef.current = createFastTrackState();
 
-    // Store breakthrough data first
+    // V2: Clear stale data before setting new
+    setBreakthroughData(null);
+
+    // Store breakthrough data
     if (data) {
       setBreakthroughData(data);
       logger.info("Breakthrough data set", {
@@ -208,10 +271,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
 
     // Show breakthrough card after cinematic
     setTimeout(() => {
-      setShowBreakthroughCard(true);
-
       const data = breakthroughData;
-      if (data) {
+
+      if (isValidBreakthroughData(data)) {
+        setShowBreakthroughCard(true);
         options.onBreakthrough?.(data);
 
         // Format breakthrough message
@@ -225,7 +288,13 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
 
 **💡 ${data.insight}**`,
         });
+      } else if (featureFlags.breakthroughQualityV2) {
+        // V2: Do NOT show fake breakthrough. Log warning and dismiss.
+        logger.warn("Cinematic completed but no valid breakthrough data — suppressing fake card");
+        setShowBreakthroughCard(false);
       } else {
+        // Legacy: show generic message (flag OFF)
+        setShowBreakthroughCard(true);
         options.onBreakthrough?.();
         addMessage({
           role: "assistant",
@@ -250,10 +319,49 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   }, []);
 
   // =========================================================================
+  // BREAKTHROUGH QUALITY V2: Request real synthesis from server
+  // =========================================================================
+
+  const requestSynthesis = useCallback(async () => {
+    if (synthesisInProgressRef.current) {
+      logger.warn("Synthesis already in progress, skipping duplicate request");
+      return;
+    }
+    synthesisInProgressRef.current = true;
+
+    // Clear stale breakthrough data
+    setBreakthroughData(null);
+
+    try {
+      // Build a summary transcript from conversation history
+      const history = conversationHistoryRef.current;
+      const summaryTranscript = history.length > 0
+        ? history.slice(-5).join(" ")
+        : "The user wants their breakthrough now.";
+
+      logger.info("requestSynthesis: requesting real breakthrough from server", {
+        historyLength: history.length,
+      });
+
+      // Mark ready for breakthrough so processTranscript sends forceBreakthrough=true
+      fastTrackRef.current.readyForBreakthrough = true;
+
+      // Call processTranscript which will handle the full server round-trip
+      await processTranscriptInner(summaryTranscript);
+    } catch (error) {
+      logger.error("requestSynthesis failed", error as Error);
+      // Stay in recoverable state — do NOT fake a breakthrough
+    } finally {
+      synthesisInProgressRef.current = false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // =========================================================================
   // CORE PROCESSING (FSM-Driven)
   // =========================================================================
 
-  const processTranscript = useCallback(
+  const processTranscriptInner = useCallback(
     async (transcript: string): Promise<SpiralAIResponse | null> => {
       // FSM Guard: Check if we can start processing
       if (!transcript.trim()) return null;
@@ -267,13 +375,6 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
 
       // Track conversation history
       conversationHistoryRef.current.push(transcript);
-
-      // FRUSTRATION CHECK - Stop immediately if user is annoyed
-      if (isUserFrustrated(transcript) || wantsToSkip(transcript)) {
-        logger.warn("User frustrated or wants to skip - forcing breakthrough");
-        forceBreakthrough();
-        return null;
-      }
 
       // EARLY PATTERN DETECTION - Don't wait for 5+ messages
       const detectedPatterns = detectPatternsEarly(transcript, conversationHistoryRef.current);
@@ -397,7 +498,6 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             }
           }
 
-          // Remove the streaming message (will be re-added below if needed)
           // Build the full response data
           data = {
             entities: (metadata.entities as SpiralAIResponse["entities"]) || [],
@@ -531,19 +631,26 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         }
 
         // FAILSAFE: If readyForBreakthrough but server returned a question,
-        // use any existing breakthrough data from prior responses, or skip the question
+        // use any existing breakthrough data from prior responses
         if (fastTrackRef.current.readyForBreakthrough && data.question) {
-           logger.warn("Server returned question despite breakthrough ready - using accumulated data");
+           logger.warn("Server returned question despite breakthrough ready - checking accumulated data");
 
-           // Use breakthrough data from THIS response if available, otherwise from accumulated session
-           if (data.friction || data.grease || data.insight) {
-             const accumulatedData: BreakthroughData = {
-               friction: data.friction || "",
-               grease: data.grease || "",
-               insight: data.insight || "",
-             };
-             forceBreakthrough(accumulatedData);
+           // V2: Only use data if it passes full validation
+           const candidateData: BreakthroughData = {
+             friction: data.friction || "",
+             grease: data.grease || "",
+             insight: data.insight || "",
+           };
+           
+           if (isValidBreakthroughData(candidateData)) {
+             forceBreakthrough(candidateData);
+           } else if (!featureFlags.breakthroughQualityV2 && (data.friction || data.grease || data.insight)) {
+             // Legacy: accept partial data when flag is off
+             forceBreakthrough(candidateData);
+           } else {
+             logger.warn("No valid breakthrough data in failsafe path — staying in recoverable state");
            }
+           
            sendEvent({ type: "RESPONSE_COMPLETE" });
            return data;
         }
@@ -638,27 +745,32 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
                   btData = parsed as BreakthroughData;
                   logger.info("Breakthrough data from full response parse", { btData });
                 }
-              } catch (e) {
+              } catch {
                 // Not valid JSON, that's okay
               }
             }
 
-            // Method 5: Fallback data
-            if (!btData) {
-              logger.warn("No breakthrough data found, using fallback");
-              btData = {
-                friction: "The challenge you're working through",
-                grease: "The path forward is becoming clear",
-                insight: "Trust the process and move forward with clarity",
-              };
+            // V2: Validate parsed data — reject generic/partial
+            if (isValidBreakthroughData(btData)) {
+              forceBreakthrough(btData);
+            } else if (!featureFlags.breakthroughQualityV2 && btData) {
+              // Legacy: accept whatever we got when flag is off
+              forceBreakthrough(btData);
+            } else {
+              // V2: No valid breakthrough data — stay in recoverable state
+              logger.warn("No valid breakthrough data found — NOT faking breakthrough");
+              sendEvent({ type: "RESPONSE_COMPLETE" });
             }
-
-            // Trigger breakthrough with data (FSM handles transition)
-            forceBreakthrough(btData);
           } catch (error) {
             logger.error("Failed to extract breakthrough data", error);
-            // Fallback to basic breakthrough
-            forceBreakthrough();
+            if (!featureFlags.breakthroughQualityV2) {
+              // Legacy: fallback to basic breakthrough
+              forceBreakthrough();
+            } else {
+              // V2: Do not fake
+              logger.warn("Breakthrough extraction failed — staying in recoverable state");
+              sendEvent({ type: "RESPONSE_COMPLETE" });
+            }
           }
         }
 
@@ -693,10 +805,44 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     [currentSession, addEntity, addConnection, addMessage, machineContext, options, forceBreakthrough, sendEvent, entityLimit]
   );
 
+  // Public processTranscript wrapper with frustration/skip gating
+  const processTranscript = useCallback(
+    async (transcript: string): Promise<SpiralAIResponse | null> => {
+      if (!transcript.trim()) return null;
+
+      // FRUSTRATION CHECK
+      if (isUserFrustrated(transcript) || wantsToSkip(transcript)) {
+        if (featureFlags.breakthroughQualityV2) {
+          // V2: Don't fake breakthrough. Request real synthesis instead.
+          logger.warn("User frustrated/wants to skip — requesting real synthesis");
+          conversationHistoryRef.current.push(transcript);
+          fastTrackRef.current.readyForBreakthrough = true;
+          // Fall through to processTranscriptInner which will send forceBreakthrough=true
+          return processTranscriptInner(transcript);
+        } else {
+          // Legacy: force breakthrough immediately
+          logger.warn("User frustrated or wants to skip - forcing breakthrough");
+          forceBreakthrough();
+          return null;
+        }
+      }
+
+      return processTranscriptInner(transcript);
+    },
+    [processTranscriptInner, forceBreakthrough]
+  );
+
   // Skip to breakthrough button handler
   const skipToBreakthrough = useCallback(() => {
-    forceBreakthrough();
-  }, [forceBreakthrough]);
+    if (featureFlags.breakthroughQualityV2) {
+      // V2: Request real synthesis instead of faking
+      logger.info("skipToBreakthrough: requesting real synthesis (V2)");
+      requestSynthesis();
+    } else {
+      // Legacy
+      forceBreakthrough();
+    }
+  }, [forceBreakthrough, requestSynthesis]);
 
   // Reset for new session
   const resetSession = useCallback(() => {

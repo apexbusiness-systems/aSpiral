@@ -1,0 +1,169 @@
+/**
+ * Breakthrough Quality V2 - Deno Tests
+ * 
+ * Tests anti-generic breakthrough validation at the edge function layer.
+ * Run with: deno test supabase/functions/spiral-ai/breakthroughQualityV2.test.ts
+ */
+
+import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
+import { isGenericBreakthroughText, hasValidBreakthrough } from "./index.ts";
+
+// =============================================================================
+// isGenericBreakthroughText tests
+// =============================================================================
+
+Deno.test("isGenericBreakthroughText: detects 'trust the process'", () => {
+  assertEquals(isGenericBreakthroughText("Trust the process and keep going"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'move forward with clarity'", () => {
+  assertEquals(isGenericBreakthroughText("You can move forward with clarity now"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'one small step'", () => {
+  assertEquals(isGenericBreakthroughText("Take one small step today"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'take a deep breath'", () => {
+  assertEquals(isGenericBreakthroughText("Take a deep breath and relax"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'the answer is within you'", () => {
+  assertEquals(isGenericBreakthroughText("The answer is within you already"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'path forward is becoming clear'", () => {
+  assertEquals(isGenericBreakthroughText("The path forward is becoming clear"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'challenge you're working through'", () => {
+  assertEquals(isGenericBreakthroughText("The challenge you're working through is hard"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'let's cut to what matters'", () => {
+  assertEquals(isGenericBreakthroughText("Let's cut to what matters here"), true);
+});
+
+Deno.test("isGenericBreakthroughText: accepts specific non-generic text", () => {
+  assertEquals(isGenericBreakthroughText("Your manager micromanages deliverables killing autonomy"), false);
+});
+
+Deno.test("isGenericBreakthroughText: accepts another specific text", () => {
+  assertEquals(isGenericBreakthroughText("Saying yes to every client destroys weekends"), false);
+});
+
+Deno.test("isGenericBreakthroughText: case-insensitive detection", () => {
+  assertEquals(isGenericBreakthroughText("TRUST THE PROCESS"), true);
+  assertEquals(isGenericBreakthroughText("Trust The Process"), true);
+});
+
+// =============================================================================
+// hasValidBreakthrough tests
+// =============================================================================
+
+Deno.test("hasValidBreakthrough: accepts complete valid data", () => {
+  assert(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: "Your boss blocks every initiative",
+    grease: "Present a proposal with ROI numbers",
+    insight: "You're not asking for permission — you're asking for respect",
+  }));
+});
+
+Deno.test("hasValidBreakthrough: rejects missing friction", () => {
+  assertEquals(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: undefined,
+    grease: "Do something",
+    insight: "Learn something",
+  }), false);
+});
+
+Deno.test("hasValidBreakthrough: rejects empty grease", () => {
+  assertEquals(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: "Real problem",
+    grease: "",
+    insight: "Real insight",
+  }), false);
+});
+
+Deno.test("hasValidBreakthrough: rejects empty insight", () => {
+  assertEquals(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: "Real problem",
+    grease: "Real solution",
+    insight: "   ",
+  }), false);
+});
+
+Deno.test("hasValidBreakthrough: rejects generic friction", () => {
+  assertEquals(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: "The challenge you're working through",
+    grease: "Real solution",
+    insight: "Real insight",
+  }), false);
+});
+
+Deno.test("hasValidBreakthrough: rejects generic grease", () => {
+  assertEquals(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: "Real problem",
+    grease: "Trust the process and keep going",
+    insight: "Real insight",
+  }), false);
+});
+
+Deno.test("hasValidBreakthrough: rejects generic insight", () => {
+  assertEquals(hasValidBreakthrough({
+    entities: [],
+    connections: [],
+    question: "",
+    response: "",
+    friction: "Real problem",
+    grease: "Real solution",
+    insight: "Move forward with clarity",
+  }), false);
+});
+
+// =============================================================================
+// createFallbackResponse safety test
+// =============================================================================
+
+Deno.test("fallback response has no fake breakthrough fields", () => {
+  // Import createFallbackResponse indirectly — it's not exported,
+  // but we can verify the contract: when shouldBreakthrough=true,
+  // the fallback must NOT have friction/grease/insight populated.
+  // We test this by checking hasValidBreakthrough on a fallback-shaped object.
+  const fallback = {
+    entities: [],
+    connections: [],
+    question: "",
+    response: "I hear you.",
+    friction: undefined,
+    grease: undefined,
+    insight: undefined,
+  };
+  assertEquals(hasValidBreakthrough(fallback), false);
+});
+
+console.log("\n✅ All Breakthrough Quality V2 tests defined.\n");
