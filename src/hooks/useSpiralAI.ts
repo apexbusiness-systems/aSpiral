@@ -662,15 +662,18 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           }
         }
 
-        // Store response
+        // Store response (only add message if not already streamed via SSE)
         if (data.response && data.question) {
           setLastResponse(data.response);
 
-          // Add as message in chat
-          addMessage({
-            role: "assistant",
-            content: data.response,
-          });
+          // Only add as chat message if we didn't already stream it
+          const contentType = response.headers.get("content-type") || "";
+          if (!contentType.includes("text/event-stream")) {
+            addMessage({
+              role: "assistant",
+              content: data.response,
+            });
+          }
         }
 
         return data;
