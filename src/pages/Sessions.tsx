@@ -100,9 +100,24 @@ const Sessions = () => {
     setSessions(enriched);
   }, [user, loadSessions]);
 
+  // Load streak from profile
+  const loadStreak = useCallback(async () => {
+    if (!user) return;
+    try {
+      const db = supabase as any;
+      const { data } = await db
+        .from('profiles')
+        .select('streak_days')
+        .eq('id', user.id)
+        .single();
+      if (data) setStreakDays(data.streak_days || 0);
+    } catch {}
+  }, [user]);
+
   useEffect(() => {
     loadSessionsWithMetadata();
-  }, [loadSessionsWithMetadata]);
+    loadStreak();
+  }, [loadSessionsWithMetadata, loadStreak]);
 
   const handleResumeSession = async (sessionId: string) => {
     const session = await loadSession(sessionId);
