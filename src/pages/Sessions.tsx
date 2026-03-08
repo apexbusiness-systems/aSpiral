@@ -253,6 +253,13 @@ const Sessions = () => {
                 Your exploration journey
               </p>
             </div>
+            {streakDays > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/15 border border-warning/30 text-warning">
+                <Flame className="w-4 h-4" />
+                <span className="text-sm font-semibold">{streakDays}</span>
+                <span className="text-xs text-warning/80">day{streakDays !== 1 ? 's' : ''}</span>
+              </div>
+            )}
           </div>
           <Button onClick={handleNewSession} className="rounded-xl">
             <Sparkles className="w-4 h-4 mr-2" />
