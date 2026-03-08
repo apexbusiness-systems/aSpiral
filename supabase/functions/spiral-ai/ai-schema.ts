@@ -76,10 +76,10 @@ export function createResponseSchema(limits: TierLimits) {
       `Maximum ${limits.maxConnections} connections allowed`
     ),
     question: z.string().max(100, "Question must be under 100 characters"),
-    response: z.string().max(50, "Response must be under 50 characters"),
-    friction: z.string().max(100).optional(),
-    grease: z.string().max(100).optional(),
-    insight: z.string().max(150).optional(),
+    response: z.string().max(500, "Response must be under 500 characters"),
+    friction: z.string().max(300).optional(),
+    grease: z.string().max(300).optional(),
+    insight: z.string().max(500).optional(),
   });
 }
 
@@ -109,7 +109,10 @@ export function getPromptValidationRules(tier: string | undefined): string {
 - connections: array, max ${limits.maxConnections} items
 - label: string, max 50 chars
 - question: string, max 100 chars  
-- response: string, max 50 chars
+- response: string, max 500 chars
+- friction: string, max 300 chars
+- grease: string, max 300 chars
+- insight: string, max 500 chars
 - emotionalValence: number -1 to 1
 - importance: number 0 to 1
 - connection strength: number 0 to 1
