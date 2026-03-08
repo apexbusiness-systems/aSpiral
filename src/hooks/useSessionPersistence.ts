@@ -270,7 +270,7 @@ export function useSessionPersistence() {
     }
   }, [user]);
 
-  // Save a breakthrough
+  // Save a breakthrough and update streak
   const saveBreakthrough = useCallback(async (
     sessionId: string,
     friction: string,
@@ -294,6 +294,47 @@ export function useSessionPersistence() {
 
       if (error) throw error;
       logger.info('Breakthrough saved');
+
+      // Update streak on profile
+      try {
+        const { data: profile } = await db
+          .from('profiles')
+          .select('streak_days, last_session_at')
+          .eq('id', user.id)
+          .single();
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        let newStreak = 1;
+
+        if (profile?.last_session_at) {
+          const lastDate = new Date(profile.last_session_at).toISOString().split('T')[0];
+          if (lastDate === today) {
+            // Already counted today
+            newStreak = profile.streak_days || 1;
+          } else {
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            if (lastDate === yesterdayStr) {
+              newStreak = (profile.streak_days || 0) + 1;
+            }
+          }
+        }
+
+        await db
+          .from('profiles')
+          .update({
+            streak_days: newStreak,
+            last_session_at: now.toISOString(),
+            updated_at: now.toISOString(),
+          })
+          .eq('id', user.id);
+
+        logger.info('Streak updated', { newStreak });
+      } catch (streakErr: any) {
+        logger.error('Failed to update streak', streakErr);
+      }
 
     } catch (error: any) {
       logger.error('Failed to save breakthrough', error);

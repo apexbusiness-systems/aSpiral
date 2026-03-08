@@ -408,6 +408,174 @@ export async function exportSessionToPDF(data: SessionExportData): Promise<void>
   }
 }
 
+// ─── Breakthrough Shareable Card Export ───
+
+interface BreakthroughCardData {
+  friction: string;
+  grease: string;
+  insight: string;
+  achievedAt?: Date;
+}
+
+function generateBreakthroughCardHTML(data: BreakthroughCardData): string {
+  const dateStr = format(data.achievedAt ?? new Date(), 'MMMM d, yyyy');
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          width: 1200px;
+          height: 630px;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+          background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+          color: #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 60px 80px;
+          position: relative;
+          overflow: hidden;
+        }
+        .glow-1 {
+          position: absolute; top: -80px; right: -80px;
+          width: 300px; height: 300px; border-radius: 50%;
+          background: rgba(139, 92, 246, 0.25); filter: blur(80px);
+        }
+        .glow-2 {
+          position: absolute; bottom: -80px; left: -80px;
+          width: 300px; height: 300px; border-radius: 50%;
+          background: rgba(6, 182, 212, 0.2); filter: blur(80px);
+        }
+        .header {
+          display: flex; align-items: center; gap: 12px;
+          margin-bottom: 40px;
+        }
+        .logo {
+          font-size: 28px; font-weight: 800;
+          background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text; letter-spacing: 2px;
+        }
+        .badge {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 6px 16px; border-radius: 20px; font-size: 12px;
+          font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+          background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4);
+        }
+        .content { display: flex; flex-direction: column; gap: 20px; flex: 1; }
+        .row { display: flex; align-items: flex-start; gap: 16px; }
+        .icon-box {
+          flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px;
+          display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .icon-friction { background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.3); }
+        .icon-grease  { background: rgba(6, 182, 212, 0.2);  border: 1px solid rgba(6, 182, 212, 0.3); }
+        .label {
+          font-size: 11px; font-weight: 600; text-transform: uppercase;
+          letter-spacing: 1.5px; margin-bottom: 4px;
+        }
+        .label-friction { color: #f97316; }
+        .label-grease  { color: #06b6d4; }
+        .text { font-size: 16px; line-height: 1.5; color: #f1f5f9; }
+        .insight-box {
+          margin-top: 8px; padding: 24px 32px; border-radius: 16px;
+          background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(6,182,212,0.12));
+          border: 1px solid rgba(139, 92, 246, 0.25);
+          text-align: center;
+        }
+        .insight-label {
+          font-size: 11px; font-weight: 600; text-transform: uppercase;
+          letter-spacing: 1.5px; color: #8b5cf6; margin-bottom: 10px;
+        }
+        .insight-text {
+          font-size: 20px; font-weight: 600; line-height: 1.4; color: #f8fafc;
+        }
+        .footer {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-top: auto; padding-top: 24px; font-size: 12px; color: #64748b;
+        }
+        .watermark {
+          font-size: 14px; font-weight: 700;
+          background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="glow-1"></div>
+      <div class="glow-2"></div>
+      <div class="header">
+        <span class="logo">ASPIRAL</span>
+        <span class="badge">✨ Breakthrough</span>
+      </div>
+      <div class="content">
+        <div class="row">
+          <div class="icon-box icon-friction">⚡</div>
+          <div>
+            <div class="label label-friction">The Friction</div>
+            <div class="text">${escapeHtml(data.friction)}</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="icon-box icon-grease">💧</div>
+          <div>
+            <div class="label label-grease">The Grease</div>
+            <div class="text">${escapeHtml(data.grease)}</div>
+          </div>
+        </div>
+        <div class="insight-box">
+          <div class="insight-label">💡 The Insight</div>
+          <div class="insight-text">"${escapeHtml(data.insight)}"</div>
+        </div>
+      </div>
+      <div class="footer">
+        <span>${dateStr}</span>
+        <span class="watermark">aspiral.ai</span>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export async function exportBreakthroughCard(data: BreakthroughCardData): Promise<void> {
+  const html = generateBreakthroughCardHTML(data);
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
+  document.body.appendChild(container);
+
+  const options = {
+    margin: 0,
+    filename: `aspiral-breakthrough-${format(data.achievedAt ?? new Date(), 'yyyy-MM-dd')}.png`,
+    image: { type: 'jpeg' as const, quality: 0.95 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#0f0f23',
+      width: 1200,
+      height: 630,
+    },
+    jsPDF: {
+      unit: 'px' as const,
+      format: [1200, 630] as [number, number],
+      orientation: 'landscape' as const,
+    },
+  };
+
+  try {
+    await html2pdf().set(options).from(container).save();
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
 export function exportSessionToCSV(data: SessionExportData): void {
   const { session, messages, breakthroughs = [] } = data;
   

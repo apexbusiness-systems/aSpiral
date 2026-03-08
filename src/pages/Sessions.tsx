@@ -31,6 +31,7 @@ import {
   FileText,
   Layers,
   Zap,
+  Flame,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
@@ -59,7 +60,7 @@ const Sessions = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState<string | null>(null);
-
+  const [streakDays, setStreakDays] = useState(0);
   // Load sessions with entity counts and breakthrough data
   const loadSessionsWithMetadata = useCallback(async () => {
     if (!user) return;
@@ -99,9 +100,24 @@ const Sessions = () => {
     setSessions(enriched);
   }, [user, loadSessions]);
 
+  // Load streak from profile
+  const loadStreak = useCallback(async () => {
+    if (!user) return;
+    try {
+      const db = supabase as any;
+      const { data } = await db
+        .from('profiles')
+        .select('streak_days')
+        .eq('id', user.id)
+        .single();
+      if (data) setStreakDays(data.streak_days || 0);
+    } catch {}
+  }, [user]);
+
   useEffect(() => {
     loadSessionsWithMetadata();
-  }, [loadSessionsWithMetadata]);
+    loadStreak();
+  }, [loadSessionsWithMetadata, loadStreak]);
 
   const handleResumeSession = async (sessionId: string) => {
     const session = await loadSession(sessionId);
@@ -237,6 +253,13 @@ const Sessions = () => {
                 Your exploration journey
               </p>
             </div>
+            {streakDays > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/15 border border-warning/30 text-warning">
+                <Flame className="w-4 h-4" />
+                <span className="text-sm font-semibold">{streakDays}</span>
+                <span className="text-xs text-warning/80">day{streakDays !== 1 ? 's' : ''}</span>
+              </div>
+            )}
           </div>
           <Button onClick={handleNewSession} className="rounded-xl">
             <Sparkles className="w-4 h-4 mr-2" />
