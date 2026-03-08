@@ -52,7 +52,7 @@ function createSafeStorage(storage: Storage, storageName: string): StorageAdapte
       try {
         storage.removeItem(key);
       } catch (error) {
-        logger.warn(`Failed to remove from ${storageName}`, { key, error });
+        logger.warn(`Failed to remove from ${storageName}`, { key } as any);
       }
     },
 
