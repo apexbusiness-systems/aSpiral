@@ -31,6 +31,7 @@ import {
   FileText,
   Layers,
   Zap,
+  Flame,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
