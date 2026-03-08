@@ -478,6 +478,19 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           throw new Error(`HTTP ${response.status}`);
         }
 
+        // Track server-side breakthrough rejection for client-server correlation
+        const breakthroughRejected = response.headers.get("X-Breakthrough-Rejected");
+        if (breakthroughRejected === "true" && featureFlags.breakthroughQualityV2) {
+          trackBreakthroughRejected({
+            reason: 'force_blocked',
+            source: 'parse',
+            friction: undefined,
+            grease: undefined,
+            insight: undefined,
+          });
+          logger.warn("Server rejected breakthrough (X-Breakthrough-Rejected header)");
+        }
+
         // FSM Transition: START_DELIBERATING (AI thinking)
         sendEvent({ type: "START_DELIBERATING" });
 
