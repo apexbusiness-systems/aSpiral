@@ -95,9 +95,9 @@ describe('Breakthrough Director Lifecycle', () => {
     let onPhaseChangeMock: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-        onCompleteMock = vi.fn();
-        onAbortMock = vi.fn();
-        onPhaseChangeMock = vi.fn();
+        onCompleteMock = vi.fn() as any;
+        onAbortMock = vi.fn() as any;
+        onPhaseChangeMock = vi.fn() as any;
 
         director = new BreakthroughDirector();
         director.setCallbacks({
