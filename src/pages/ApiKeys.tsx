@@ -119,7 +119,7 @@ const ApiKeys = () => {
         expiresAt = date.toISOString();
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('api_keys')
         .insert({
           user_id: user.id,
