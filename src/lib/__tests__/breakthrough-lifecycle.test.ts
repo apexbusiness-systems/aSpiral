@@ -255,7 +255,7 @@ describe('FPS Monitoring and Safe Mode', () => {
     beforeEach(() => {
         onPhaseChangeMock = vi.fn();
         director = new BreakthroughDirector();
-        director.setCallbacks({ onPhaseChange: onPhaseChangeMock });
+        director.setCallbacks({ onPhaseChange: onPhaseChangeMock as any });
     });
 
     it('accepts FPS reports', async () => {
