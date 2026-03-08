@@ -144,7 +144,8 @@ async function callAIWithValidation(
   systemPrompt: string,
   userContent: string,
   shouldBreakthrough: boolean,
-  userTier: string
+  userTier: string,
+  onBreakthroughRejected?: (info: { attempt: number; reason: string }) => void
 ): Promise<{ data: SpiralAIResponse; retryCount: number }> {
   const limits = getTierLimits(userTier);
   const ResponseSchema = createResponseSchema(limits);
@@ -219,7 +220,10 @@ async function callAIWithValidation(
     // V2: If breakthrough expected, check for generic/incomplete content
     if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough) {
       if (!hasValidBreakthrough(validatedData)) {
-        console.warn(`[SPIRAL-AI] ⚠️ Breakthrough content is generic/incomplete on attempt ${attempt + 1} — retrying`);
+        const rejectionReason = !validatedData.friction?.trim() || !validatedData.grease?.trim() || !validatedData.insight?.trim()
+          ? 'empty_or_partial' : 'generic_phrase';
+        console.warn(`[SPIRAL-AI] ⚠️ Breakthrough content is generic/incomplete on attempt ${attempt + 1} (${rejectionReason}) — retrying`);
+        onBreakthroughRejected?.({ attempt: attempt + 1, reason: rejectionReason });
         lastError = new Error("Breakthrough content is generic or incomplete. Provide specific, personalized friction, grease, and insight based on the user's actual situation.");
         retryCount = attempt + 1;
         continue;
@@ -674,12 +678,33 @@ serve(async (req) => {
     // PHASE 3: VALIDATED AI CALL - With schema validation and retry
     // =======================================================================
     const userContent = `${sanitizedTranscript}${contextInfo}`;
+    let breakthroughRejected = false;
     const { data: validatedResult, retryCount } = await callAIWithValidation(
       systemPrompt,
       userContent,
       shouldBreakthrough,
-      userTier
+      userTier,
+      (info) => {
+        complianceLogger.log("BREAKTHROUGH_REJECTED_ATTEMPT", {
+          attempt: info.attempt,
+          reason: info.reason,
+        });
+      }
     );
+
+    // Track final breakthrough rejection after all retries exhausted
+    if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough && !hasValidBreakthrough(validatedResult)) {
+      breakthroughRejected = true;
+      const reason = !validatedResult.friction?.trim() || !validatedResult.grease?.trim() || !validatedResult.insight?.trim()
+        ? 'empty_or_partial' : 'generic_phrase';
+      complianceLogger.log("BREAKTHROUGH_REJECTED", {
+        reason,
+        retryCount,
+        hasFriction: !!validatedResult.friction?.trim(),
+        hasGrease: !!validatedResult.grease?.trim(),
+        hasInsight: !!validatedResult.insight?.trim(),
+      });
+    }
 
     // Filter connections to only reference valid entity indices
     const validConnections = validatedResult.connections.filter(conn =>
@@ -784,6 +809,7 @@ serve(async (req) => {
         "X-Validation-Retries": `${retryCount}`,
         "X-PII-Redacted": piiFound.length > 0 ? "true" : "false",
         "X-Output-Filtered": (!outputValidation.safe || !responseValidation.safe || !frictionValidation.safe || !greaseValidation.safe) ? "true" : "false",
+        ...(breakthroughRejected ? { "X-Breakthrough-Rejected": "true" } : {}),
       },
     });
   } catch (error) {
