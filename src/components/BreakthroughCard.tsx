@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Share2, RotateCcw, X, Download } from "lucide-react";
+import { ArrowRight, Share2, RotateCcw, X, Download, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import breakthroughIcon from "@/assets/breakthrough-icon.png";
 import { useToast } from "@/hooks/use-toast";
+import { exportBreakthroughCard } from "@/lib/pdfExport";
 
 interface BreakthroughData {
   friction: string;

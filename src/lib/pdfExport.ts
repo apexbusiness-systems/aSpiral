@@ -564,7 +564,7 @@ export async function exportBreakthroughCard(data: BreakthroughCardData): Promis
     },
     jsPDF: {
       unit: 'px' as const,
-      format: [1200, 630],
+      format: [1200, 630] as [number, number],
       orientation: 'landscape' as const,
     },
   };
