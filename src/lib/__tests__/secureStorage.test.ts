@@ -77,13 +77,13 @@ describe('SecureStorage', () => {
     const { supabase } = await import('@/integrations/supabase/client');
 
     vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-      data: { session: { user: { id: 'user-1' } } },
-    });
+      data: { session: { user: { id: 'user-1' } } as any },
+    } as any);
     const s1 = await getEncryptionSecret();
 
     vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-      data: { session: { user: { id: 'user-2' } } },
-    });
+      data: { session: { user: { id: 'user-2' } } as any },
+    } as any);
     const s2 = await getEncryptionSecret();
 
     expect(s1).not.toBe(s2);
@@ -92,8 +92,8 @@ describe('SecureStorage', () => {
   it('should derive different secrets for different devices', async () => {
     const { supabase } = await import('@/integrations/supabase/client');
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
-      data: { session: { user: { id: 'user-1' } } },
-    });
+      data: { session: { user: { id: 'user-1' } } as any },
+    } as any);
 
     const s1 = await getEncryptionSecret();
 

@@ -133,9 +133,11 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
         completed_at: null,
       };
 
-      const promise = this.client
-        .from("compliance_request_runs")
-        .upsert(record, { onConflict: "request_id" })
+      const promise = Promise.resolve(
+        this.client
+          .from("compliance_request_runs")
+          .upsert(record, { onConflict: "request_id" })
+      )
         .then(({ error }) => {
           if (error) {
             console.error("[COMPLIANCE-STORE] Failed to write run start:", error.message);
@@ -181,9 +183,11 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
         completed_at: run.completed_at ?? new Date().toISOString(),
       };
 
-      const promise = this.client
-        .from("compliance_request_runs")
-        .upsert(record, { onConflict: "request_id" })
+      const promise = Promise.resolve(
+        this.client
+          .from("compliance_request_runs")
+          .upsert(record, { onConflict: "request_id" })
+      )
         .then(({ error }) => {
           if (error) {
             console.error("[COMPLIANCE-STORE] Failed to write run summary:", error.message);
@@ -211,9 +215,11 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
     this.pendingEvents = [];
 
     try {
-      const promise = this.client
-        .from("compliance_audit_events")
-        .upsert(eventsToFlush, { onConflict: "request_id,event_id" })
+      const promise = Promise.resolve(
+        this.client
+          .from("compliance_audit_events")
+          .upsert(eventsToFlush, { onConflict: "request_id,event_id" })
+      )
         .then(({ error }) => {
           if (error) {
             console.error("[COMPLIANCE-STORE] Failed to flush events:", error.message);

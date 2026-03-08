@@ -95,15 +95,15 @@ describe('Breakthrough Director Lifecycle', () => {
     let onPhaseChangeMock: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-        onCompleteMock = vi.fn();
-        onAbortMock = vi.fn();
-        onPhaseChangeMock = vi.fn();
+        onCompleteMock = vi.fn() as any;
+        onAbortMock = vi.fn() as any;
+        onPhaseChangeMock = vi.fn() as any;
 
         director = new BreakthroughDirector();
         director.setCallbacks({
-            onComplete: onCompleteMock,
-            onAbort: onAbortMock,
-            onPhaseChange: onPhaseChangeMock,
+            onComplete: onCompleteMock as any,
+            onAbort: onAbortMock as any,
+            onPhaseChange: onPhaseChangeMock as any,
         });
     });
 
@@ -255,7 +255,7 @@ describe('FPS Monitoring and Safe Mode', () => {
     beforeEach(() => {
         onPhaseChangeMock = vi.fn();
         director = new BreakthroughDirector();
-        director.setCallbacks({ onPhaseChange: onPhaseChangeMock });
+        director.setCallbacks({ onPhaseChange: onPhaseChangeMock as any });
     });
 
     it('accepts FPS reports', async () => {
@@ -290,13 +290,13 @@ describe('Physics Worker Pause/Resume', () => {
     let onResumeMock: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-        onPauseMock = vi.fn();
-        onResumeMock = vi.fn();
+        onPauseMock = vi.fn() as any;
+        onResumeMock = vi.fn() as any;
 
         director = new BreakthroughDirector();
         director.setPhysicsCallbacks({
-            onPause: onPauseMock,
-            onResume: onResumeMock,
+            onPause: onPauseMock as any,
+            onResume: onResumeMock as any,
         });
     });
 

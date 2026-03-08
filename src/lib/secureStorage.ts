@@ -45,7 +45,7 @@ export async function getEncryptionSecret(): Promise<string> {
     }
   } catch (_error) {
     // Fallback to anonymous if auth check fails
-    const message = error instanceof Error ? error.message : String(error);
+    const message = _error instanceof Error ? _error.message : String(_error);
     console.warn('Auth check failed, using anonymous secret context', { message });
   }
 

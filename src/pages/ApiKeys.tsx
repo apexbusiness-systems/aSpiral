@@ -72,7 +72,7 @@ const ApiKeys = () => {
 
   const loadApiKeys = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('api_keys')
         .select('id, name, last_used_at, created_at, expires_at')
         .eq('user_id', user!.id)
@@ -119,7 +119,7 @@ const ApiKeys = () => {
         expiresAt = date.toISOString();
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('api_keys')
         .insert({
           user_id: user.id,
@@ -151,7 +151,7 @@ const ApiKeys = () => {
     if (!deleteTarget || !user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('api_keys')
         .delete()
         .eq('id', deleteTarget)

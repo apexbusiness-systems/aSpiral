@@ -45,11 +45,11 @@ describe('Performance Benchmark: detectDeviceCapabilities', () => {
       global.document = {
         createElement: (tagName: string) => {
           if (tagName === 'canvas') {
-            return new global.HTMLCanvasElement();
+            return new (global as any).HTMLCanvasElement();
           }
-          return {};
+          return {} as any;
         }
-      };
+      } as any;
     }
 
     // Mock window if needed (for matchMedia)
@@ -60,8 +60,8 @@ describe('Performance Benchmark: detectDeviceCapabilities', () => {
           matches: false,
           media: query,
           onchange: null,
-          addListener: vi.fn(), // deprecated
-          removeListener: vi.fn(), // deprecated
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),
           dispatchEvent: vi.fn(),
@@ -69,7 +69,7 @@ describe('Performance Benchmark: detectDeviceCapabilities', () => {
         navigator: {
           userAgent: 'Test Agent'
         }
-      };
+      } as any;
     }
 
     // Ensure navigator exists on window/global

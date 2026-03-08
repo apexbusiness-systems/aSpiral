@@ -230,7 +230,7 @@ function createErrorResponse(status: number, body: unknown, additionalHeaders: R
 function handleValidationError(errors: unknown[]): Response {
   return createErrorResponse(400, {
     error: "Invalid request format",
-    details: errors?.map((e: { message: string }) => e.message),
+    details: (errors as Array<{ message: string }>)?.map((e) => e.message),
   });
 }
 
