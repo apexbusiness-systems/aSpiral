@@ -686,9 +686,9 @@ serve(async (req) => {
       userTier,
       (info) => {
         complianceLogger.log("BREAKTHROUGH_REJECTED_ATTEMPT", {
-          attempt: info.attempt,
-          reason: info.reason,
-        });
+          errorCode: `attempt_${info.attempt}`,
+          errorMessage: info.reason,
+        } as Partial<import("./compliance-logger.ts").ComplianceAuditLog>);
       }
     );
 
