@@ -295,8 +295,8 @@ describe('Physics Worker Pause/Resume', () => {
 
         director = new BreakthroughDirector();
         director.setPhysicsCallbacks({
-            onPause: onPauseMock,
-            onResume: onResumeMock,
+            onPause: onPauseMock as any,
+            onResume: onResumeMock as any,
         });
     });
 

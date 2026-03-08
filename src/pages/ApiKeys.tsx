@@ -151,7 +151,7 @@ const ApiKeys = () => {
     if (!deleteTarget || !user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('api_keys')
         .delete()
         .eq('id', deleteTarget)

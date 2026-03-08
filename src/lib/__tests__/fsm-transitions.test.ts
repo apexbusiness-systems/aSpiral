@@ -13,6 +13,7 @@ import {
     createInitialContext,
     isProcessing,
     isListening,
+    type SpiralEvent,
     isCinematic,
     isError,
     canStartProcessing,

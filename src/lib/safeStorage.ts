@@ -60,7 +60,7 @@ function createSafeStorage(storage: Storage, storageName: string): StorageAdapte
       try {
         storage.clear();
       } catch (error) {
-        logger.error(`Failed to clear ${storageName}`, { error });
+        logger.error(`Failed to clear ${storageName}`);
       }
     },
   };
