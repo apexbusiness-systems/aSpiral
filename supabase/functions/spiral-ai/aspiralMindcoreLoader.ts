@@ -1,4 +1,5 @@
 import { dirname, fromFileUrl, join, resolve } from "https://deno.land/std@0.168.0/path/mod.ts";
+import { MINDCORE_SYSTEM_PROMPT, MINDCORE_SHA256, MINDCORE_VERSION } from "./mindcoreEmbed.ts";
 
 const START_MARKER = "# ▶▶ SYSTEM PROMPT START ◀◀";
 const END_MARKER = "# ▶▶ SYSTEM PROMPT END ◀◀";
@@ -10,16 +11,6 @@ export interface AspiralMindcorePrompt {
   systemPrompt: string;
   version: "1.1.2";
   sha256: string;
-}
-
-function getMindcoreRoot(): string {
-  const override = Deno.env.get("ASPIRAL_MINDCORE_DIR");
-  if (override) {
-    return resolve(override);
-  }
-
-  const thisDir = dirname(fromFileUrl(import.meta.url));
-  return resolve(join(thisDir, "../../../.claude/skills/aspiral-mindcore"));
 }
 
 function trimSurroundingNewlines(value: string): string {
@@ -45,7 +36,7 @@ function extractSystemPromptBlock(content: string): string {
     throw new Error("MindCore prompt markers missing or invalid");
   }
 
-  // Normalize CRLF→LF for cross-platform SHA256 consistency (Windows git checkout converts LF→CRLF)
+  // Normalize CRLF→LF for cross-platform SHA256 consistency
   const rawBlock = content.slice(startIndex + START_MARKER.length, endIndex).replaceAll("\r", "");
   const block = `${trimSurroundingNewlines(rawBlock)}\n`;
 
@@ -63,8 +54,36 @@ async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Load MindCore prompt.
+ * 
+ * Strategy:
+ * 1. Primary: Use embedded TypeScript constant (works in deployed edge functions)
+ * 2. Fallback: Read from filesystem (works in local dev with ASPIRAL_MINDCORE_DIR override)
+ * 
+ * Both paths verify SHA256 integrity.
+ */
 export async function loadAspiralMindcore(): Promise<AspiralMindcorePrompt> {
-  const root = getMindcoreRoot();
+  // Try embedded module first (always available in deployed edge functions)
+  if (MINDCORE_VERSION === EXPECTED_VERSION) {
+    const sha256 = await sha256Hex(MINDCORE_SYSTEM_PROMPT);
+    if (sha256 === MINDCORE_SHA256) {
+      console.log("[MINDCORE] Loaded from embedded module");
+      return {
+        systemPrompt: MINDCORE_SYSTEM_PROMPT,
+        version: EXPECTED_VERSION,
+        sha256,
+      };
+    }
+    console.warn("[MINDCORE] Embedded SHA256 mismatch, falling back to filesystem");
+  }
+
+  // Fallback: filesystem (local dev / tests / override)
+  const override = Deno.env.get("ASPIRAL_MINDCORE_DIR");
+  const root = override
+    ? resolve(override)
+    : resolve(join(dirname(fromFileUrl(import.meta.url)), "../../../.claude/skills/aspiral-mindcore"));
+
   const promptPath = join(root, "UNIVERSAL_PROMPT.md");
   const shaPath = join(root, "SHA256");
   const versionPath = join(root, "VERSION");
