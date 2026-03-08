@@ -682,8 +682,14 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
            } else if (!featureFlags.breakthroughQualityV2 && (data.friction || data.grease || data.insight)) {
              // Legacy: accept partial data when flag is off
              forceBreakthrough(candidateData);
-           } else {
-             logger.warn("No valid breakthrough data in failsafe path — staying in recoverable state");
+            } else {
+              logger.warn("No valid breakthrough data in failsafe path — staying in recoverable state");
+              trackBreakthroughRejected({
+                reason: findMatchedGenericPhrase(candidateData) ? 'generic_phrase' : 'failsafe_no_data',
+                source: 'failsafe',
+                friction: candidateData.friction, grease: candidateData.grease, insight: candidateData.insight,
+                matchedPhrase: findMatchedGenericPhrase(candidateData),
+              });
            }
            
            sendEvent({ type: "RESPONSE_COMPLETE" });
