@@ -685,10 +685,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             } else {
               logger.warn("No valid breakthrough data in failsafe path — staying in recoverable state");
               trackBreakthroughRejected({
-                reason: findMatchedGenericPhrase(candidateData) ? 'generic_phrase' : 'failsafe_no_data',
+                reason: findMatchedGenericPhrase(candidateData as BreakthroughData) ? 'generic_phrase' : 'failsafe_no_data',
                 source: 'failsafe',
-                friction: candidateData.friction, grease: candidateData.grease, insight: candidateData.insight,
-                matchedPhrase: findMatchedGenericPhrase(candidateData),
+                friction: (candidateData as BreakthroughData).friction, grease: (candidateData as BreakthroughData).grease, insight: (candidateData as BreakthroughData).insight,
+                matchedPhrase: findMatchedGenericPhrase(candidateData as BreakthroughData),
               });
            }
            
