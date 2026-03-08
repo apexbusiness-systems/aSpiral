@@ -33,6 +33,7 @@ const Sessions = lazy(() => import("./pages/Sessions"));
 const Workspaces = lazy(() => import("./pages/Workspaces"));
 const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const Breakthroughs = lazy(() => import("./pages/Breakthroughs"));
 const NotificationTest = lazy(() => import("./pages/NotificationTest"));
 const Support = lazy(() => import("./pages/Support"));
 const VoiceYourChaos = lazy(() => import("./pages/steps/VoiceYourChaos"));
@@ -197,6 +198,7 @@ const App = () => {
                 <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
                 <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
                 <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
+                <Route path="/breakthroughs" element={<ProtectedRoute><Breakthroughs /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 {import.meta.env.DEV && <Route path="/notification-test" element={<NotificationTest />} />}
                 <Route path="*" element={<NotFound />} />
