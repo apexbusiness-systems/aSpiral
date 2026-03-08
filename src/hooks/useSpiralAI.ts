@@ -16,6 +16,7 @@
 import { useState, useCallback, useRef, useReducer, useMemo, useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { createLogger } from "@/lib/logger";
+import { trackBreakthroughRejected, type BreakthroughRejectionReason } from "@/lib/analytics";
 import { isUserFrustrated, wantsToSkip } from "@/lib/frustrationDetector";
 import { validateCoherence, deduplicateEntities, prioritizeEntities } from "@/lib/coherenceValidator";
 import { getEntityLimit, type UserTier } from "@/lib/entityLimits";
@@ -93,12 +94,20 @@ export function isValidBreakthroughData(
 
   if (featureFlags.breakthroughQualityV2) {
     const combined = `${friction} ${grease} ${insight}`.toLowerCase();
-    if (GENERIC_BREAKTHROUGH_PHRASES.some(phrase => combined.includes(phrase))) {
+    const matchedPhrase = GENERIC_BREAKTHROUGH_PHRASES.find(phrase => combined.includes(phrase));
+    if (matchedPhrase) {
       return false;
     }
   }
 
   return true;
+}
+
+/** Returns the first banned phrase found in the data, or undefined. */
+function findMatchedGenericPhrase(data: { friction?: string; grease?: string; insight?: string } | null | undefined): string | undefined {
+  if (!data) return undefined;
+  const combined = `${data.friction ?? ''} ${data.grease ?? ''} ${data.insight ?? ''}`.toLowerCase();
+  return GENERIC_BREAKTHROUGH_PHRASES.find(phrase => combined.includes(phrase));
 }
 
 // =============================================================================
@@ -237,6 +246,13 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         grease: d?.grease?.substring(0, 30),
         insight: d?.insight?.substring(0, 30),
       });
+      const matched = findMatchedGenericPhrase(d);
+      trackBreakthroughRejected({
+        reason: matched ? 'generic_phrase' : 'empty_or_partial',
+        source: 'forceBreakthrough',
+        friction: d?.friction, grease: d?.grease, insight: d?.insight,
+        matchedPhrase: matched,
+      });
       return;
     }
 
@@ -304,6 +320,12 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
       } else if (featureFlags.breakthroughQualityV2) {
         // V2: Do NOT show fake breakthrough. Log warning and dismiss.
         logger.warn("Cinematic completed but no valid breakthrough data — suppressing fake card");
+        trackBreakthroughRejected({
+          reason: 'cinematic_no_data',
+          source: 'handleCinematicComplete',
+          friction: (data as any)?.friction, grease: (data as any)?.grease, insight: (data as any)?.insight,
+          matchedPhrase: findMatchedGenericPhrase(data as any),
+        });
         setShowBreakthroughCard(false);
       } else {
         // Legacy: show generic message (flag OFF)
@@ -660,8 +682,14 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
            } else if (!featureFlags.breakthroughQualityV2 && (data.friction || data.grease || data.insight)) {
              // Legacy: accept partial data when flag is off
              forceBreakthrough(candidateData);
-           } else {
-             logger.warn("No valid breakthrough data in failsafe path — staying in recoverable state");
+            } else {
+              logger.warn("No valid breakthrough data in failsafe path — staying in recoverable state");
+              trackBreakthroughRejected({
+                reason: findMatchedGenericPhrase(candidateData as BreakthroughData) ? 'generic_phrase' : 'failsafe_no_data',
+                source: 'failsafe',
+                friction: (candidateData as BreakthroughData).friction, grease: (candidateData as BreakthroughData).grease, insight: (candidateData as BreakthroughData).insight,
+                matchedPhrase: findMatchedGenericPhrase(candidateData as BreakthroughData),
+              });
            }
            
            sendEvent({ type: "RESPONSE_COMPLETE" });
@@ -772,6 +800,12 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             } else {
               // V2: No valid breakthrough data — stay in recoverable state
               logger.warn("No valid breakthrough data found — NOT faking breakthrough");
+              trackBreakthroughRejected({
+                reason: findMatchedGenericPhrase(btData as BreakthroughData | null) ? 'generic_phrase' : 'parse_no_data',
+                source: 'parse',
+                friction: (btData as BreakthroughData | null)?.friction, grease: (btData as BreakthroughData | null)?.grease, insight: (btData as BreakthroughData | null)?.insight,
+                matchedPhrase: findMatchedGenericPhrase(btData as BreakthroughData | null),
+              });
               sendEvent({ type: "RESPONSE_COMPLETE" });
             }
           } catch (error) {

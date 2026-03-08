@@ -190,6 +190,52 @@ export function trackBreakthrough(data: BreakthroughData) {
 }
 
 // ============================================
+// BREAKTHROUGH REJECTION TRACKING (Quality V2)
+// ============================================
+
+export type BreakthroughRejectionReason =
+  | 'empty_or_partial'     // Missing friction/grease/insight
+  | 'generic_phrase'       // Contained banned generic filler
+  | 'force_blocked'        // forceBreakthrough() blocked by V2
+  | 'cinematic_no_data'    // Cinematic completed but no valid data
+  | 'failsafe_no_data'     // Failsafe path had no valid data
+  | 'parse_no_data';       // Breakthrough parsing found no valid data
+
+export interface BreakthroughRejectionData {
+  reason: BreakthroughRejectionReason;
+  source: 'forceBreakthrough' | 'handleCinematicComplete' | 'failsafe' | 'parse' | 'skipToBreakthrough';
+  friction?: string;
+  grease?: string;
+  insight?: string;
+  matchedPhrase?: string;
+}
+
+/**
+ * Track when a breakthrough is rejected by Quality V2 validation.
+ * Use to measure anti-generic filter impact and tune banned phrase list.
+ */
+export function trackBreakthroughRejected(data: BreakthroughRejectionData) {
+  if (!isInitialized) initAnalytics();
+
+  try {
+    posthog.capture('breakthrough_rejected', {
+      ...data,
+      timestamp: Date.now(),
+      // Truncate for analytics
+      friction: data.friction?.slice(0, 200),
+      grease: data.grease?.slice(0, 200),
+      insight: data.insight?.slice(0, 200),
+    });
+
+    if (import.meta.env.DEV) {
+      console.log('[Analytics] breakthrough_rejected:', data);
+    }
+  } catch (error) {
+    console.error('[Analytics] Failed to track breakthrough rejection:', error);
+  }
+}
+
+// ============================================
 // ENTITY TRACKING
 // ============================================
 
