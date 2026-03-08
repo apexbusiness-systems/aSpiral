@@ -322,6 +322,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           },
           body: JSON.stringify({
             transcript,
+            stream: true,
             sessionContext: currentSession ? {
               entities: currentSession.entities.map(e => ({
                 type: e.type,
@@ -344,7 +345,92 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         // FSM Transition: START_DELIBERATING (AI thinking)
         sendEvent({ type: "START_DELIBERATING" });
 
-        const data: SpiralAIResponse = await response.json();
+        // Check if response is SSE stream or JSON
+        const contentType = response.headers.get("content-type") || "";
+        let data: SpiralAIResponse;
+
+        if (contentType.includes("text/event-stream") && response.body) {
+          // Handle SSE streaming
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulatedResponse = "";
+          let metadata: Partial<SpiralAIResponse> = {};
+          let buffer = "";
+
+          // Add a streaming assistant message
+          const streamingMessage = addMessage({
+            role: "assistant",
+            content: "",
+          });
+
+          // FSM Transition: START_RESPONDING
+          sendEvent({ type: "START_RESPONDING" });
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith("data: ")) continue;
+              const jsonStr = trimmed.slice(6);
+              if (jsonStr === "[DONE]") continue;
+
+              try {
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.type === "chunk" && parsed.content) {
+                  accumulatedResponse += parsed.content;
+                  // Update the streaming message in real-time
+                  useSessionStore.getState().updateMessage(streamingMessage.id, {
+                    content: accumulatedResponse,
+                  });
+                } else if (parsed.type === "metadata") {
+                  metadata = parsed;
+                }
+              } catch {
+                // Incomplete JSON
+              }
+            }
+          }
+
+          // Remove the streaming message (will be re-added below if needed)
+          // Build the full response data
+          data = {
+            entities: (metadata.entities as SpiralAIResponse["entities"]) || [],
+            connections: (metadata.connections as SpiralAIResponse["connections"]) || [],
+            question: (metadata.question as string) || "",
+            response: accumulatedResponse,
+            friction: metadata.friction as string | undefined,
+            grease: metadata.grease as string | undefined,
+            insight: metadata.insight as string | undefined,
+          };
+
+          // Update the streaming message with final content
+          useSessionStore.getState().updateMessage(streamingMessage.id, {
+            content: accumulatedResponse,
+          });
+
+          logger.info("SSE stream complete", {
+            responseLength: accumulatedResponse.length,
+            entityCount: data.entities.length,
+            hasQuestion: !!data.question,
+          });
+        } else {
+          // Fallback: standard JSON response
+          data = await response.json();
+
+          // FSM Transition: START_RESPONDING
+          sendEvent({ type: "START_RESPONDING" });
+
+          logger.info("AI response received (JSON)", {
+            entityCount: data.entities.length,
+            hasQuestion: !!data.question,
+          });
+        }
 
         logger.info("AI response received", {
           entityCount: data.entities.length,
