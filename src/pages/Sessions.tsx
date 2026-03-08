@@ -60,7 +60,7 @@ const Sessions = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState<string | null>(null);
-
+  const [streakDays, setStreakDays] = useState(0);
   // Load sessions with entity counts and breakthrough data
   const loadSessionsWithMetadata = useCallback(async () => {
     if (!user) return;
