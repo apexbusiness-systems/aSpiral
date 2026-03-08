@@ -16,6 +16,7 @@
 import { useState, useCallback, useRef, useReducer, useMemo, useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { createLogger } from "@/lib/logger";
+import { trackBreakthroughRejected, type BreakthroughRejectionReason } from "@/lib/analytics";
 import { isUserFrustrated, wantsToSkip } from "@/lib/frustrationDetector";
 import { validateCoherence, deduplicateEntities, prioritizeEntities } from "@/lib/coherenceValidator";
 import { getEntityLimit, type UserTier } from "@/lib/entityLimits";
