@@ -144,7 +144,8 @@ async function callAIWithValidation(
   systemPrompt: string,
   userContent: string,
   shouldBreakthrough: boolean,
-  userTier: string
+  userTier: string,
+  onBreakthroughRejected?: (info: { attempt: number; reason: string }) => void
 ): Promise<{ data: SpiralAIResponse; retryCount: number }> {
   const limits = getTierLimits(userTier);
   const ResponseSchema = createResponseSchema(limits);
