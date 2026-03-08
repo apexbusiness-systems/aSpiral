@@ -14,7 +14,317 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      api_keys: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          key_hash: string
+          last_used_at: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash: string
+          last_used_at?: string | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash?: string
+          last_used_at?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      breakthroughs: {
+        Row: {
+          achieved_at: string
+          friction: string
+          grease: string
+          id: string
+          insight: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          friction: string
+          grease: string
+          id?: string
+          insight: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          friction?: string
+          grease?: string
+          id?: string
+          insight?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "breakthroughs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_audit_events: {
+        Row: {
+          applicable_regulations: string[] | null
+          created_at: string
+          event_id: string
+          event_ts: string
+          event_type: string
+          id: string
+          jurisdiction: string
+          payload: Json | null
+          processing_time_ms: number | null
+          request_id: string
+          session_hash: string
+        }
+        Insert: {
+          applicable_regulations?: string[] | null
+          created_at?: string
+          event_id: string
+          event_ts?: string
+          event_type: string
+          id?: string
+          jurisdiction?: string
+          payload?: Json | null
+          processing_time_ms?: number | null
+          request_id: string
+          session_hash: string
+        }
+        Update: {
+          applicable_regulations?: string[] | null
+          created_at?: string
+          event_id?: string
+          event_ts?: string
+          event_type?: string
+          id?: string
+          jurisdiction?: string
+          payload?: Json | null
+          processing_time_ms?: number | null
+          request_id?: string
+          session_hash?: string
+        }
+        Relationships: []
+      }
+      compliance_request_runs: {
+        Row: {
+          blocked: boolean | null
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          escalated: boolean | null
+          jurisdiction: string
+          request_id: string
+          session_hash: string
+          status: string
+          total_events: number | null
+          total_time_ms: number | null
+          user_hash: string | null
+          user_tier: string | null
+        }
+        Insert: {
+          blocked?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          escalated?: boolean | null
+          jurisdiction?: string
+          request_id: string
+          session_hash: string
+          status?: string
+          total_events?: number | null
+          total_time_ms?: number | null
+          user_hash?: string | null
+          user_tier?: string | null
+        }
+        Update: {
+          blocked?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          escalated?: boolean | null
+          jurisdiction?: string
+          request_id?: string
+          session_hash?: string
+          status?: string
+          total_events?: number | null
+          total_time_ms?: number | null
+          user_hash?: string | null
+          user_tier?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          last_session_at: string | null
+          streak_days: number
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          last_session_at?: string | null
+          streak_days?: number
+          tier?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_session_at?: string | null
+          streak_days?: number
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      session_connections: {
+        Row: {
+          created_at: string
+          from_entity_id: string
+          id: string
+          session_id: string
+          strength: number
+          to_entity_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          from_entity_id: string
+          id?: string
+          session_id: string
+          strength?: number
+          to_entity_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          from_entity_id?: string
+          id?: string
+          session_id?: string
+          strength?: number
+          to_entity_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_connections_from_entity_id_fkey"
+            columns: ["from_entity_id"]
+            isOneToOne: false
+            referencedRelation: "session_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_connections_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_connections_to_entity_id_fkey"
+            columns: ["to_entity_id"]
+            isOneToOne: false
+            referencedRelation: "session_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_entities: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          metadata: Json | null
+          session_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          metadata?: Json | null
+          session_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          metadata?: Json | null
+          session_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_entities_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
