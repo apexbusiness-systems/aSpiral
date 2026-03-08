@@ -678,12 +678,33 @@ serve(async (req) => {
     // PHASE 3: VALIDATED AI CALL - With schema validation and retry
     // =======================================================================
     const userContent = `${sanitizedTranscript}${contextInfo}`;
+    let breakthroughRejected = false;
     const { data: validatedResult, retryCount } = await callAIWithValidation(
       systemPrompt,
       userContent,
       shouldBreakthrough,
-      userTier
+      userTier,
+      (info) => {
+        complianceLogger.log("BREAKTHROUGH_REJECTED_ATTEMPT", {
+          attempt: info.attempt,
+          reason: info.reason,
+        });
+      }
     );
+
+    // Track final breakthrough rejection after all retries exhausted
+    if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough && !hasValidBreakthrough(validatedResult)) {
+      breakthroughRejected = true;
+      const reason = !validatedResult.friction?.trim() || !validatedResult.grease?.trim() || !validatedResult.insight?.trim()
+        ? 'empty_or_partial' : 'generic_phrase';
+      complianceLogger.log("BREAKTHROUGH_REJECTED", {
+        reason,
+        retryCount,
+        hasFriction: !!validatedResult.friction?.trim(),
+        hasGrease: !!validatedResult.grease?.trim(),
+        hasInsight: !!validatedResult.insight?.trim(),
+      });
+    }
 
     // Filter connections to only reference valid entity indices
     const validConnections = validatedResult.connections.filter(conn =>
