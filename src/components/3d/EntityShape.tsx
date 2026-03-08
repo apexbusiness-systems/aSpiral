@@ -12,12 +12,13 @@ interface EntityShapeProps {
 
 // Colors for each entity type
 const entityColors: Record<EntityType, string> = {
-  problem: "#ef4444", // Red
-  emotion: "#a855f7", // Purple
-  value: "#eab308", // Yellow/Gold
-  action: "#3b82f6", // Blue
-  friction: "#f97316", // Orange
-  grease: "#22c55e", // Green
+  problem: "#ef4444",
+  emotion: "#a855f7",
+  value: "#eab308",
+  action: "#3b82f6",
+  friction: "#f97316",
+  grease: "#22c55e",
+  insight: "#06b6d4",
 };
 
 // Sizes for each entity type
