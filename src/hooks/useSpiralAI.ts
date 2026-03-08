@@ -218,11 +218,12 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const forceBreakthrough = useCallback((data?: BreakthroughData) => {
     // V2: Gate - require valid data when flag is ON
     if (featureFlags.breakthroughQualityV2 && !isValidBreakthroughData(data)) {
+      const d = data as BreakthroughData | undefined;
       logger.warn("FORCE_BREAKTHROUGH blocked: no valid breakthrough data", {
-        hasData: !!data,
-        friction: data?.friction?.substring(0, 30),
-        grease: data?.grease?.substring(0, 30),
-        insight: data?.insight?.substring(0, 30),
+        hasData: !!d,
+        friction: d?.friction?.substring(0, 30),
+        grease: d?.grease?.substring(0, 30),
+        insight: d?.insight?.substring(0, 30),
       });
       return;
     }
