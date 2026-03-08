@@ -115,7 +115,7 @@ const Breakthroughs = () => {
         friction: b.friction,
         grease: b.grease,
         insight: b.insight,
-        achievedAt: b.achieved_at,
+        achievedAt: new Date(b.achieved_at),
       });
       toast({ title: 'Card exported', description: 'Breakthrough card saved as image.' });
     } catch {
