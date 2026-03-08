@@ -33,6 +33,7 @@ const Sessions = lazy(() => import("./pages/Sessions"));
 const Workspaces = lazy(() => import("./pages/Workspaces"));
 const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const Breakthroughs = lazy(() => import("./pages/Breakthroughs"));
 const NotificationTest = lazy(() => import("./pages/NotificationTest"));
 const Support = lazy(() => import("./pages/Support"));
 const VoiceYourChaos = lazy(() => import("./pages/steps/VoiceYourChaos"));
