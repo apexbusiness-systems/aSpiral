@@ -5,6 +5,7 @@
  * to ensure reproducible results and avoid PRNG security-hotspot warnings.
  */
 
+import { describe, it, expect } from "vitest";
 import { calculateOptimalLayout } from "../spatialLayout";
 import type { Entity, Connection } from "../types";
 

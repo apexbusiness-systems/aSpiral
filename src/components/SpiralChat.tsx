@@ -28,6 +28,8 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useSessionPersistence } from "@/hooks/useSessionPersistence";
 import { useAuth } from "@/contexts/AuthContext";
 import { useKeyboardShortcuts, ASPIRAL_SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
+import { loadStoredSettings } from "@/lib/settings";
+import { resolveVoiceProfile } from "@/lib/voiceProfile";
 import type { Entity } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";

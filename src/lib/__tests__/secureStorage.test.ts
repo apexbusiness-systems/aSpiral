@@ -92,8 +92,8 @@ describe('SecureStorage', () => {
   it('should derive different secrets for different devices', async () => {
     const { supabase } = await import('@/integrations/supabase/client');
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
-      data: { session: { user: { id: 'user-1' } } },
-    });
+      data: { session: { user: { id: 'user-1' } } as any },
+    } as any);
 
     const s1 = await getEncryptionSecret();
 

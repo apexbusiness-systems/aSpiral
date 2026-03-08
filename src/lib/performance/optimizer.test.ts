@@ -60,8 +60,8 @@ describe('Performance Benchmark: detectDeviceCapabilities', () => {
           matches: false,
           media: query,
           onchange: null,
-          addListener: vi.fn(), // deprecated
-          removeListener: vi.fn(), // deprecated
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),
           dispatchEvent: vi.fn(),
@@ -69,7 +69,7 @@ describe('Performance Benchmark: detectDeviceCapabilities', () => {
         navigator: {
           userAgent: 'Test Agent'
         }
-      };
+      } as any;
     }
 
     // Ensure navigator exists on window/global

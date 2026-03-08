@@ -239,7 +239,9 @@ export type FeatureType =
   | 'settings_opened'
   | 'keyboard_shortcut'
   | 'google_oauth'
-  | 'email_signup';
+  | 'email_signup'
+  | 'pwa_install_prompt_triggered'
+  | 'pwa_install_outcome';
 
 export interface FeatureUsageData {
   feature: FeatureType;

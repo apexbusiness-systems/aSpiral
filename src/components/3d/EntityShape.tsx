@@ -29,6 +29,7 @@ const entitySizes: Record<EntityType, number> = {
   action: 0.4,
   friction: 0.55,
   grease: 0.5,
+  insight: 0.45,
 };
 
 // Sphere - for people/actions (blue)

@@ -4,7 +4,9 @@
  * Handles Safari private browsing, quota exceeded, and other storage errors
  */
 
-import { logger } from './logger';
+import { createLogger } from './logger';
+
+const logger = createLogger('SafeStorage');
 
 export interface StorageAdapter {
   getItem(key: string): string | null;

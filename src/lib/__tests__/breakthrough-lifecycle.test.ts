@@ -290,8 +290,8 @@ describe('Physics Worker Pause/Resume', () => {
     let onResumeMock: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-        onPauseMock = vi.fn();
-        onResumeMock = vi.fn();
+        onPauseMock = vi.fn() as any;
+        onResumeMock = vi.fn() as any;
 
         director = new BreakthroughDirector();
         director.setPhysicsCallbacks({
