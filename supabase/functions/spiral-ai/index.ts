@@ -686,9 +686,9 @@ serve(async (req) => {
       userTier,
       (info) => {
         complianceLogger.log("BREAKTHROUGH_REJECTED_ATTEMPT", {
-          attempt: info.attempt,
-          reason: info.reason,
-        });
+          errorCode: `attempt_${info.attempt}`,
+          errorMessage: info.reason,
+        } as Partial<import("./compliance-logger.ts").ComplianceAuditLog>);
       }
     );
 
@@ -698,11 +698,8 @@ serve(async (req) => {
       const reason = !validatedResult.friction?.trim() || !validatedResult.grease?.trim() || !validatedResult.insight?.trim()
         ? 'empty_or_partial' : 'generic_phrase';
       complianceLogger.log("BREAKTHROUGH_REJECTED", {
-        reason,
-        retryCount,
-        hasFriction: !!validatedResult.friction?.trim(),
-        hasGrease: !!validatedResult.grease?.trim(),
-        hasInsight: !!validatedResult.insight?.trim(),
+        errorCode: reason,
+        errorMessage: `retries=${retryCount} friction=${!!validatedResult.friction?.trim()} grease=${!!validatedResult.grease?.trim()} insight=${!!validatedResult.insight?.trim()}`,
       });
     }
 
