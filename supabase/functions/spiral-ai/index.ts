@@ -392,6 +392,7 @@ serve(async (req) => {
       userId,
       sessionId,
       forceBreakthrough,
+      stream: streamRequested,
     } = inputValidation.data as ValidatedInput;
     
     // =======================================================================
