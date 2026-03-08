@@ -320,6 +320,12 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
       } else if (featureFlags.breakthroughQualityV2) {
         // V2: Do NOT show fake breakthrough. Log warning and dismiss.
         logger.warn("Cinematic completed but no valid breakthrough data — suppressing fake card");
+        trackBreakthroughRejected({
+          reason: 'cinematic_no_data',
+          source: 'handleCinematicComplete',
+          friction: (data as any)?.friction, grease: (data as any)?.grease, insight: (data as any)?.insight,
+          matchedPhrase: findMatchedGenericPhrase(data as any),
+        });
         setShowBreakthroughCard(false);
       } else {
         // Legacy: show generic message (flag OFF)
