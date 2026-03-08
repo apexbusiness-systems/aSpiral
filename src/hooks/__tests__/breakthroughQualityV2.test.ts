@@ -126,6 +126,38 @@ describe("isValidBreakthroughData", () => {
     })).toBe(false);
   });
 
+  it("rejects generic phrase: you've got this", () => {
+    expect(isValidBreakthroughData({
+      friction: "Feeling stuck",
+      grease: "You've got this, just keep going",
+      insight: "Real insight here",
+    })).toBe(false);
+  });
+
+  it("rejects generic phrase: believe in yourself", () => {
+    expect(isValidBreakthroughData({
+      friction: "Self-doubt",
+      grease: "Believe in yourself and try again",
+      insight: "Confidence matters",
+    })).toBe(false);
+  });
+
+  it("rejects generic phrase: everything happens for a reason", () => {
+    expect(isValidBreakthroughData({
+      friction: "Job loss",
+      grease: "Apply elsewhere",
+      insight: "Everything happens for a reason",
+    })).toBe(false);
+  });
+
+  it("rejects generic phrase: let go of what no longer serves you", () => {
+    expect(isValidBreakthroughData({
+      friction: "Old habits",
+      grease: "Let go of what no longer serves you",
+      insight: "Change is growth",
+    })).toBe(false);
+  });
+
   it("accepts valid complete non-generic data", () => {
     expect(isValidBreakthroughData({
       friction: "Your manager micromanages every deliverable, killing your autonomy",

@@ -44,6 +44,22 @@ Deno.test("isGenericBreakthroughText: detects 'let's cut to what matters'", () =
   assertEquals(isGenericBreakthroughText("Let's cut to what matters here"), true);
 });
 
+Deno.test("isGenericBreakthroughText: detects 'you've got this'", () => {
+  assertEquals(isGenericBreakthroughText("You've got this, keep going"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'believe in yourself'", () => {
+  assertEquals(isGenericBreakthroughText("Just believe in yourself"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'everything happens for a reason'", () => {
+  assertEquals(isGenericBreakthroughText("Remember everything happens for a reason"), true);
+});
+
+Deno.test("isGenericBreakthroughText: detects 'let go of what no longer serves you'", () => {
+  assertEquals(isGenericBreakthroughText("Let go of what no longer serves you now"), true);
+});
+
 Deno.test("isGenericBreakthroughText: accepts specific non-generic text", () => {
   assertEquals(isGenericBreakthroughText("Your manager micromanages deliverables killing autonomy"), false);
 });

@@ -49,6 +49,18 @@ const BANNED_BREAKTHROUGH_PHRASES = [
   "path forward is becoming clear",
   "challenge you're working through",
   "let's cut to what matters",
+  "you've got this",
+  "believe in yourself",
+  "embrace the uncertainty",
+  "everything happens for a reason",
+  "journey of self-discovery",
+  "step outside your comfort zone",
+  "it's okay to not be okay",
+  "you are not alone",
+  "the first step is always the hardest",
+  "you deserve to be happy",
+  "growth comes from discomfort",
+  "let go of what no longer serves you",
 ];
 
 /**
