@@ -17,6 +17,8 @@ import PremiumSplash from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { unlockAudioFromGesture } from "@/lib/audioSession";
 import { createLogger } from "@/lib/logger";
+import { usePwaStore } from "@/stores/pwaStore";
+import type { BeforeInstallPromptEvent } from "@/lib/types";
 
 // Eagerly loaded pages (critical path)
 import Landing from "./pages/Landing";
@@ -49,18 +51,52 @@ let audioUnlockAttempted = false;
 /**
  * PWA Update Handler (Auto-Update Mode)
  */
-function PWAUpdateHandler() {
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+function PwaManager() {
+  const { setDeferredPrompt, setInstalled } = usePwaStore();
 
-    const handleControllerChange = () => {
-      logger.debug("Controller changed - App updated");
-      toast.success("App updated to latest version", { duration: 3000 });
+  useEffect(() => {
+    // 1. Service Worker Update Handler
+    if ('serviceWorker' in navigator) {
+      const handleControllerChange = () => {
+        logger.debug("Controller changed - App updated");
+        toast.success("App updated to latest version", { duration: 3000 });
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    // 2. Install Prompt Handler
+    const handleBeforeInstallPrompt = (e: Event) => {
+      logger.debug("PWA install prompt deferred");
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
-    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-    return () => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-  }, []);
+    // 3. Installation Success Handler
+    const handleAppInstalled = () => {
+      logger.info("PWA successfully installed");
+      setInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    // 4. Initial check for standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    setInstalled(isStandalone);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [setDeferredPrompt, setInstalled]);
 
   return null;
 }
@@ -136,7 +172,7 @@ const App = () => {
             <Toaster />
             <Sonner />
             <Analytics />
-            <PWAUpdateHandler />
+            <PwaManager />
 
             <PremiumSplash isVisible={showSplash} />
 
