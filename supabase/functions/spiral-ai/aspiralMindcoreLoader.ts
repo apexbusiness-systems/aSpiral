@@ -19,7 +19,16 @@ function getMindcoreRoot(): string {
   }
 
   const thisDir = dirname(fromFileUrl(import.meta.url));
-  return resolve(join(thisDir, "../../../.claude/skills/aspiral-mindcore"));
+
+  // Primary: co-located mindcore/ directory (works in deployed edge functions)
+  const localPath = resolve(join(thisDir, "mindcore"));
+  try {
+    Deno.statSync(join(localPath, "UNIVERSAL_PROMPT.md"));
+    return localPath;
+  } catch {
+    // Fallback: repo root path (works in local dev / tests)
+    return resolve(join(thisDir, "../../../.claude/skills/aspiral-mindcore"));
+  }
 }
 
 function trimSurroundingNewlines(value: string): string {
