@@ -6,7 +6,7 @@ import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
 import { detectPromptInjection, validateOutput, detectAnomaly, INJECTION_RESPONSES } from "./prompt-shield.ts";
 import { validateInput, parseRequestBody, validateHeaders, type ValidatedInput } from "./input-validator.ts";
 import { createComplianceWriter } from "./compliance-store.ts";
-import { createResponseSchema, getTierLimits, type SpiralAIResponse } from "./ai-schema.ts";
+import { createResponseSchema, getTierLimits, getPromptValidationRules, getEntityExtractionRules, type SpiralAIResponse } from "./ai-schema.ts";
 import { redactPII } from "./pii-redactor.ts";
 import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 
