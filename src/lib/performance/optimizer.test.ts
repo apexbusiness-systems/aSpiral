@@ -45,11 +45,11 @@ describe('Performance Benchmark: detectDeviceCapabilities', () => {
       global.document = {
         createElement: (tagName: string) => {
           if (tagName === 'canvas') {
-            return new global.HTMLCanvasElement();
+            return new (global as any).HTMLCanvasElement();
           }
-          return {};
+          return {} as any;
         }
-      };
+      } as any;
     }
 
     // Mock window if needed (for matchMedia)
