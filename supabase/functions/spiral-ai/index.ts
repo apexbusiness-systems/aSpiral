@@ -6,7 +6,7 @@ import { ComplianceLogger, detectJurisdiction } from "./compliance-logger.ts";
 import { detectPromptInjection, validateOutput, detectAnomaly, INJECTION_RESPONSES } from "./prompt-shield.ts";
 import { validateInput, parseRequestBody, validateHeaders, type ValidatedInput } from "./input-validator.ts";
 import { createComplianceWriter } from "./compliance-store.ts";
-import { createResponseSchema, getTierLimits, type SpiralAIResponse } from "./ai-schema.ts";
+import { createResponseSchema, getTierLimits, getPromptValidationRules, getEntityExtractionRules, type SpiralAIResponse } from "./ai-schema.ts";
 import { redactPII } from "./pii-redactor.ts";
 import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 
@@ -672,7 +672,37 @@ serve(async (req) => {
       aspiral_prompt_sha256: mindcore.sha256,
     });
 
-    const systemPrompt = mindcore.systemPrompt;
+    const systemPrompt = `${mindcore.systemPrompt}
+
+## OUTPUT FORMAT — MANDATORY
+
+You MUST respond with a single valid JSON object. No markdown, no prose outside JSON.
+
+${getEntityExtractionRules(userTier)}
+
+${getPromptValidationRules(userTier)}
+
+ENTITY TYPES: "problem" | "emotion" | "value" | "action" | "friction" | "grease"
+ENTITY ROLES (optional): "external_irritant" | "internal_conflict" | "desire" | "fear" | "constraint" | "solution"
+CONNECTION TYPES: "causes" | "blocks" | "enables" | "resolves" | "opposes"
+
+REQUIRED JSON STRUCTURE:
+{
+  "entities": [{ "type": "...", "label": "...", "role": "...", "emotionalValence": 0.0, "importance": 0.0 }],
+  "connections": [{ "from": 0, "to": 1, "type": "causes", "strength": 0.8 }],
+  "question": "One compassionate open-ended question",
+  "response": "Your warm, validating response to the person"${shouldBreakthrough ? `,
+  "friction": "The specific tension or conflict the person is experiencing",
+  "grease": "A concrete, personalized path forward based on what they shared",
+  "insight": "A specific breakthrough insight connecting their friction to their values"` : ''}
+}
+
+"response" must be your warm, compassionate reply (as defined by MindCore).
+"question" must be ONE open-ended question (per Iron Rule 4).
+"entities" extract the key concepts from what the person shared.
+${shouldBreakthrough ? '"friction", "grease", and "insight" must be SPECIFIC to this person\'s situation — never generic motivational filler.' : 'Do NOT include friction, grease, or insight fields unless breakthrough is requested.'}
+
+Respond ONLY with the JSON object. No other text.`;
 
     // =======================================================================
     // PHASE 3: VALIDATED AI CALL - With schema validation and retry
