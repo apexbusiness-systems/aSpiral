@@ -198,6 +198,7 @@ const App = () => {
                 <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
                 <Route path="/workspaces" element={<ProtectedRoute><Workspaces /></ProtectedRoute>} />
                 <Route path="/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
+                <Route path="/breakthroughs" element={<ProtectedRoute><Breakthroughs /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 {import.meta.env.DEV && <Route path="/notification-test" element={<NotificationTest />} />}
                 <Route path="*" element={<NotFound />} />

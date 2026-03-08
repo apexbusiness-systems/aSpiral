@@ -261,10 +261,16 @@ const Sessions = () => {
               </div>
             )}
           </div>
-          <Button onClick={handleNewSession} className="rounded-xl">
-            <Sparkles className="w-4 h-4 mr-2" />
-            New Session
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/breakthroughs')} className="rounded-xl">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Breakthroughs
+            </Button>
+            <Button onClick={handleNewSession} className="rounded-xl">
+              <Sparkles className="w-4 h-4 mr-2" />
+              New Session
+            </Button>
+          </div>
         </div>
 
         {/* Sessions List */}
