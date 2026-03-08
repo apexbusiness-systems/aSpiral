@@ -175,7 +175,9 @@ export type AuditEventType =
   | "HEADER_WARNING"
   | "VALIDATION_FAILED"
   | "INJECTION_CHECK"
-  | "ANOMALY_DETECTED";
+  | "ANOMALY_DETECTED"
+  | "BREAKTHROUGH_REJECTED_ATTEMPT"
+  | "BREAKTHROUGH_REJECTED";
 
 export interface ComplianceAuditLog {
   // Identification (no PII)
