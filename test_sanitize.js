@@ -6,7 +6,7 @@ function sanitizeCssColor(color) {
   // Strict character set allowance to prevent CSS injection.
   // Allowed: alphanumeric, #, (, ), -, ., ,, %, space.
   // This safely covers hex, rgb, rgba, hsl, hsla, var(--name), and named colors.
-  if (!/^[a-zA-Z0-9#\(\)\-\.,\s%]+$/.test(trimmed)) {
+  if (!/^[a-zA-Z0-9#().,\s%-]+$/.test(trimmed)) {
     return null;
   }
 
