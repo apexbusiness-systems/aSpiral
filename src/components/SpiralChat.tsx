@@ -126,7 +126,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       });
     },
     onQuestion: (question, stage) => {
-      console.log(`[SpiralChat] Question (${stage}):`, question);
+      // Question triggered
     },
     onPatternDetected: (patterns) => {
       if (patterns.length > 0 && patterns[0].confidence > 0.7) {
