@@ -36,6 +36,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
+import { fetchUserStreakDays } from '@/lib/profileStreak';
 
 interface SessionListItem {
   id: string;
@@ -103,17 +104,8 @@ const Sessions = () => {
   // Load streak from profile
   const loadStreak = useCallback(async () => {
     if (!user) return;
-    try {
-      const db = supabase as any;
-      const { data } = await db
-        .from('profiles')
-        .select('streak_days')
-        .eq('id', user.id)
-        .single();
-      if (data) setStreakDays(data.streak_days || 0);
-    } catch {
-      // ignore error
-    }
+    const streak = await fetchUserStreakDays(supabase, user.id);
+    setStreakDays(streak);
   }, [user]);
 
   useEffect(() => {
