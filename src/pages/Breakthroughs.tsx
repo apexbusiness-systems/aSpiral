@@ -27,6 +27,7 @@ import {
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { exportBreakthroughCard } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
+import { fetchUserStreakDays } from '@/lib/profileStreak';
 import { cn } from '@/lib/utils';
 
 interface BreakthroughItem {
@@ -73,15 +74,8 @@ const Breakthroughs = () => {
 
   const loadStreak = useCallback(async () => {
     if (!user) return;
-    try {
-      const db = supabase as any;
-      const { data } = await db
-        .from('profiles')
-        .select('streak_days')
-        .eq('id', user.id)
-        .single();
-      if (data) setStreakDays(data.streak_days || 0);
-    } catch {}
+    const streak = await fetchUserStreakDays(supabase, user.id);
+    setStreakDays(streak);
   }, [user]);
 
   useEffect(() => {
