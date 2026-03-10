@@ -245,11 +245,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   // Dedupe tracking
   const lastFinalCommitTime = useRef<number>(0);
   const lastFinalText = useRef<string>("");
-  const interimCountRef = useRef<number>(0);
   const finalCountRef = useRef<number>(0);
 
   // Watchdog and activity tracking
-  const lastActivityAtRef = useRef(Date.now());
   const restartRequestedRef = useRef(false);
   const restartCount60sRef = useRef(0);
   const lastRestartTimeRef = useRef(0);
@@ -441,7 +439,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     (event: Event) => {
       const speechEvent = event as SpeechRecognitionEvent;
       // Update activity timestamp and reset timers on ANY recognition activity
-      lastActivityAtRef.current = Date.now();
       startWatchdog();
       clearSilenceTimer();
       startSilenceTimer();
@@ -716,7 +713,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       return;
     }
 
-    interimCountRef.current = 0;
     finalCountRef.current = 0;
     audioDebug.log("session_start", { source: "user" });
     playStartFeedback();
