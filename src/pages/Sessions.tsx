@@ -36,6 +36,8 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
+import { createLogger } from '@/lib/logger';
+import { getErrorMessage } from '@/lib/normalizeError';
 
 interface SessionListItem {
   id: string;
@@ -47,6 +49,8 @@ interface SessionListItem {
   entityCount?: number;
   hasBreakthrough?: boolean;
 }
+
+const logger = createLogger('SessionsPage');
 
 const Sessions = () => {
   const { t } = useTranslation();
@@ -111,7 +115,9 @@ const Sessions = () => {
         .eq('id', user.id)
         .single();
       if (data) setStreakDays(data.streak_days || 0);
-    } catch {}
+    } catch (error) {
+      logger.warn('Failed to load streak', { error: getErrorMessage(error) });
+    }
   }, [user]);
 
   useEffect(() => {
