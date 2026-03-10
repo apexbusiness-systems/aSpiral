@@ -53,5 +53,5 @@ Deno.test("Legacy ban: active aSpiral prompt assembly path excludes legacy direc
   assertFalse(source.includes("You are ASPIRAL's discovery engine"));
   assertFalse(source.includes("Synthesize the breakthrough from this conversation"));
   assertFalse(source.includes("const QUESTION_PATTERNS"));
-  assert(source.includes("const systemPrompt = mindcore.systemPrompt"));
+  assert(source.includes("const systemPrompt = `${mindcore.systemPrompt}"));
 });
