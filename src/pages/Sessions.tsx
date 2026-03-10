@@ -36,6 +36,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
+import { fetchUserStreakDays } from '@/lib/profileStreak';
 
 interface SessionListItem {
   id: string;

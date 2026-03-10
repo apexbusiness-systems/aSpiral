@@ -27,6 +27,7 @@ import {
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { exportBreakthroughCard } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
+import { fetchUserStreakDays } from '@/lib/profileStreak';
 import { cn } from '@/lib/utils';
 
 interface BreakthroughItem {
