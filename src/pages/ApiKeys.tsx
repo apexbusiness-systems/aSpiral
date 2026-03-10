@@ -63,14 +63,7 @@ const ApiKeys = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadApiKeys is defined after this effect
-  useEffect(() => {
-    if (user) {
-      loadApiKeys();
-    }
-  }, [user]);
-
-  const loadApiKeys = async () => {
+  const loadApiKeys = React.useCallback(async () => {
     try {
       const { data, error } = await (supabase as any)
         .from('api_keys')
@@ -90,7 +83,13 @@ const ApiKeys = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadApiKeys();
+    }
+  }, [user, loadApiKeys]);
 
   const generateApiKey = () => {
     return `sp_${generateSecureToken(40)}`;

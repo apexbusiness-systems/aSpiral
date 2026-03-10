@@ -74,8 +74,17 @@ const Breakthroughs = () => {
 
   const loadStreak = useCallback(async () => {
     if (!user) return;
-    const streak = await fetchUserStreakDays(supabase, user.id);
-    setStreakDays(streak);
+    try {
+      const db = supabase as any;
+      const { data } = await db
+        .from('profiles')
+        .select('streak_days')
+        .eq('id', user.id)
+        .single();
+      if (data) setStreakDays(data.streak_days || 0);
+    } catch (err) {
+      console.error('Failed to load streak:', err);
+    }
   }, [user]);
 
   useEffect(() => {
