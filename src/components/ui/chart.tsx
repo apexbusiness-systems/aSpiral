@@ -17,7 +17,7 @@ function sanitizeCssColor(color: string): string | null {
 
   // Strict character set allowance to prevent CSS injection.
   // Allowed: alphanumeric, #, (, ), -, ., ,, %, space.
-  if (!/^[a-zA-Z0-9#\(\)\-\.,\s%]+$/.test(trimmed)) {
+  if (!/^[a-zA-Z0-9#()\-.,\s%]+$/.test(trimmed)) {
     return null;
   }
 
