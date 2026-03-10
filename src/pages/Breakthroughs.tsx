@@ -81,7 +81,9 @@ const Breakthroughs = () => {
         .eq('id', user.id)
         .single();
       if (data) setStreakDays(data.streak_days || 0);
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load streak:', err);
+    }
   }, [user]);
 
   useEffect(() => {

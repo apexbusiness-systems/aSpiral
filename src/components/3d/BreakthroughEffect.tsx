@@ -108,10 +108,11 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
     // CRITICAL: Do NOT add any fallback mesh code here.
     // If particles fail to load, show nothing rather than a green wireframe.
 
+    const scene = sceneRef.current;
     return () => {
       // Strict cleanup on unmount
-      if (sceneRef.current) {
-        sceneRef.current.clear();
+      if (scene) {
+        scene.clear();
       }
     };
   }, [isActive, onComplete]);
