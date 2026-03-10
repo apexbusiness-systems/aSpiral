@@ -1,8 +1,8 @@
-const fs = require('fs');
+import fs from 'node:fs';
 
 let content = fs.readFileSync('src/components/ui/chart.tsx', 'utf8');
 
-const oldFunc = `function sanitizeCssColor(color: string): string | null {
+const oldFunc = String.raw`function sanitizeCssColor(color: string): string | null {
   if (!color) return null;
 
   // Allow CSS variables
@@ -11,7 +11,7 @@ const oldFunc = `function sanitizeCssColor(color: string): string | null {
   }
 
   // Allow valid CSS color formats (hex, rgb, rgba, hsl, hsla, named colors)
-  const validColorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\\([^)]+\\)|rgba\\([^)]+\\)|hsl\\([^)]+\\)|hsla\\([^)]+\\)|[a-z]+)$/;
+  const validColorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\([^)]+\)|rgba\([^)]+\)|hsl\([^)]+\)|hsla\([^)]+\)|[a-z]+)$/;
 
   if (validColorRegex.test(color.trim())) {
     return color.trim();
@@ -20,14 +20,14 @@ const oldFunc = `function sanitizeCssColor(color: string): string | null {
   return null;
 }`;
 
-const newFunc = `function sanitizeCssColor(color: string): string | null {
+const newFunc = String.raw`function sanitizeCssColor(color: string): string | null {
   if (!color) return null;
 
   const trimmed = color.trim();
 
   // Strict character set allowance to prevent CSS injection.
   // Allowed: alphanumeric, #, (, ), -, ., ,, %, space.
-  if (!/^[a-zA-Z0-9#\\(\\)\\-\\.,\\s%]+$/.test(trimmed)) {
+  if (!/^[a-zA-Z0-9#().,\s%-]+$/.test(trimmed)) {
     return null;
   }
 

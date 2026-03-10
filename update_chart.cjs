@@ -1,17 +1,17 @@
-const fs = require('fs');
+const fs = require('node:fs');
 
 let content = fs.readFileSync('src/components/ui/chart.tsx', 'utf8');
 
 const regexToReplace = /function sanitizeCssColor\(color: string\): string \| null \{[\s\S]*?return null;\n\}/;
 
-const newFunc = `function sanitizeCssColor(color: string): string | null {
+const newFunc = String.raw`function sanitizeCssColor(color: string): string | null {
   if (!color) return null;
 
   const trimmed = color.trim();
 
   // Strict character set allowance to prevent CSS injection.
   // Allowed: alphanumeric, #, (, ), -, ., ,, %, space.
-  if (!/^[a-zA-Z0-9#\\(\\)\\-\\.,\\s%]+$/.test(trimmed)) {
+  if (!/^[a-zA-Z0-9#().,\s%-]+$/.test(trimmed)) {
     return null;
   }
 
