@@ -13,19 +13,15 @@ const THEMES = { light: "", dark: ".dark" } as const;
 function sanitizeCssColor(color: string): string | null {
   if (!color) return null;
 
-  // Allow CSS variables
-  if (color.startsWith('var(--') && color.endsWith(')')) {
-    return color;
+  const trimmed = color.trim();
+
+  // Strict character set allowance to prevent CSS injection.
+  // Allowed: alphanumeric, #, (, ), -, ., ,, %, space.
+  if (!/^[a-zA-Z0-9#\(\)\-\.,\s%]+$/.test(trimmed)) {
+    return null;
   }
 
-  // Allow valid CSS color formats (hex, rgb, rgba, hsl, hsla, named colors)
-  const validColorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\([^)]+\)|rgba\([^)]+\)|hsl\([^)]+\)|hsla\([^)]+\)|[a-z]+)$/;
-
-  if (validColorRegex.test(color.trim())) {
-    return color.trim();
-  }
-
-  return null;
+  return trimmed;
 }
 
 export type ChartConfig = {
