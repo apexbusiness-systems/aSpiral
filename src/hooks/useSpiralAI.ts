@@ -52,6 +52,8 @@ const SPIRAL_AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/spiral-
 
 // Hard cap: 3 questions max
 const MAX_QUESTIONS = 3;
+const ULTRA_FAST_MIN_FRICTION_ENTITIES = 3;
+const ULTRA_FAST_MIN_SENTENCES = 3;
 
 // =============================================================================
 // BREAKTHROUGH QUALITY V2: Anti-generic validation
@@ -146,6 +148,40 @@ interface BreakthroughData {
   insight: string;
 }
 
+interface UltraFastProgress {
+  sentenceCount: number;
+  frictionEntityCount: number;
+}
+
+function countSentences(text: string): number {
+  const segments = text
+    .split(/[.!?]+/)
+    .map(segment => segment.trim())
+    .filter(Boolean);
+
+  return segments.length;
+}
+
+function updateUltraFastProgress(
+  previous: UltraFastProgress,
+  transcript: string,
+  entities: EntityResult[]
+): UltraFastProgress {
+  const frictionFromBatch = entities.filter(entity => entity.type === "friction").length;
+
+  return {
+    sentenceCount: previous.sentenceCount + countSentences(transcript),
+    frictionEntityCount: previous.frictionEntityCount + frictionFromBatch,
+  };
+}
+
+function isUltraFastBreakthroughReady(progress: UltraFastProgress): boolean {
+  return (
+    progress.sentenceCount >= ULTRA_FAST_MIN_SENTENCES &&
+    progress.frictionEntityCount >= ULTRA_FAST_MIN_FRICTION_ENTITIES
+  );
+}
+
 interface UseSpiralAIOptions {
   onEntitiesExtracted?: (entities: EntityResult[]) => void;
   onCoherenceCheck?: (result: { valid: boolean; score: number; removed: string[] }) => void;
@@ -214,6 +250,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const patternsRef = useRef<Pattern[]>([]);
   const lastFlushRef = useRef<{ text: string; ts: number } | null>(null);
   const synthesisInProgressRef = useRef(false);
+  const ultraFastProgressRef = useRef<UltraFastProgress>({
+    sentenceCount: 0,
+    frictionEntityCount: 0,
+  });
 
   const {
     currentSession,
@@ -347,10 +387,17 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   // Toggle ultra-fast mode
   const toggleUltraFastMode = useCallback((enabled: boolean) => {
     setUltraFastMode(enabled);
-    if (enabled) {
-      // In ultra-fast mode, force breakthrough on first response
-      fastTrackRef.current.readyForBreakthrough = true;
-    }
+    fastTrackRef.current.readyForBreakthrough = false;
+    ultraFastProgressRef.current = {
+      sentenceCount: 0,
+      frictionEntityCount: 0,
+    };
+
+    logger.info("Ultra-fast mode toggled", {
+      enabled,
+      minSentences: ULTRA_FAST_MIN_SENTENCES,
+      minFrictionEntities: ULTRA_FAST_MIN_FRICTION_ENTITIES,
+    });
   }, []);
 
   // =========================================================================
@@ -636,6 +683,23 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         
         // 6. Prioritize by importance
         const finalEntities = prioritizeEntities(validatedEntities, entityLimit);
+
+        if (ultraFastMode) {
+          ultraFastProgressRef.current = updateUltraFastProgress(
+            ultraFastProgressRef.current,
+            transcript,
+            data.entities
+          );
+
+          const ready = isUltraFastBreakthroughReady(ultraFastProgressRef.current);
+          fastTrackRef.current.readyForBreakthrough = ready;
+
+          logger.info("Ultra-fast progress", {
+            sentenceCount: ultraFastProgressRef.current.sentenceCount,
+            frictionEntityCount: ultraFastProgressRef.current.frictionEntityCount,
+            readyForBreakthrough: ready,
+          });
+        }
         
         // Add entities to session with full metadata
         const createdEntityIds: string[] = [];
@@ -862,7 +926,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         return null;
       }
     },
-    [currentSession, addEntity, addConnection, addMessage, machineContext, options, forceBreakthrough, sendEvent, entityLimit]
+    [currentSession, addEntity, addConnection, addMessage, machineContext, options, forceBreakthrough, sendEvent, entityLimit, ultraFastMode]
   );
 
   // Public processTranscript wrapper with frustration/skip gating
@@ -920,6 +984,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     setBreakthroughData(null);
     setShowBreakthroughCard(false);
     setUltraFastMode(false);
+    ultraFastProgressRef.current = {
+      sentenceCount: 0,
+      frictionEntityCount: 0,
+    };
     setCinematicComplete(false);
   }, [sendEvent]);
 
