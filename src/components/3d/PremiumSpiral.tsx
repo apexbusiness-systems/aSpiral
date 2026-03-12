@@ -67,11 +67,6 @@ export function PremiumSpiral({
     });
 
     const instancedFlow = new InstancedFlow(count, 1, geometry, material);
-    // Audit Fix: Randomize scales and rotations for natural variety
-    for (let i = 0; i < count; i++) {
-        const scale = 0.5 + Math.random() * 1.5;
-        instancedFlow.object3D.instanceMatrix.needsUpdate = true;
-    }
     return instancedFlow;
   }, [count]);
 
@@ -85,10 +80,8 @@ export function PremiumSpiral({
       flow.setCurve(i, 0);
       const offset = (i / count);
       flow.moveIndividualAlongCurve(i, offset);
-      // Audit Fix: Add random rotation to each instance to break the "machine" look
-      const obj = flow.object3D;
-      // Note: InstancedFlow handles positions, but we can try to inject scale/rotation noise
-      // Limitation: InstancedFlow is rigid, but the geometry change does 90% of the work.
+      // Note: InstancedFlow handles positions along the curve.
+      // The geometry change (Tetrahedron) handles the crystalline look.
     }
 
     invalidate();
