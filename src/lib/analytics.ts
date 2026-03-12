@@ -4,26 +4,15 @@
  */
 
 import posthog from 'posthog-js';
+import { ANALYTICS_ENABLED_KEY, isAnalyticsEnabled } from './analytics-utils';
+
+export { ANALYTICS_ENABLED_KEY, isAnalyticsEnabled };
 
 // Initialize PostHog
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || '';
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com';
 
 let isInitialized = false;
-
-// Storage key for analytics preference
-const ANALYTICS_ENABLED_KEY = 'aspiral_analytics_enabled';
-
-/**
- * Check if user has opted out of analytics
- */
-export function isAnalyticsEnabled(): boolean {
-  try {
-    return localStorage.getItem(ANALYTICS_ENABLED_KEY) !== 'false';
-  } catch {
-    return true; // Default to enabled if localStorage unavailable
-  }
-}
 
 /**
  * Set analytics enabled/disabled state
