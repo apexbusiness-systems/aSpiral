@@ -576,10 +576,26 @@ export async function exportBreakthroughCard(data: BreakthroughCardData): Promis
   }
 }
 
+/**
+ * Sanitizes a CSV cell to prevent CSV Injection (Formula Injection).
+ * Prepends a single quote (') to cells starting with formula-triggering characters: =, +, -, @, \t, \r.
+ * Also escapes double quotes by doubling them.
+ */
+function sanitizeCSVCell(value: string | number | undefined | null): string {
+  if (value === undefined || value === null) return "";
+  const stringValue = String(value);
+  const sanitized = stringValue.replace(/"/g, '""');
+  // If the value starts with any of the formula-triggering characters, prepend a single quote
+  if (/^[=+\-@\t\r]/.test(sanitized)) {
+    return "'" + sanitized;
+  }
+  return sanitized;
+}
+
 export function exportSessionToCSV(data: SessionExportData): void {
   const { session, messages, breakthroughs = [] } = data;
   
-  const rows: string[][] = [
+  const rows: (string | number | undefined | null)[][] = [
     ['ASPIRAL Session Export'],
     [''],
     ['Session ID', session.id],
@@ -590,8 +606,8 @@ export function exportSessionToCSV(data: SessionExportData): void {
     ['Content', 'Type', 'Significance'],
     ...breakthroughs.map(b => [
       b.content,
-      b.insight_type || '',
-      b.significance?.toString() || '',
+      b.insight_type,
+      b.significance,
     ]),
     [''],
     ['ENTITIES'],
@@ -602,13 +618,13 @@ export function exportSessionToCSV(data: SessionExportData): void {
     ['Role', 'Content', 'Timestamp'],
     ...messages.map(m => [
       m.role,
-      m.content.replace(/"/g, '""'),
+      m.content,
       format(new Date(m.timestamp), 'yyyy-MM-dd HH:mm:ss'),
     ]),
   ];
 
   const csvContent = rows
-    .map(row => row.map(cell => `"${cell}"`).join(','))
+    .map(row => row.map(cell => `"${sanitizeCSVCell(cell)}"`).join(','))
     .join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
