@@ -29,6 +29,8 @@ import { exportBreakthroughCard } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
 import { fetchUserStreakDays } from '@/lib/profileStreak';
 import { cn } from '@/lib/utils';
+import { createLogger } from '@/lib/logger';
+import { getErrorMessage } from '@/lib/normalizeError';
 
 interface BreakthroughItem {
   id: string;
@@ -38,6 +40,8 @@ interface BreakthroughItem {
   achieved_at: string;
   session_id: string;
 }
+
+const logger = createLogger('BreakthroughsPage');
 
 const Breakthroughs = () => {
   const navigate = useNavigate();
@@ -82,8 +86,8 @@ const Breakthroughs = () => {
         .eq('id', user.id)
         .single();
       if (data) setStreakDays(data.streak_days || 0);
-    } catch (err) {
-      console.error('Failed to load streak:', err);
+    } catch (error) {
+      logger.warn('Failed to load streak', { error: getErrorMessage(error) });
     }
   }, [user]);
 
