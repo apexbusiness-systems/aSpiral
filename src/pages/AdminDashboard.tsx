@@ -167,21 +167,27 @@ const AdminDashboard = () => {
         };
       });
 
+      // Use a Map for O(1) lookup while maintaining local timezone correctness
+      const dayMap = new Map<number, (typeof last7Days)[0]>();
+      last7Days.forEach((d) => {
+        dayMap.set(d.dateObj.getTime(), d);
+      });
+
       (sessions || []).forEach((s) => {
         const sessionDate = startOfDay(new Date(s.created_at));
-        const dayEntry = last7Days.find(d => d.dateObj.getTime() === sessionDate.getTime());
+        const dayEntry = dayMap.get(sessionDate.getTime());
         if (dayEntry) dayEntry.sessions++;
       });
 
       userBreakthroughs.forEach((b) => {
         const bDate = startOfDay(new Date(b.created_at));
-        const dayEntry = last7Days.find(d => d.dateObj.getTime() === bDate.getTime());
+        const dayEntry = dayMap.get(bDate.getTime());
         if (dayEntry) dayEntry.breakthroughs++;
       });
 
       userEntities.forEach((e) => {
         const eDate = startOfDay(new Date(e.created_at));
-        const dayEntry = last7Days.find(d => d.dateObj.getTime() === eDate.getTime());
+        const dayEntry = dayMap.get(eDate.getTime());
         if (dayEntry) dayEntry.entities++;
       });
 

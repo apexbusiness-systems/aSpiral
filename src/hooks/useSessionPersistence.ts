@@ -123,12 +123,11 @@ export function useSessionPersistence() {
     }
   }, [user, currentSession, saveSession]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user && currentSession) {
       debouncedSave();
     }
-  }, [currentSession?.entities.length, currentSession?.connections.length, messages.length, debouncedSave]);
+  }, [currentSession?.entities.length, currentSession?.connections.length, messages.length, debouncedSave, user, currentSession]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {

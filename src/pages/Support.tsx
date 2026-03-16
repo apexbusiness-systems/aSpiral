@@ -173,6 +173,22 @@ function ContactCardCta({ card }: { card: (typeof contactCards)[number] }) {
   );
 }
 
+function FaqItem({ item }: { item: { q: string; a: string } }) {
+  return (
+    <AccordionItem
+      value={item.q}
+      className="border border-border/25 rounded-xl bg-card/20 backdrop-blur-sm px-5 data-[state=open]:border-primary/30 data-[state=open]:bg-card/30 transition-all duration-200"
+    >
+      <AccordionTrigger className="text-left text-base font-medium py-5 hover:no-underline hover:text-primary transition-colors [&[data-state=open]]:text-primary">
+        {item.q}
+      </AccordionTrigger>
+      <AccordionContent className="text-muted-foreground leading-relaxed pb-5 text-sm md:text-base">
+        {item.a}
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const Support = () => {
@@ -333,18 +349,7 @@ const Support = () => {
                     >
                       <Accordion type="single" collapsible className="space-y-3">
                         {cat.items.map((item) => (
-                          <AccordionItem
-                            key={item.q}
-                            value={item.q}
-                            className="border border-border/25 rounded-xl bg-card/20 backdrop-blur-sm px-5 data-[state=open]:border-primary/30 data-[state=open]:bg-card/30 transition-all duration-200"
-                          >
-                            <AccordionTrigger className="text-left text-base font-medium py-5 hover:no-underline hover:text-primary transition-colors [&[data-state=open]]:text-primary">
-                              {item.q}
-                            </AccordionTrigger>
-                            <AccordionContent className="text-muted-foreground leading-relaxed pb-5 text-sm md:text-base">
-                              {item.a}
-                            </AccordionContent>
-                          </AccordionItem>
+                          <FaqItem key={item.q} item={item} />
                         ))}
                       </Accordion>
                     </motion.div>
