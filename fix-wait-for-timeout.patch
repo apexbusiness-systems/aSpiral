@@ -1,0 +1,32 @@
+--- tests/e2e/omnihub-pip.e2e.spec.ts
++++ tests/e2e/omnihub-pip.e2e.spec.ts
+@@ -120,7 +120,7 @@
+       }
+
+       // Give time for UI to update without reloading
+-      await page.waitForTimeout(1000);
++      await page.waitForLoadState('networkidle');
+
+       // Verify PiP window persists and playback continues
+       await expect(pipWindow).toBeVisible();
+@@ -131,17 +131,17 @@
+     // STEP 7 — Visual Harmony Check
+     // 1) dashboard with PiP
+     await page.goto('/omnidash', { waitUntil: 'networkidle' });
+-    await page.waitForTimeout(1000);
++    await page.waitForLoadState('networkidle');
+     await page.screenshot({ path: 'test-results/screenshots/dashboard-with-pip.png', fullPage: true });
+
+     // 2) route navigation with PiP
+     await page.goto('/pipeline', { waitUntil: 'networkidle' });
+-    await page.waitForTimeout(1000);
++    await page.waitForLoadState('networkidle');
+     await page.screenshot({ path: 'test-results/screenshots/pipeline-with-pip.png', fullPage: true });
+
+     // 3) dock overlay
+     await page.goto('/integrations', { waitUntil: 'networkidle' });
+-    await page.waitForTimeout(1000);
++    await page.waitForLoadState('networkidle');
+     await page.screenshot({ path: 'test-results/screenshots/integrations-with-pip.png', fullPage: true });
+
+     // Assert: PiP z-index above content

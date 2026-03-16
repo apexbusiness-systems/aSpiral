@@ -116,11 +116,11 @@ test.describe('OmniHub full workflow with persistent PiP', () => {
       if (await link.isVisible()) {
           await link.click();
       } else {
-          await page.evaluate((r) => window.history.pushState({}, '', r), route);
+          await page.goto(route, { waitUntil: 'networkidle' });
       }
 
       // Give time for UI to update without reloading
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
 
       // Verify PiP window persists and playback continues
       await expect(pipWindow).toBeVisible();
@@ -130,24 +130,24 @@ test.describe('OmniHub full workflow with persistent PiP', () => {
 
     // STEP 7 — Visual Harmony Check
     // 1) dashboard with PiP
-    await page.evaluate(() => window.history.pushState({}, '', '/omnidash'));
-    await page.waitForTimeout(1000);
+    await page.goto('/omnidash', { waitUntil: 'networkidle' });
+    await page.waitForLoadState('networkidle');
     await page.screenshot({ path: 'test-results/screenshots/dashboard-with-pip.png', fullPage: true });
 
     // 2) route navigation with PiP
-    await page.evaluate(() => window.history.pushState({}, '', '/pipeline'));
-    await page.waitForTimeout(1000);
+    await page.goto('/pipeline', { waitUntil: 'networkidle' });
+    await page.waitForLoadState('networkidle');
     await page.screenshot({ path: 'test-results/screenshots/pipeline-with-pip.png', fullPage: true });
 
     // 3) dock overlay
-    await page.evaluate(() => window.history.pushState({}, '', '/integrations'));
-    await page.waitForTimeout(1000);
+    await page.goto('/integrations', { waitUntil: 'networkidle' });
+    await page.waitForLoadState('networkidle');
     await page.screenshot({ path: 'test-results/screenshots/integrations-with-pip.png', fullPage: true });
 
     // Assert: PiP z-index above content
-    const zIndex = await pipWindow.evaluate((el) => window.getComputedStyle(el).zIndex);
+    const zIndex = await pipWindow.evaluate((el) => window.getComputedStyle(el).getPropertyValue('z-index'));
     if (zIndex !== 'auto') {
-        expect(parseInt(zIndex, 10)).toBeGreaterThanOrEqual(10);
+        expect(Number(zIndex)).toBeGreaterThanOrEqual(10);
     }
 
     // Assert: UI layout stable (visual check implicitly covered by screenshots, but we can check if body has no scrollbars if expected)
