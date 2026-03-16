@@ -182,41 +182,28 @@ const Breakthroughs = () => {
             />
           </div>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("rounded-xl gap-2", dateFrom && "text-foreground")}>
-                <CalendarIcon className="w-4 h-4" />
-                {dateFrom ? format(dateFrom, 'MMM d') : 'From'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dateFrom}
-                onSelect={setDateFrom}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("rounded-xl gap-2", dateTo && "text-foreground")}>
-                <CalendarIcon className="w-4 h-4" />
-                {dateTo ? format(dateTo, 'MMM d') : 'To'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dateTo}
-                onSelect={setDateTo}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
+          {[
+            { value: dateFrom, onChange: setDateFrom, label: 'From' },
+            { value: dateTo, onChange: setDateTo, label: 'To' },
+          ].map(({ value, onChange, label }) => (
+            <Popover key={label}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("rounded-xl gap-2", value && "text-foreground")}>
+                  <CalendarIcon className="w-4 h-4" />
+                  {value ? format(value, 'MMM d') : label}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={value}
+                  onSelect={onChange}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          ))}
 
           {hasFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-xl gap-1 text-muted-foreground">

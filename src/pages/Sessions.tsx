@@ -158,17 +158,17 @@ const Sessions = () => {
     navigate('/app');
   };
 
-  const handleExportPDF = async (sessionId: string) => {
+  const handleExport = async (
+    sessionId: string,
+    exportFn: (payload: { session: any; messages: any[]; breakthroughs: any[] }) => void | Promise<void>,
+    formatLabel: string,
+  ) => {
     setIsExporting(sessionId);
     try {
       const session = await loadSession(sessionId);
       if (session) {
-        await exportSessionToPDF({
-          session,
-          messages: [],
-          breakthroughs: [],
-        });
-        toast({ title: 'PDF exported', description: 'Your session has been exported.' });
+        await exportFn({ session, messages: [], breakthroughs: [] });
+        toast({ title: `${formatLabel} exported`, description: 'Your session has been exported.' });
       }
     } catch (error) {
       console.error('Export failed:', error);
@@ -178,25 +178,8 @@ const Sessions = () => {
     }
   };
 
-  const handleExportCSV = async (sessionId: string) => {
-    setIsExporting(sessionId);
-    try {
-      const session = await loadSession(sessionId);
-      if (session) {
-        exportSessionToCSV({
-          session,
-          messages: [],
-          breakthroughs: [],
-        });
-        toast({ title: 'CSV exported', description: 'Your session has been exported.' });
-      }
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast({ title: 'Export failed', variant: 'destructive' });
-    } finally {
-      setIsExporting(null);
-    }
-  };
+  const handleExportPDF = (sessionId: string) => handleExport(sessionId, exportSessionToPDF, 'PDF');
+  const handleExportCSV = (sessionId: string) => handleExport(sessionId, exportSessionToCSV, 'CSV');
 
   const getStatusColor = (status: string, hasBreakthrough?: boolean) => {
     if (hasBreakthrough) return 'text-accent bg-accent/20';
