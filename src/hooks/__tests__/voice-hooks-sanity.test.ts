@@ -21,5 +21,27 @@ describe('voice hooks sanity', () => {
     expect(contents.length).toBeGreaterThan(200);
     expect(contents).toMatch(/export function useVoiceInput/);
   });
+
+  it('useVoiceInput exports voiceState type string literal union', () => {
+    const contents = read('useVoiceInput.ts');
+    expect(contents).toMatch(
+      /"Idle" | "Listening" | "Reconnecting" | "Error"/
+    );
+  });
+
+  it('useVoiceInput exports subscribeToVoiceDebug', () => {
+    const contents = read('useVoiceInput.ts');
+    expect(contents).toMatch(/export function subscribeToVoiceDebug/);
+  });
+
+  it('useVoiceInput exports SpeechRecognitionInstance type', () => {
+    const contents = read('useVoiceInput.ts');
+    expect(contents).toMatch(/export type SpeechRecognitionInstance/);
+  });
+
+  it('useVoiceInput exports UseVoiceInputOptions interface', () => {
+    const contents = read('useVoiceInput.ts');
+    expect(contents).toMatch(/export interface UseVoiceInputOptions/);
+  });
 });
 
