@@ -209,15 +209,22 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     isRecording,
     isSupported,
     isPaused: isRecordingPaused,
+    voiceState,
     transcript,
+    finalTranscript,
     toggleRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
     togglePause: toggleRecordingPause,
   } = useVoiceInput({
     onTranscript: (text) => {
       accumulateTranscript(text);
     },
   });
+
+  const isVoiceRecovering = voiceState === 'Reconnecting';
+  const isVoiceError = voiceState === 'Error';
 
   // CRITICAL FIX: Prevent TTS loop by tracking last spoken question
   // Only speak if the question has actually CHANGED since the last time we spoke
@@ -240,6 +247,27 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       lastSpokenQuestionRef.current = null;
     }
   }, [currentQuestion]);
+
+  // Surface voice error state to user
+  useEffect(() => {
+    if (isVoiceError) {
+      toast({
+        title: 'Microphone stalled',
+        description: 'Tap the mic to restart voice input.',
+        variant: 'destructive',
+      });
+    }
+  }, [isVoiceError, toast]);
+
+  // Submit finalTranscript on recording stop (zero-loss capture)
+  const prevIsRecordingRef = useRef(false);
+  useEffect(() => {
+    const wasRecording = prevIsRecordingRef.current;
+    prevIsRecordingRef.current = isRecording;
+    if (wasRecording && !isRecording && finalTranscript.trim()) {
+      accumulateTranscript(finalTranscript.trim());
+    }
+  }, [isRecording, finalTranscript, accumulateTranscript]);
 
   // Update live transcript display
   useEffect(() => {
@@ -350,15 +378,15 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   // Menu handlers - now tied to recording pause
   const handlePause = useCallback(() => {
     if (isRecording && !isRecordingPaused) {
-      toggleRecordingPause();
+      pauseRecording();
     }
-  }, [isRecording, isRecordingPaused, toggleRecordingPause]);
+  }, [isRecording, isRecordingPaused, pauseRecording]);
 
   const handleResume = useCallback(() => {
     if (isRecordingPaused) {
-      toggleRecordingPause();
+      resumeRecording();
     }
-  }, [isRecordingPaused, toggleRecordingPause]);
+  }, [isRecordingPaused, resumeRecording]);
 
   const handleStop = useCallback(() => {
     handleNewSession();
@@ -635,7 +663,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
               <MicButton
                 isRecording={isRecording}
                 isPaused={isRecordingPaused}
-                isProcessing={isAIProcessing}
+                isProcessing={isAIProcessing || isVoiceRecovering}
                 isSupported={isSupported}
                 onClick={handleMicToggle}
                 onPause={isRecording ? toggleRecordingPause : undefined}

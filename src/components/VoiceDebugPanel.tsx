@@ -13,6 +13,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Bug, X, Trash2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { subscribeToTTSDebug } from "@/hooks/useTextToSpeech";
+import {
+  subscribeToVoiceDebug,
+  clearVoiceDebugBuffer,
+} from "@/hooks/useVoiceInput";
 import { useAssistantSpeakingStore } from "@/hooks/useAssistantSpeaking";
 
 interface DebugEvent {
@@ -21,9 +25,22 @@ interface DebugEvent {
   data?: Record<string, unknown>;
 }
 
-function mergeAndTrimEvents(existing: DebugEvent[], incoming: DebugEvent[]): DebugEvent[] {
-  const filtered = existing.filter(e => !e.type.startsWith('tts') && !e.type.startsWith('audio'));
-  return [...filtered, ...incoming].sort((a, b) => a.timestamp - b.timestamp).slice(-50);
+function mergeAndTrimEvents(
+  existing: DebugEvent[],
+  incoming: DebugEvent[],
+): DebugEvent[] {
+  const incomingPrefixes = new Set<string>();
+  for (const e of incoming) {
+    const prefix = e.type.split('.')[0];
+    incomingPrefixes.add(prefix);
+  }
+  const filtered = existing.filter((e) => {
+    const prefix = e.type.split('.')[0];
+    return !incomingPrefixes.has(prefix);
+  });
+  return [...filtered, ...incoming]
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-50);
 }
 
 export function VoiceDebugPanel() {
@@ -62,7 +79,7 @@ export function VoiceDebugPanel() {
     if (!isVisible || !isDev) return;
 
     const unsubscribeTTS = subscribeToTTSDebug((ttsEvents) => {
-      setEvents(prev => mergeAndTrimEvents(prev, ttsEvents));
+      setEvents((prev) => mergeAndTrimEvents(prev, ttsEvents));
     });
 
     return () => {
@@ -70,8 +87,20 @@ export function VoiceDebugPanel() {
     };
   }, [isVisible, isDev]);
 
+  // Subscribe to STT debug events
+  useEffect(() => {
+    if (!isVisible || !isDev) return;
+
+    const unsubscribe = subscribeToVoiceDebug((sttEvents) => {
+      setEvents((prev) => mergeAndTrimEvents(prev, sttEvents));
+    });
+
+    return unsubscribe;
+  }, [isVisible, isDev]);
+
   const handleClear = useCallback(() => {
     setEvents([]);
+    clearVoiceDebugBuffer();
   }, []);
 
   const formatTime = (timestamp: number) => {
