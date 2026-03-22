@@ -4,7 +4,7 @@
  *
  * "minimal" variant uses fewer blobs (e.g. Story page).
  */
-export function AmbientBackground({ variant = "full" }: { variant?: "full" | "minimal" }) {
+export function AmbientBackground({ variant = "full" }: Readonly<{ variant?: "full" | "minimal" }>) {
   if (variant === "minimal") {
     return (
       <div className="fixed inset-0 pointer-events-none overflow-hidden">

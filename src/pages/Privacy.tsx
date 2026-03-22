@@ -267,10 +267,10 @@ const sections = [
 function SectionCard({
   section,
   index,
-}: {
+}: Readonly<{
   section: (typeof sections)[number];
   index: number;
-}) {
+}>) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
 
@@ -294,9 +294,9 @@ function SectionCard({
       </div>
 
       {/* Content paragraphs */}
-      {section.content?.map((paragraph, i) => (
+      {section.content?.map((paragraph) => (
         <p
-          key={i}
+          key={paragraph}
           className="text-muted-foreground leading-relaxed mb-4 text-sm md:text-base"
         >
           {paragraph}
@@ -306,9 +306,9 @@ function SectionCard({
       {/* Bullet items */}
       {section.items && (
         <ul className="space-y-2.5 mb-4">
-          {section.items.map((item, i) => (
+          {section.items.map((item) => (
             <li
-              key={i}
+              key={item}
               className="flex items-start gap-3 text-muted-foreground text-sm md:text-base"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-2 flex-shrink-0" />
@@ -320,15 +320,15 @@ function SectionCard({
 
       {/* Subsections (for Data We Collect) */}
       {"subsections" in section &&
-        section.subsections?.map((sub, i) => (
-          <div key={i} className="mb-6 last:mb-0">
+        section.subsections?.map((sub) => (
+          <div key={sub.heading} className="mb-6 last:mb-0">
             <h3 className="font-display text-base md:text-lg font-semibold mb-3 text-foreground/90">
               {sub.heading}
             </h3>
             <ul className="space-y-2">
-              {sub.items.map((item, j) => (
+              {sub.items.map((item) => (
                 <li
-                  key={j}
+                  key={item}
                   className="flex items-start gap-3 text-muted-foreground text-sm md:text-base"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-2 flex-shrink-0" />
@@ -357,8 +357,8 @@ function SectionCard({
               </tr>
             </thead>
             <tbody>
-              {section.services.map((svc, i) => (
-                <tr key={i} className="border-b border-border/15">
+              {section.services.map((svc) => (
+                <tr key={svc.name} className="border-b border-border/15">
                   <td className="py-3 pr-4 text-primary font-medium whitespace-nowrap">
                     {svc.name}
                   </td>
@@ -376,9 +376,9 @@ function SectionCard({
       {/* Storage items (for Cookies & Local Storage) */}
       {"storageItems" in section && section.storageItems && (
         <div className="space-y-3 mt-4 mb-4">
-          {section.storageItems.map((item, i) => (
+          {section.storageItems.map((item) => (
             <div
-              key={i}
+              key={item.key}
               className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 p-3 rounded-xl bg-background/40 border border-border/15"
             >
               <code className="text-xs text-primary font-mono whitespace-nowrap flex-shrink-0">
@@ -395,8 +395,8 @@ function SectionCard({
       {/* Rights list (for Your Rights) */}
       {"rights" in section && section.rights && (
         <div className="space-y-4 mt-4 mb-4">
-          {section.rights.map((r, i) => (
-            <div key={i} className="flex items-start gap-3">
+          {section.rights.map((r) => (
+            <div key={r.right} className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-secondary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <ChevronRight className="h-4 w-4 text-secondary" />
               </div>

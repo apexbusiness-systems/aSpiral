@@ -10,7 +10,7 @@ interface QuickLink {
  * Shared "Explore" quick-links bar.
  * Used across public pages (Privacy, Support, etc.)
  */
-export function QuickLinks({ links }: { links: QuickLink[] }) {
+export function QuickLinks({ links }: Readonly<{ links: readonly QuickLink[] }>) {
   return (
     <section className="px-6 pb-20 border-t border-border/15 pt-12">
       <div className="mx-auto max-w-5xl">

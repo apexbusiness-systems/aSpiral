@@ -6,7 +6,7 @@ import aspiralLogo from "@/assets/aspiral-logo.png";
  * Shared page header with back-to-home link and logo.
  * Used across public pages (Privacy, Support, Story, etc.)
  */
-export function PageHeader({ maxWidth = "max-w-5xl" }: { maxWidth?: string }) {
+export function PageHeader({ maxWidth = "max-w-5xl" }: Readonly<{ maxWidth?: string }>) {
   return (
     <header className="relative z-10 border-b border-border/30 backdrop-blur-sm">
       <div className={`mx-auto ${maxWidth} px-6 py-4 flex items-center justify-between`}>
