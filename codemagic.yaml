@@ -1,10 +1,10 @@
 workflows:
   aspiral_ios_testflight:
     # ╔══════════════════════════════════════════════════════════════════════╗
-    # ║  aSpiral iOS → TestFlight (Green Lane)                              ║
+    # ║  aSpiral iOS → TestFlight (Green Lane)                               ║
     # ║                                                                      ║
-    # ║  HOW TO RUN — REQUIRED ENV VAR GROUPS                               ║
-    # ║  ─────────────────────────────────────────────────────────────────  ║
+    # ║  HOW TO RUN — REQUIRED ENV VAR GROUPS                                ║
+    # ║  ─────────────────────────────────────────────────────────────────   ║
     # ║  Group: ios_credentials                                              ║
     # ║    TEAM_ID                  Apple Developer Team ID (10-char)        ║
     # ║    CERTIFICATE_PRIVATE_KEY  Signing key (.p8 file contents)          ║
