@@ -426,9 +426,6 @@ function SectionCard({
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const Privacy = () => {
-  const tocRef = useRef(null);
-  const tocInView = useInView(tocRef, { once: true, margin: "-40px" });
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AmbientBackground />
@@ -456,36 +453,6 @@ const Privacy = () => {
             <p className="text-muted-foreground/60 text-sm">
               Effective: {EFFECTIVE_DATE}
             </p>
-          </motion.div>
-        </section>
-
-        {/* Table of Contents */}
-        <section ref={tocRef} className="px-6 pb-12">
-          <motion.div
-            className="mx-auto max-w-3xl"
-            initial={{ opacity: 0, y: 16 }}
-            animate={tocInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="p-5 rounded-2xl border border-border/25 bg-card/20 backdrop-blur-sm">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground/60 font-medium mb-3">
-                Contents
-              </p>
-              <nav className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {sections.map((section, i) => (
-                  <a
-                    key={section.id}
-                    href={`#${section.id}`}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/40 transition-all duration-200"
-                  >
-                    <span className="text-primary/60 text-xs font-mono">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    {section.title}
-                  </a>
-                ))}
-              </nav>
-            </div>
           </motion.div>
         </section>
 
