@@ -1,33 +1,14 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, Heart, Zap, Target } from "lucide-react";
-import aspiralLogo from "@/assets/aspiral-logo.png";
+import { Sparkles, Heart, Zap, Target } from "lucide-react";
+import { AmbientBackground } from "@/components/layout/AmbientBackground";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 const Story = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Ambient Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute w-[500px] h-[500px] bg-primary/15 rounded-full blur-[100px] top-0 right-0 animate-pulse" />
-        <div className="absolute w-[400px] h-[400px] bg-secondary/10 rounded-full blur-[80px] bottom-1/4 left-0 animate-pulse" style={{ animationDelay: "3s" }} />
-      </div>
-
-      {/* Header */}
-      <header className="relative z-10 border-b border-border/30 backdrop-blur-sm">
-        <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back to home</span>
-          </Link>
-          <Link to="/">
-            <img 
-              src={aspiralLogo} 
-              alt="aSpiral" 
-              className="h-[2.78rem] drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_12px_hsl(var(--primary)/0.8)] transition-all duration-300" 
-            />
-          </Link>
-        </div>
-      </header>
+      <AmbientBackground variant="minimal" />
+      <PageHeader maxWidth="max-w-4xl" />
 
       {/* Content */}
       <main className="relative z-10 py-16 px-6">

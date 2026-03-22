@@ -1,8 +1,6 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
-  ArrowLeft,
   Shield,
   Eye,
   Database,
@@ -15,7 +13,10 @@ import {
   Server,
   ChevronRight,
 } from "lucide-react";
-import aspiralLogo from "@/assets/aspiral-logo.png";
+import { AmbientBackground } from "@/components/layout/AmbientBackground";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PageFooter } from "@/components/layout/PageFooter";
+import { QuickLinks } from "@/components/layout/QuickLinks";
 
 const CONTACT_EMAIL = "info-outreach@aspiral.icu";
 const EFFECTIVE_DATE = "March 22, 2026";
@@ -430,40 +431,8 @@ const Privacy = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Ambient Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute w-[600px] h-[600px] bg-primary/12 rounded-full blur-[120px] -top-40 -right-40 animate-pulse" />
-        <div
-          className="absolute w-[500px] h-[500px] bg-secondary/8 rounded-full blur-[100px] bottom-0 -left-40 animate-pulse"
-          style={{ animationDelay: "4s" }}
-        />
-        <div
-          className="absolute w-[400px] h-[400px] bg-primary/8 rounded-full blur-[80px] top-1/2 right-1/4 animate-pulse"
-          style={{ animationDelay: "2s" }}
-        />
-        {/* Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background)/0.4)_50%,hsl(var(--background))_100%)]" />
-      </div>
-
-      {/* Header */}
-      <header className="relative z-10 border-b border-border/30 backdrop-blur-sm">
-        <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back to home</span>
-          </Link>
-          <Link to="/">
-            <img
-              src={aspiralLogo}
-              alt="aSpiral"
-              className="h-[2.78rem] drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_12px_hsl(var(--primary)/0.8)] transition-all duration-300"
-            />
-          </Link>
-        </div>
-      </header>
+      <AmbientBackground />
+      <PageHeader />
 
       <main className="relative z-10">
         {/* Hero */}
@@ -566,72 +535,15 @@ const Privacy = () => {
           </motion.div>
         </section>
 
-        {/* Quick links */}
-        <section className="px-6 pb-20 border-t border-border/15 pt-12">
-          <div className="mx-auto max-w-5xl">
-            <p className="text-muted-foreground/50 text-xs uppercase tracking-widest text-center mb-6 font-medium">
-              Explore
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {[
-                { label: "Support", to: "/support" },
-                { label: "How it Works", to: "/how-it-works" },
-                { label: "Our Story", to: "/story" },
-                { label: "Open App", to: "/app" },
-              ].map(({ label, to }) => (
-                <Link
-                  key={label}
-                  to={to}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-border/30 bg-card/20 text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-card/40 transition-all duration-200"
-                >
-                  {label}
-                  <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+        <QuickLinks links={[
+          { label: "Support", to: "/support" },
+          { label: "How it Works", to: "/how-it-works" },
+          { label: "Our Story", to: "/story" },
+          { label: "Open App", to: "/app" },
+        ]} />
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-border/20 py-12 px-6">
-        <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <img
-              src={aspiralLogo}
-              alt="aSpiral"
-              className="h-8 drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]"
-            />
-            <span className="text-muted-foreground text-sm">
-              • aspiral.icu
-            </span>
-          </div>
-          <div className="text-muted-foreground/60 text-sm text-center md:text-right space-y-1">
-            <p>Built during a breakdown • Edmonton, AB</p>
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="hover:text-foreground transition-colors inline-block"
-            >
-              {CONTACT_EMAIL}
-            </a>
-            <div className="flex items-center justify-center md:justify-end gap-3 pt-1">
-              <Link
-                to="/privacy"
-                className="hover:text-foreground transition-colors text-foreground/80"
-              >
-                Privacy Policy
-              </Link>
-              <span className="text-muted-foreground/30">•</span>
-              <Link
-                to="/support"
-                className="hover:text-foreground transition-colors"
-              >
-                Support
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PageFooter />
     </div>
   );
 };
