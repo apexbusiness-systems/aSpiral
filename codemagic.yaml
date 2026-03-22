@@ -419,21 +419,13 @@ workflows:
         # ⚠  MANUAL STEP: In App Store Connect → TestFlight → "aSpiral Internal" group,
         #    set distribution type to MANUAL (not Automatic). Automatic can block assignments.
         submit_to_testflight: true
-        # ── REQUIRED for external beta submission ─────────────────────────────
-        # Without this block, "aSpiral External" submission ALWAYS fails with:
-        # "App is missing required Beta App Information: First Name, Last Name, Phone Number, Email"
-        # These MUST also be filled in manually at:
-        # appstoreconnect.apple.com/apps/6757191574/testflight/test-info
-        # Both places are required — Codemagic submits these fields on each build,
-        # but App Store Connect also caches them for manual review triggers.
-        beta_app_review_info:
-          contact_email: "jrmendozaceo@apexbusiness-systems.com"
-          contact_first_name: "Michael"
-          contact_last_name: "Mendoza"
-          contact_phone: "4319900222"
-          demo_account_name: "test@tester.com"
-          demo_account_password: $BETA_DEMO_PASSWORD
-          notes: "Test voice agent: tap mic, speak a decision or challenge, review AI analysis and breakthrough insight. Sign in with the demo account provided."
+        # ── External beta submission — Beta App Review info is MANUAL ONLY ──────
+        # Codemagic does NOT support beta_app_review_info in its YAML schema.
+        # To unblock external testers, fill in ALL fields manually at:
+        #   appstoreconnect.apple.com/apps/6757191574/testflight/test-info
+        # Required fields: First Name, Last Name, Phone, Email, Feedback Email,
+        #   Beta App Description, What to Test
+        # This is a one-time setup. Once saved, all future builds use it.
         beta_groups:
           - "aSpiral Internal"
           # External testers — requires Beta App Review (Apple reviews first build per new version)
