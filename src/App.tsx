@@ -36,6 +36,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Breakthroughs = lazy(() => import("./pages/Breakthroughs"));
 const NotificationTest = lazy(() => import("./pages/NotificationTest"));
 const Support = lazy(() => import("./pages/Support"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const VoiceYourChaos = lazy(() => import("./pages/steps/VoiceYourChaos"));
 const WatchItVisualize = lazy(() => import("./pages/steps/WatchItVisualize"));
 const AnswerQuestions = lazy(() => import("./pages/steps/AnswerQuestions"));
@@ -190,6 +191,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/story" element={<Story />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="/steps/voice" element={<VoiceYourChaos />} />
                 <Route path="/steps/visualize" element={<WatchItVisualize />} />
                 <Route path="/steps/questions" element={<AnswerQuestions />} />
