@@ -224,6 +224,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   const [isSupported, setIsSupported] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  // Keep ref in sync with state so callbacks always see current value
+  isPausedRef.current = isPaused;
   const [voiceState, setVoiceState] = useState<'Idle' | 'Listening' | 'Reconnecting' | 'Error'>('Idle');
 
   // Two-buffer transcript model: final (append-only) + interim (replace on each update)
@@ -237,6 +239,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const isStartedRef = useRef(false);
   const isIntentionalStop = useRef(false);
+  // isPausedRef: always-current mirror of isPaused state.
+  // Required to prevent stale closure in startRecording's onEnd callback.
+  const isPausedRef = useRef(false);
 
   // Cleaned up unused refs based on SonarQube
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -261,6 +266,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // Ref for stopRecording to avoid circular dependency
   const stopRecordingRef = useRef<() => void>(() => { });
+  // Ref for createRecognition — used by handleRecognitionError to break circular dep
+  // (handleRecognitionError is defined before createRecognition in hook order)
+  const createRecognitionRef = useRef<((opts: { onStart?: () => void; onEnd?: () => void; onErrorContext: string }) => SpeechRecognitionInstance | null) | null>(null);
   const sttSessionIdRef = useRef<number | null>(null);
 
   // Interim update throttling
@@ -422,9 +430,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           osc.start();
           osc.stop(ctx.currentTime + 0.15);
         }
-      } else {
-        restartCount60sRef.current = 1;
       }
+      // NOTE: Do NOT reset restartCount60sRef here — that defeats the rate limiter.
+      // restartCount60sRef is reset only by the watchdog when >60s has elapsed.
     } catch {
       // Ignore audio context errors during stop
     }
@@ -434,6 +442,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   useEffect(() => {
     stopRecordingRef.current = stopRecording;
   }, [stopRecording]);
+
+  // Update createRecognitionRef so handleRecognitionError always calls the latest version
+  useEffect(() => {
+    createRecognitionRef.current = createRecognition;
+  }, [createRecognition]);
 
   const handleRecognitionResult = useCallback(
     (event: Event) => {
@@ -557,15 +570,22 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           });
 
           // DON'T set isRecording to false - keep UI alive
+          // CRITICAL FIX: Must recreate the recognition object.
+          // An errored SpeechRecognition instance cannot be restarted via .start() —
+          // it throws InvalidStateError. Always recreate.
+          const backoffMs = RESTART_BACKOFF_MS * Math.pow(2, restartCount60sRef.current - 1);
           setTimeout(() => {
-            if (recognitionRef.current && isStartedRef.current) {
+            if (!isStartedRef.current) return;
+            const newRecognition = createRecognitionRef.current?.({ onErrorContext: 'error_restart' });
+            if (newRecognition) {
+              recognitionRef.current = newRecognition;
               try {
-                recognitionRef.current.start();
+                newRecognition.start();
               } catch (restartError) {
-                logger.error("Failed to restart recognition", restartError as Error);
+                logger.error("Failed to restart recognition after error", restartError as Error);
               }
             }
-          }, 100);
+          }, Math.min(backoffMs, 4000));
           return;
         } else {
           logger.error(`Too many restarts (${restartCount60sRef.current}), giving up`);
@@ -581,7 +601,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       isStartedRef.current = false;
       options.onError?.(new Error(error));
     },
-    [options, setError, setRecording]
+    [options, setError, setRecording, releaseSttSession]
   );
 
   const createRecognition = useCallback((opts: {
@@ -735,7 +755,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         },
         onEnd: () => {
           audioDebug.log("session_end", { intentional: isIntentionalStop.current });
-          if (!isIntentionalStop.current && !isPaused && isStartedRef.current) {
+          // Use isPausedRef (not isPaused) — isPaused is stale inside this closure
+          if (!isIntentionalStop.current && !isPausedRef.current && isStartedRef.current) {
             try {
               if (recognition) {
                 recognition.lang = getActiveSpeechLocale();
