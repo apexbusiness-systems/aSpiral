@@ -99,7 +99,7 @@ export function SettingsPanel({
       container = document.createElement('div');
       container.id = 'settings-panel-portal';
       // Ensure portal container itself doesn't create stacking context issues
-      container.style.cssText = 'position: fixed; top: 0; left: 0; z-index: 2147483000; pointer-events: none;';
+      container.style.cssText = 'position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2147483000; pointer-events: none;';
       document.body.appendChild(container);
     }
     setPortalContainer(container);
@@ -195,7 +195,7 @@ export function SettingsPanel({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop - highest z-index, receives click to close */}
+          {/* Backdrop - receives click to close */}
           <motion.div
             role="presentation"
             aria-hidden="true"
@@ -205,31 +205,20 @@ export function SettingsPanel({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: OVERLAY_Z,
+              position: 'absolute',
+              inset: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.7)',
               backdropFilter: 'blur(4px)',
               WebkitBackdropFilter: 'blur(4px)',
               pointerEvents: 'auto',
-              // Safe area: ensure backdrop extends behind notch
-              paddingTop: 'env(safe-area-inset-top, 0px)',
-              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           />
 
-          {/* Panel Content - above backdrop, centered with flexbox (not transform, which framer-motion overrides), scrollable */}
+          {/* Panel Content - centered with flexbox, scrollable */}
           <div
             style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: CONTENT_Z,
+              position: 'absolute',
+              inset: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -247,10 +236,10 @@ export function SettingsPanel({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            onClick={(e) => e.stopPropagation()} // Prevent backdrop click-through
+            onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: '32rem', // max-w-xl
+              maxWidth: '32rem',
               maxHeight: '100%',
               display: 'flex',
               flexDirection: 'column',
