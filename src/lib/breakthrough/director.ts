@@ -34,8 +34,8 @@ const MAX_DURATION_MS = 15000;
 /** Prewarm timeout */
 const PREWARM_TIMEOUT_MS = 2000;
 
-/** Settle duration after main animation */
-const SETTLE_DURATION_MS = 300;
+/** Settle duration after main animation - longer so users can see the effect */
+const SETTLE_DURATION_MS = 1500;
 
 /** WebGL context lost handler callback */
 type WebGLContextLostCallback = () => void;

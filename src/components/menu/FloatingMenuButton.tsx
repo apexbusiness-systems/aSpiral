@@ -17,14 +17,17 @@ export function FloatingMenuButton({
   return (
     <motion.button
       className={cn(
-        "fixed top-3 right-3 sm:top-4 sm:right-4 z-[999]",
-        "w-12 h-12 sm:w-14 sm:h-14",
+        // Position below QuickActionsBar on mobile (top-[60px]) to avoid overlapping header/quick-actions
+        // On desktop, keep original top-right position
+        "fixed top-[60px] right-3 sm:top-4 sm:right-4 z-[999]",
+        "w-11 h-11 sm:w-14 sm:h-14",
         "flex items-center justify-center",
         // Solid background on mobile for contrast
         "bg-card sm:bg-background/60 sm:backdrop-blur-xl",
         "border-2 border-foreground/20 sm:border-border/50 rounded-full",
         "cursor-pointer transition-all duration-200",
-        "hover:bg-card/90 sm:hover:bg-background/80 hover:border-primary/50"
+        "hover:bg-card/90 sm:hover:bg-background/80 hover:border-primary/50",
+        "touch-manipulation"
       )}
       onClick={onMenuOpen}
       onHoverStart={() => setIsHovered(true)}

@@ -190,6 +190,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     return () => globalThis.removeEventListener('storage', onStorage);
   }, []);
 
+  // Stable TTS error handler to prevent speak callback recreation every render
+  const handleTTSError = useCallback((error: Error) => {
+    console.warn('[TTS] Error:', error.message);
+  }, []);
+
   // Text-to-Speech for AI responses
   const {
     speak: speakText,
@@ -200,9 +205,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     speed: voiceProfile.speed,
     volume: voiceProfile.volume,
     fallbackToWebSpeech: true,
-    onError: (error) => {
-      console.warn('[TTS] Error:', error.message);
-    },
+    onError: handleTTSError,
   });
 
   const {
@@ -459,7 +462,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   return (
     <LayoutGroup>
-      <div className={cn("flex flex-col lg:flex-row relative", hasActiveHeader ? "h-[calc(100vh-73px-52px)] mt-[52px]" : "h-[calc(100vh-73px)]")}>
+      <div className={cn(
+        "flex flex-col lg:flex-row relative",
+        hasActiveHeader
+          ? "h-[calc(100dvh-73px-52px)] mt-[52px] pb-16 lg:pb-0"
+          : "h-[calc(100dvh-73px)] pb-16 lg:pb-0"
+      )}>
         {/* Phase 4: Film Grain Overlay for Cinematic Polish */}
         <FilmGrainCSS intensity={0.08} />
         {/* Floating Menu Button */}
@@ -548,10 +556,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
         {/* Visual Spiral Panel (WebGL stage with safe SVG fallback) */}
         <div
-          className={`relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 ${is3DExpanded
-            ? "h-[60vh] lg:h-full lg:w-2/3"
-            : "h-48 lg:h-full lg:w-1/3"
-            }`}
+          className={cn(
+            "relative border-b lg:border-b-0 lg:border-r border-border/30 transition-all duration-500 flex-shrink-0",
+            is3DExpanded
+              ? "h-[40vh] sm:h-[50vh] lg:h-full lg:w-2/3"
+              : "h-32 sm:h-48 lg:h-full lg:w-1/3"
+          )}
         >
           <Suspense fallback={<div className="absolute inset-0 bg-background/50 backdrop-blur-sm transition-colors duration-500" />}>
             <SpiralStage />
@@ -583,11 +593,11 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
             </div>
           )}
 
-          {/* Expand/Collapse Button */}
+          {/* Expand/Collapse Button - positioned left of FloatingMenuButton on mobile */}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-3 right-3 z-10 glass-card rounded-xl"
+            className="absolute top-2 right-14 sm:top-3 sm:right-3 z-10 glass-card rounded-xl touch-manipulation"
             onClick={() => setIs3DExpanded(!is3DExpanded)}
           >
             {is3DExpanded ? (
@@ -616,7 +626,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
         </div>
 
         {/* Chat Panel */}
-        <div className="flex-1 flex flex-col bg-background/50 backdrop-blur-md">
+        <div className="flex-1 flex flex-col bg-background/50 backdrop-blur-md min-h-0 overflow-hidden">
           {/* Chat Header */}
           {hasActiveHeader && (
             <div className="border-b border-border/30 px-4 py-2 flex items-center justify-between">
@@ -689,11 +699,13 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
           {/* Entity Cards */}
           {currentSession?.entities?.length ? (
-            <EntityCardList
-              entities={currentSession.entities}
-              selectedId={selectedEntityId}
-              onEntityClick={handleEntityClick}
-            />
+            <div className="flex-shrink-0 max-h-[25vh] lg:max-h-[30vh] overflow-y-auto border-t border-border/30">
+              <EntityCardList
+                entities={currentSession.entities}
+                selectedId={selectedEntityId}
+                onEntityClick={handleEntityClick}
+              />
+            </div>
           ) : null}
         </div>
       </div>

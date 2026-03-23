@@ -38,7 +38,7 @@ export function MobileNav({ activeTab, onTabChange, isRecording, className }: Mo
   return (
     <nav
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-40",
+        "fixed bottom-0 left-0 right-0 z-[100]",
         "bg-background/95 backdrop-blur-xl border-t border-border/50",
         "safe-area-pb", // iOS safe area
         className

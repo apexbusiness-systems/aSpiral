@@ -16,13 +16,13 @@ export function BreakthroughOverlay() {
       setShowRipples(true);
 
       // Flash fades quickly
-      const flashTimer = setTimeout(() => setShowFlash(false), 300);
-      
-      // Aurora and ripples fade after full animation
+      const flashTimer = setTimeout(() => setShowFlash(false), 400);
+
+      // Aurora and ripples fade after full animation - extended so entity is visible
       const auroraTimer = setTimeout(() => {
         setShowAurora(false);
         setShowRipples(false);
-      }, 3000);
+      }, 5000);
 
       return () => {
         clearTimeout(flashTimer);
@@ -35,7 +35,7 @@ export function BreakthroughOverlay() {
     <>
       {/* White flash */}
       {showFlash && (
-        <div className="fixed inset-0 bg-white z-[999] pointer-events-none animate-breakthrough-flash" />
+        <div className="fixed inset-0 bg-white z-[90] pointer-events-none animate-breakthrough-flash" />
       )}
 
       {/* Aurora explosion */}
