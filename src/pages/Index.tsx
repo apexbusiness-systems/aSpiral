@@ -107,8 +107,8 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Chat Area - add bottom padding on mobile for nav */}
-      <main className={`relative z-10 flex-1 ${isMobile ? 'pb-16' : ''}`}>
+      {/* Main Chat Area - flex-1 with min-h-0 to allow proper shrinking on mobile */}
+      <main className="relative z-10 flex-1 min-h-0 overflow-hidden">
         <SpiralChat ref={chatRef} />
       </main>
 

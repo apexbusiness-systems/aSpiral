@@ -221,7 +221,24 @@ export function SettingsPanel({
             }}
           />
 
-          {/* Panel Content - above backdrop, centered, scrollable */}
+          {/* Panel Content - above backdrop, centered with flexbox (not transform, which framer-motion overrides), scrollable */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: CONTENT_Z,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px 16px',
+              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+              pointerEvents: 'none',
+            }}
+          >
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -232,15 +249,9 @@ export function SettingsPanel({
             transition={{ duration: 0.2, ease: 'easeOut' }}
             onClick={(e) => e.stopPropagation()} // Prevent backdrop click-through
             style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: CONTENT_Z,
-              width: '90%',
+              width: '100%',
               maxWidth: '32rem', // max-w-xl
-              // Max height with safe area respect
-              maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 48px)',
+              maxHeight: '100%',
               display: 'flex',
               flexDirection: 'column',
               backgroundColor: 'hsl(var(--card) / 0.98)',
@@ -580,6 +591,7 @@ export function SettingsPanel({
               <Button onClick={onClose}>Done</Button>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
