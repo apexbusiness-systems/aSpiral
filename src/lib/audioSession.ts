@@ -188,15 +188,44 @@ export function endSTTSession(sessionId: number, reason: string) {
 export async function unlockAudioFromGesture(): Promise<void> {
   if (typeof globalThis === 'undefined') return;
   await ensureAudioContext();
-  if (typeof globalThis !== 'undefined') (globalThis as unknown as Window).speechSynthesis?.getVoices();
+
+  // Pre-warm Web Speech API voices (async on some browsers)
+  if (typeof globalThis !== 'undefined') {
+    const synth = (globalThis as unknown as Window).speechSynthesis;
+    if (synth) {
+      synth.getVoices();
+      // Some browsers load voices asynchronously - listen for the event
+      if (synth.getVoices().length === 0) {
+        synth.addEventListener('voiceschanged', () => synth.getVoices(), { once: true });
+      }
+    }
+  }
+
+  // Play a silent audio buffer to fully unlock audio on iOS/PWA
+  try {
+    if (audioContext && audioContext.state === 'running') {
+      const silentBuffer = audioContext.createBuffer(1, 1, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+    }
+  } catch { /* non-fatal */ }
+
   audioDebug.log('audio_route_change', { status: 'audio_unlocked' });
 }
 
 /**
  * Ensures AudioContext is ready and resumed.
  * CRITICAL for iOS: Must be called inside a user gesture handler initially.
+ * Re-creates the context if it was closed (e.g. after backgrounding on PWA).
  */
 async function ensureAudioContext(): Promise<void> {
+  // Re-create if closed (can happen after PWA background/foreground cycle)
+  if (audioContext && audioContext.state === 'closed') {
+    audioContext = null;
+  }
+
   if (!audioContext) {
     const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
     if (AudioContextClass) {
@@ -204,7 +233,7 @@ async function ensureAudioContext(): Promise<void> {
     }
   }
 
-  if (audioContext.state === 'suspended') {
+  if (audioContext && audioContext.state === 'suspended') {
     try {
       await audioContext.resume();
     } catch (error) {
@@ -559,19 +588,30 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
     throw new Error('Web Speech API not supported');
   }
 
+  // Ensure AudioContext is alive before speaking (critical for PWA after background)
+  await ensureAudioContext();
+
   window.speechSynthesis.cancel();
 
   // iOS Safari: use sentence chunking for reliability
   const useChunking = needsSentenceChunking();
   const sentences = useChunking ? splitIntoSentences(options.text) : [options.text];
 
-
-
   if (useChunking && sentences.length > 1) {
     audioDebug.log('tts_enqueue', { chunking: true, sentenceCount: sentences.length });
   }
 
-  const voices = window.speechSynthesis.getVoices();
+  // Wait for voices to load if empty (async on some browsers/PWAs)
+  let voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) {
+    voices = await new Promise<SpeechSynthesisVoice[]>((resolve) => {
+      const timeout = setTimeout(() => resolve([]), 1000);
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        clearTimeout(timeout);
+        resolve(window.speechSynthesis.getVoices());
+      }, { once: true });
+    });
+  }
   // Use the active i18n language instead of document fallback for more accurate language selection
   const activeLang = i18n.resolvedLanguage ?? i18n.language ?? "en";
   const desiredLang = getSpeechLocale(activeLang);
@@ -784,5 +824,10 @@ export function disposeAudioSession() {
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     audioDebug.log('audio_route_change', { status: document.visibilityState });
+
+    // Re-resume AudioContext when app comes back to foreground (critical for PWA)
+    if (document.visibilityState === 'visible') {
+      ensureAudioContext().catch(() => { /* best effort */ });
+    }
   });
 }

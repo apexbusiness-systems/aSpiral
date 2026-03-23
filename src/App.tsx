@@ -144,23 +144,26 @@ const App = () => {
     const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown"];
 
     const handler = async () => {
-      // Use module-level flag to prevent race conditions
-      // (React StrictMode double-mount + multiple events can cause races)
-      if (audioUnlockAttempted) return;
-      audioUnlockAttempted = true;
+      // First unlock: full initialization with silent buffer trick
+      if (!audioUnlockAttempted) {
+        audioUnlockAttempted = true;
+        await unlockAudioFromGesture();
+        audioLogger.debug("User gesture unlock attempted");
+        return;
+      }
 
-      // Audio unlock is best-effort and silent - errors are logged but not shown to users
-      // Users shouldn't see audio errors when just browsing; errors only matter when
-      // they explicitly try to use voice features
-      await unlockAudioFromGesture();
-      audioLogger.debug("User gesture unlock attempted");
-      cleanup();
+      // Subsequent gestures: re-resume AudioContext if it got suspended (PWA background/foreground)
+      // This is cheap and idempotent - only does work if context is suspended
+      try {
+        await unlockAudioFromGesture();
+      } catch { /* best effort */ }
     };
 
     const cleanup = () => {
       events.forEach((event) => window.removeEventListener(event, handler));
     };
 
+    // Keep listener alive - PWA can re-suspend AudioContext after backgrounding
     events.forEach((event) => window.addEventListener(event, handler, { passive: true }));
     return cleanup;
   }, []);

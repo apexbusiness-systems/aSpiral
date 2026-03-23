@@ -451,12 +451,28 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   useKeyboardShortcuts(shortcuts);
 
-  const entityCount = currentSession?.entities?.length || 0;
+  const [dismissedEntityIds, setDismissedEntityIds] = useState<Set<string>>(new Set());
+  const visibleEntities = useMemo(
+    () => (currentSession?.entities || []).filter(e => !dismissedEntityIds.has(e.id)),
+    [currentSession?.entities, dismissedEntityIds]
+  );
+  const entityCount = visibleEntities.length;
   const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
 
   const handleEntityClick = useCallback((entity: Entity) => {
     setSelectedEntityId((prev) => prev === entity.id ? undefined : entity.id);
   }, []);
+
+  const handleDismissEntity = useCallback((entity: Entity) => {
+    setDismissedEntityIds(prev => new Set(prev).add(entity.id));
+    if (selectedEntityId === entity.id) setSelectedEntityId(undefined);
+  }, [selectedEntityId]);
+
+  const handleClearAllEntities = useCallback(() => {
+    const allIds = new Set((currentSession?.entities || []).map(e => e.id));
+    setDismissedEntityIds(allIds);
+    setSelectedEntityId(undefined);
+  }, [currentSession?.entities]);
 
   const hasActiveHeader = sessionState !== "idle";
 
@@ -698,15 +714,17 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
           </form>
 
           {/* Entity Cards */}
-          {currentSession?.entities?.length ? (
-            <div className="flex-shrink-0 max-h-[25vh] lg:max-h-[30vh] overflow-y-auto border-t border-border/30">
+          {visibleEntities.length > 0 && (
+            <div className="flex-shrink-0 max-h-[20vh] lg:max-h-[25vh] overflow-y-auto border-t border-border/30">
               <EntityCardList
-                entities={currentSession.entities}
+                entities={visibleEntities}
                 selectedId={selectedEntityId}
                 onEntityClick={handleEntityClick}
+                onDismissEntity={handleDismissEntity}
+                onClearAll={handleClearAllEntities}
               />
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </LayoutGroup>
