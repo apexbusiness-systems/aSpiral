@@ -516,7 +516,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       if (restartable.includes(error)) {
         restartCount60sRef.current++;
         if (restartCount60sRef.current < 8) {
-          logger.warn(`Recoverable STT error '${error}' (attempt ${restartCount60sRef.current}/5)`);
+          logger.warn(`Recoverable STT error '${error}' (attempt ${restartCount60sRef.current}/8)`);
           emitDebugEvent({ type: "stt.error", data: { error, aggressiveRestart: true, attempt: restartCount60sRef.current } });
 
           // ALWAYS recreate — an errored SpeechRecognition throws InvalidStateError on .start()
