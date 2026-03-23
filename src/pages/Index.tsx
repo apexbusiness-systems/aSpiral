@@ -79,7 +79,7 @@ const Index = () => {
       />
       
       {/* Header with enhanced glow on logo */}
-      <header className="relative z-50 border-b border-border/50 px-4 sm:px-6 py-3 sm:py-4 glass-card rounded-none border-x-0 border-t-0">
+      <header className="relative z-20 border-b border-border/50 px-4 sm:px-6 py-3 sm:py-4 glass-card rounded-none border-x-0 border-t-0">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <motion.div 
             className="flex items-center gap-3"
@@ -107,8 +107,8 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Chat Area - flex-1 with min-h-0 to allow proper shrinking on mobile */}
-      <main className="relative z-10 flex-1 min-h-0 overflow-hidden">
+      {/* Main Chat Area - NO z-index to avoid stacking context trap for fixed-positioned children */}
+      <main className="relative flex-1 min-h-0 overflow-hidden">
         <SpiralChat ref={chatRef} />
       </main>
 
