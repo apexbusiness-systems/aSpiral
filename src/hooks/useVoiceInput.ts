@@ -48,11 +48,11 @@ const DEDUPE_WINDOW_MS = 2_000;
 const SETTINGS_STORAGE_KEY = "aspiral_settings_v1";
 const INTERIM_UPDATE_INTERVAL_MS = 100;
 /** Total inactivity guard — restart if no audio events for this long */
-const SILENCE_INACTIVITY_MS = 30_000;
+const SILENCE_INACTIVITY_MS = 120_000; // 2 minutes — was 30s, too aggressive for natural pauses
 /** Default watchdog polling interval */
-const WATCHDOG_DEFAULT_MS = 90_000;
+const WATCHDOG_DEFAULT_MS = 120_000; // 2 minutes
 /** Max restarts within a 60s window before entering Error state */
-const MAX_RESTARTS_60S = 3;
+const MAX_RESTARTS_60S = 6; // was 3, too strict — allow more recovery attempts
 /** Base delay for exponential backoff on error restarts */
 const RESTART_BACKOFF_BASE_MS = 250;
 
@@ -233,8 +233,8 @@ function playTone(startHz: number, endHz: number): void {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}) {
-  const silenceTimeoutMs = Math.max(800, Math.min(10_000, options.silenceTimeoutMs ?? 5_000));
-  const watchdogIntervalMs = Math.max(15_000, Math.min(120_000, options.watchdogIntervalMs ?? WATCHDOG_DEFAULT_MS));
+  const silenceTimeoutMs = Math.max(800, Math.min(30_000, options.silenceTimeoutMs ?? 15_000));
+  const watchdogIntervalMs = Math.max(15_000, Math.min(180_000, options.watchdogIntervalMs ?? WATCHDOG_DEFAULT_MS));
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [isSupported, setIsSupported] = useState(false);
@@ -335,11 +335,17 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       if (now - lastRestartTimeRef.current < 60_000) {
         restartCount60sRef.current++;
         if (restartCount60sRef.current >= MAX_RESTARTS_60S) {
-          logger.error("STT watchdog: max restarts in 60s — entering Error state");
-          emitDebugEvent({ type: "stt.error", data: { error: "stalled", restarts: restartCount60sRef.current } });
-          toast.error("Mic stalled — tap to restart");
-          setVoiceState("Error");
-          stopRecordingRef.current();
+          // Instead of permanent Error state, do a clean restart after a cooldown
+          logger.warn("STT watchdog: max restarts in 60s — cooling down 5s then retrying");
+          emitDebugEvent({ type: "stt.error", data: { error: "stalled_cooldown", restarts: restartCount60sRef.current } });
+          setVoiceState("Reconnecting");
+          // Cool down for 5 seconds, then reset counter and try again
+          setTimeout(() => {
+            restartCount60sRef.current = 0;
+            lastRestartTimeRef.current = Date.now();
+            restartRequestedRef.current = true;
+            try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+          }, 5_000);
           return;
         }
       } else {
@@ -509,7 +515,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
       if (restartable.includes(error)) {
         restartCount60sRef.current++;
-        if (restartCount60sRef.current < 5) {
+        if (restartCount60sRef.current < 8) {
           logger.warn(`Recoverable STT error '${error}' (attempt ${restartCount60sRef.current}/5)`);
           emitDebugEvent({ type: "stt.error", data: { error, aggressiveRestart: true, attempt: restartCount60sRef.current } });
 
@@ -775,6 +781,34 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   useEffect(() => {
     updateListeningState(isRecording && !isPaused);
   }, [isRecording, isPaused]);
+
+  // ── Visibility change: re-start recognition when app returns from background ──
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isRecording && !isPausedRef.current) {
+        // App came back from background while recording — recognition likely died
+        // Recreate it silently
+        logger.info("App foregrounded — restarting recognition");
+        restartCount60sRef.current = 0; // Reset restart counter
+        const newR = createRecognitionRef.current?.({ onErrorContext: "visibility_restart" });
+        if (newR) {
+          if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch { /* ignore */ }
+          }
+          recognitionRef.current = newR;
+          setTimeout(() => {
+            try { newR.start(); } catch (e) { logger.warn("Visibility restart failed", { error: e }); }
+          }, 300);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isRecording]);
 
   // ── Unmount cleanup ────────────────────────────────────────────────────────
 

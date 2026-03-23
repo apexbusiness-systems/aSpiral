@@ -77,9 +77,9 @@ export function AdaptiveEntity({
     [entity.metadata?.valence, entity.type]
   );
 
-  // Size based on importance
+  // Size based on importance - compact for mobile
   const importance = entity.metadata?.importance || 0.5;
-  const baseSize = 0.25 + importance * 0.25;
+  const baseSize = 0.18 + importance * 0.17;
 
   // Determine if label should show
   const shouldShowLabel = useMemo(() => {
@@ -158,38 +158,41 @@ export function AdaptiveEntity({
           />
         </mesh>
 
-        {/* Adaptive label using Html for better rendering */}
+        {/* Adaptive label using Html - compact for mobile */}
         {shouldShowLabel && (
           <Html
-            position={[0, baseSize + 0.4, 0]}
+            position={[0, baseSize + 0.3, 0]}
             center
-            distanceFactor={8}
+            distanceFactor={10}
             style={{ pointerEvents: "none" }}
             zIndexRange={[0, 10]}
           >
             <div
               className="entity-label"
               style={{
-                background: "rgba(0, 0, 0, 0.85)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "8px",
-                padding: "6px 12px",
+                background: "rgba(0, 0, 0, 0.8)",
+                backdropFilter: "blur(6px)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                borderRadius: "6px",
+                padding: "3px 8px",
                 fontFamily: "var(--font-body, system-ui)",
-                fontSize: "12px",
+                fontSize: "10px",
                 fontWeight: 500,
                 color: "white",
                 whiteSpace: "nowrap",
+                maxWidth: "140px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
                 animation: "labelFadeIn 0.2s ease-out",
               }}
             >
               {entity.label}
               <div
                 style={{
-                  fontSize: "9px",
+                  fontSize: "7px",
                   color: color,
                   textTransform: "uppercase",
-                  marginTop: "2px",
+                  marginTop: "1px",
                   opacity: 0.8,
                 }}
               >
