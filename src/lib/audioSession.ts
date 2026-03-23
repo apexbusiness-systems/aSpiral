@@ -203,7 +203,7 @@ export async function unlockAudioFromGesture(): Promise<void> {
 
   // Play a silent audio buffer to fully unlock audio on iOS/PWA
   try {
-    if (audioContext && audioContext.state === 'running') {
+    if (audioContext?.state === 'running') {
       const silentBuffer = audioContext.createBuffer(1, 1, 22050);
       const source = audioContext.createBufferSource();
       source.buffer = silentBuffer;
@@ -222,7 +222,7 @@ export async function unlockAudioFromGesture(): Promise<void> {
  */
 async function ensureAudioContext(): Promise<void> {
   // Re-create if closed (can happen after PWA background/foreground cycle)
-  if (audioContext && audioContext.state === 'closed') {
+  if (audioContext?.state === 'closed') {
     audioContext = null;
   }
 
@@ -233,7 +233,7 @@ async function ensureAudioContext(): Promise<void> {
     }
   }
 
-  if (audioContext && audioContext.state === 'suspended') {
+  if (audioContext?.state === 'suspended') {
     try {
       await audioContext.resume();
     } catch (error) {
@@ -602,13 +602,13 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   }
 
   // Wait for voices to load if empty (async on some browsers/PWAs)
-  let voices = window.speechSynthesis.getVoices();
+  let voices = globalThis.speechSynthesis.getVoices();
   if (voices.length === 0) {
     voices = await new Promise<SpeechSynthesisVoice[]>((resolve) => {
       const timeout = setTimeout(() => resolve([]), 1000);
-      window.speechSynthesis.addEventListener('voiceschanged', () => {
+      globalThis.speechSynthesis.addEventListener('voiceschanged', () => {
         clearTimeout(timeout);
-        resolve(window.speechSynthesis.getVoices());
+        resolve(globalThis.speechSynthesis.getVoices());
       }, { once: true });
     });
   }
