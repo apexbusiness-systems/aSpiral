@@ -147,7 +147,7 @@ describe('detectPatternsEarly', () => {
     const patterns = detectPatternsEarly("I can't control anything, it's chaos", []);
     const match = patterns.find(p => p.name === 'control-vs-chaos');
     expect(match).toBeDefined();
-    expect(match!.confidence).toBeGreaterThan(0);
+    expect(match?.confidence).toBeGreaterThan(0);
   });
 
   it('increases confidence with more keyword matches', () => {
@@ -157,7 +157,7 @@ describe('detectPatternsEarly', () => {
     const lowMatch = low.find(p => p.name === 'control-vs-chaos');
     const highMatch = high.find(p => p.name === 'control-vs-chaos');
 
-    expect(highMatch!.confidence).toBeGreaterThan(lowMatch!.confidence);
+    expect(highMatch?.confidence).toBeGreaterThan(lowMatch?.confidence ?? 0);
   });
 
   it('requires 4+ keywords to exceed 0.9 confidence', () => {
@@ -165,13 +165,13 @@ describe('detectPatternsEarly', () => {
     const threeKw = detectPatternsEarly("control chaos helpless", []);
     const match3 = threeKw.find(p => p.name === 'control-vs-chaos');
     expect(match3).toBeDefined();
-    expect(match3!.confidence).toBeLessThanOrEqual(0.9);
+    expect(match3?.confidence).toBeLessThanOrEqual(0.9);
 
     // 4 keywords: 0.4 + 4*0.15 = 1.0 capped at 0.95 (above 0.9)
     const fourKw = detectPatternsEarly("control chaos helpless unpredictable", []);
     const match4 = fourKw.find(p => p.name === 'control-vs-chaos');
     expect(match4).toBeDefined();
-    expect(match4!.confidence).toBeGreaterThan(0.9);
+    expect(match4?.confidence).toBeGreaterThan(0.9);
   });
 
   it('accumulates keywords from conversation history', () => {
@@ -180,7 +180,7 @@ describe('detectPatternsEarly', () => {
     const match = patterns.find(p => p.name === 'control-vs-chaos');
     expect(match).toBeDefined();
     // "control" + "out of control" from history + "chaos" + "unpredictable" = 4+ keywords
-    expect(match!.confidence).toBeGreaterThan(0.7);
+    expect(match?.confidence).toBeGreaterThan(0.7);
   });
 
   it('returns empty array for no pattern matches', () => {
