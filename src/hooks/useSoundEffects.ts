@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
  
 /**
  * Web Audio API Sound Effects Hook
@@ -59,7 +60,7 @@ export function useSoundEffects(options: SoundEffectsOptions = {}) {
       osc.frequency.value = freq * (1 + intensity * 0.5);
 
       // Add slight detune for metallic sound
-      osc.detune.value = (Math.random() - 0.5) * 50;
+      osc.detune.value = (secureMathRandom() - 0.5) * 50;
 
       // Bandpass filter for metallic resonance
       filter.type = "bandpass";
@@ -79,7 +80,7 @@ export function useSoundEffects(options: SoundEffectsOptions = {}) {
       // Modulate frequency for grinding effect
       const lfo = ctx.createOscillator();
       const lfoGain = ctx.createGain();
-      lfo.frequency.value = 4 + Math.random() * 4; // 4-8 Hz wobble
+      lfo.frequency.value = 4 + secureMathRandom() * 4; // 4-8 Hz wobble
       lfoGain.gain.value = freq * 0.1 * intensity;
       lfo.connect(lfoGain);
       lfoGain.connect(osc.frequency);
@@ -91,7 +92,7 @@ export function useSoundEffects(options: SoundEffectsOptions = {}) {
     const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
     const noiseData = noiseBuffer.getChannelData(0);
     for (let i = 0; i < noiseData.length; i++) {
-      noiseData[i] = (Math.random() * 2 - 1) * 0.5;
+      noiseData[i] = (secureMathRandom() * 2 - 1) * 0.5;
     }
 
     grindingOscillatorsRef.current = oscillators;
@@ -169,7 +170,7 @@ export function useSoundEffects(options: SoundEffectsOptions = {}) {
     const noiseData = noiseBuffer.getChannelData(0);
 
     for (let i = 0; i < bufferSize; i++) {
-      noiseData[i] = (Math.random() * 2 - 1);
+      noiseData[i] = (secureMathRandom() * 2 - 1);
     }
 
     const noise = ctx.createBufferSource();
@@ -282,7 +283,7 @@ export function useSoundEffects(options: SoundEffectsOptions = {}) {
     const whooshBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
     const whooshData = whooshBuffer.getChannelData(0);
     for (let i = 0; i < whooshData.length; i++) {
-      whooshData[i] = (Math.random() * 2 - 1) * (1 - i / whooshData.length);
+      whooshData[i] = (secureMathRandom() * 2 - 1) * (1 - i / whooshData.length);
     }
     const whoosh = ctx.createBufferSource();
     whoosh.buffer = whooshBuffer;

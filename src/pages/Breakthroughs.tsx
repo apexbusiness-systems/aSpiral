@@ -27,7 +27,7 @@ import {
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { exportBreakthroughCard } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
-import { fetchUserStreakDays } from '@/lib/profileStreak';
+
 import { cn } from '@/lib/utils';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/normalizeError';
@@ -42,6 +42,24 @@ interface BreakthroughItem {
 }
 
 const logger = createLogger('BreakthroughsPage');
+
+const matchesSearch = (b: BreakthroughItem, q: string) => {
+  if (!q) return true;
+  const query = q.toLowerCase();
+  return (
+    b.friction.toLowerCase().includes(query) ||
+    b.grease.toLowerCase().includes(query) ||
+    b.insight.toLowerCase().includes(query)
+  );
+};
+
+const matchesDateRange = (dateString: string, from?: Date, to?: Date) => {
+  if (!from && !to) return true;
+  const date = new Date(dateString);
+  if (from && isBefore(date, startOfDay(from))) return false;
+  if (to && isAfter(date, endOfDay(to))) return false;
+  return true;
+};
 
 const Breakthroughs = () => {
   const navigate = useNavigate();
@@ -98,20 +116,7 @@ const Breakthroughs = () => {
 
   const filtered = useMemo(() => {
     return breakthroughs.filter((b) => {
-      // Text search
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const matches =
-          b.friction.toLowerCase().includes(q) ||
-          b.grease.toLowerCase().includes(q) ||
-          b.insight.toLowerCase().includes(q);
-        if (!matches) return false;
-      }
-      // Date range
-      const date = new Date(b.achieved_at);
-      if (dateFrom && isBefore(date, startOfDay(dateFrom))) return false;
-      if (dateTo && isAfter(date, endOfDay(dateTo))) return false;
-      return true;
+      return matchesSearch(b, searchQuery) && matchesDateRange(b.achieved_at, dateFrom, dateTo);
     });
   }, [breakthroughs, searchQuery, dateFrom, dateTo]);
 
@@ -157,14 +162,14 @@ const Breakthroughs = () => {
                 Breakthrough Gallery
               </h1>
               <p className="text-sm text-muted-foreground">
-                {breakthroughs.length} breakthrough{breakthroughs.length !== 1 ? 's' : ''} achieved
+                {breakthroughs.length} breakthrough{breakthroughs.length === 1 ? '' : 's'} achieved
               </p>
             </div>
             {streakDays > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/15 border border-warning/30 text-warning">
                 <Flame className="w-4 h-4" />
                 <span className="text-sm font-semibold">{streakDays}</span>
-                <span className="text-xs text-warning/80">day{streakDays !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-warning/80">day{streakDays === 1 ? '' : 's'}</span>
               </div>
             )}
           </div>

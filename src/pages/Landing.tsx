@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -375,21 +376,21 @@ const Landing = () => {
                   key={i}
                   className="absolute rounded-full bg-primary/40"
                   style={{
-                    width: Math.random() * 6 + 3,
-                    height: Math.random() * 6 + 3,
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
+                    width: secureMathRandom() * 6 + 3,
+                    height: secureMathRandom() * 6 + 3,
+                    left: `${secureMathRandom() * 100}%`,
+                    top: `${secureMathRandom() * 100}%`,
                   }}
                   animate={{
                     y: [0, -30, 0],
-                    x: [0, Math.random() * 20 - 10, 0],
+                    x: [0, secureMathRandom() * 20 - 10, 0],
                     opacity: [0.3, 0.8, 0.3],
                     scale: [1, 1.3, 1],
                   }}
                   transition={{
-                    duration: 3 + Math.random() * 2,
+                    duration: 3 + secureMathRandom() * 2,
                     repeat: Infinity,
-                    delay: Math.random() * 2,
+                    delay: secureMathRandom() * 2,
                     ease: "easeInOut",
                   }}
                 />
@@ -400,19 +401,19 @@ const Landing = () => {
                   key={`secondary-${i}`}
                   className="absolute rounded-full bg-secondary/50"
                   style={{
-                    width: Math.random() * 4 + 2,
-                    height: Math.random() * 4 + 2,
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
+                    width: secureMathRandom() * 4 + 2,
+                    height: secureMathRandom() * 4 + 2,
+                    left: `${secureMathRandom() * 100}%`,
+                    top: `${secureMathRandom() * 100}%`,
                   }}
                   animate={{
                     y: [0, -25, 0],
                     opacity: [0.2, 0.6, 0.2],
                   }}
                   transition={{
-                    duration: 4 + Math.random() * 2,
+                    duration: 4 + secureMathRandom() * 2,
                     repeat: Infinity,
-                    delay: Math.random() * 3,
+                    delay: secureMathRandom() * 3,
                     ease: "easeInOut",
                   }}
                 />

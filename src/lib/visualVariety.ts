@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Visual Variety Engine
  * Ensures each spiral looks UNIQUE based on content
@@ -138,9 +139,9 @@ export function calculateEntityPosition(
   // Add jitter based on valence
   const jitter = Math.abs(valence) * 0.3;
   const randomOffset: [number, number, number] = [
-    (Math.random() - 0.5) * jitter,
-    (Math.random() - 0.5) * jitter,
-    (Math.random() - 0.5) * jitter,
+    (secureMathRandom() - 0.5) * jitter,
+    (secureMathRandom() - 0.5) * jitter,
+    (secureMathRandom() - 0.5) * jitter,
   ];
 
   return [

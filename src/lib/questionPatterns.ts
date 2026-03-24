@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Diverse question pattern library for natural conversation
  * NOT: All "what" questions
@@ -143,7 +144,7 @@ export const STAGE_PATTERNS: Record<string, PatternCategory[]> = {
  */
 export function getRandomPattern(category: PatternCategory): string {
   const patterns = QUESTION_PATTERNS[category];
-  return patterns[Math.floor(Math.random() * patterns.length)];
+  return patterns[Math.floor(secureMathRandom() * patterns.length)];
 }
 
 /**

@@ -149,7 +149,7 @@ const faqCategories = [
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function ContactCardCta({ card }: { card: (typeof contactCards)[number] }) {
+function ContactCardCta({ card }: { readonly card: (typeof contactCards)[number] }) {
   const linkClass = `inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
     card.accent ? "text-secondary hover:text-secondary/80" : "text-primary hover:text-primary/80"
   }`;
@@ -175,7 +175,7 @@ function ContactCardCta({ card }: { card: (typeof contactCards)[number] }) {
   );
 }
 
-function FaqItem({ item }: { item: { q: string; a: string } }) {
+function FaqItem({ item }: { readonly item: { q: string; a: string } }) {
   return (
     <AccordionItem
       value={item.q}

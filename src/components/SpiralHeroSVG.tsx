@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * SPIRAL HERO VISUAL - Lightweight CSS-only visual replacement for WebGL
  * Keeps FPS stable on mobile while delivering a cohesive glass/aurora look.
@@ -17,10 +18,10 @@ export function SpiralHeroSVG({ className }: SpiralHeroSVGProps) {
     () =>
       Array.from({ length: 10 }, (_, i) => ({
         id: i,
-        left: 30 + Math.random() * 40,
-        top: 28 + Math.random() * 44,
-        delay: Math.random() * 2,
-        duration: 3 + Math.random() * 2,
+        left: 30 + secureMathRandom() * 40,
+        top: 28 + secureMathRandom() * 44,
+        delay: secureMathRandom() * 2,
+        duration: 3 + secureMathRandom() * 2,
       })),
     []
   );

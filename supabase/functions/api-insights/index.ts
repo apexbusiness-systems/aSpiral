@@ -11,6 +11,91 @@ const getCorsHeaders = (origin: string) => ({
   'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*") ? origin : ALLOWED_ORIGINS[0],
 });
 
+async function handleSessionInsights(supabase: any, origin: string, sessionId: string, userId: string): Promise<Response> {
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!session) {
+    return new Response(JSON.stringify({ error: 'Session not found' }), {
+      status: 404,
+      headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
+    });
+  }
+
+  const [breakthroughs, entities, frictionPoints, messages] = await Promise.all([
+    supabase.from('breakthroughs').select('*').eq('session_id', sessionId),
+    supabase.from('entities').select('type, energy').eq('session_id', sessionId),
+    supabase.from('friction_points').select('resolved').eq('session_id', sessionId),
+    supabase.from('messages').select('*', { count: 'exact', head: true }).eq('session_id', sessionId),
+  ]);
+
+  const insights = {
+    session_id: sessionId,
+    summary: {
+      total_breakthroughs: breakthroughs.data?.length || 0,
+      total_entities: entities.data?.length || 0,
+      total_friction_points: frictionPoints.data?.length || 0,
+      resolved_friction_points: frictionPoints.data?.filter((f: any) => f.resolved).length || 0,
+      total_messages: messages.count || 0,
+    },
+    breakthroughs: breakthroughs.data || [],
+    entity_types: entities.data?.reduce((acc: Record<string, number>, e: any) => {
+      acc[e.type] = (acc[e.type] || 0) + 1;
+      return acc;
+    }, {}) || {},
+    energy_distribution: entities.data?.reduce((acc: Record<string, number>, e: any) => {
+      acc[e.energy] = (acc[e.energy] || 0) + 1;
+      return acc;
+    }, {}) || {},
+  };
+
+  return new Response(JSON.stringify({ insights }), {
+    headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
+  });
+}
+
+async function handleUserInsights(supabase: any, origin: string, userId: string): Promise<Response> {
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('sessions')
+    .select('id, created_at')
+    .eq('user_id', userId);
+
+  if (sessionsError) throw sessionsError;
+
+  const sessionIds = sessions?.map((s: any) => s.id) || [];
+  let userBreakthroughs: any[] = [];
+
+  if (sessionIds.length > 0) {
+    const { data: breakthroughs, error: breakthroughsError } = await supabase
+      .from('breakthroughs')
+      .select('id, session_id, created_at')
+      .in('session_id', sessionIds);
+
+    if (breakthroughsError) throw breakthroughsError;
+    userBreakthroughs = breakthroughs || [];
+  }
+
+  const insights = {
+    total_sessions: sessions?.length || 0,
+    total_breakthroughs: userBreakthroughs.length,
+    sessions_this_week: sessions?.filter((s: any) => {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return new Date(s.created_at) > weekAgo;
+    }).length || 0,
+    avg_breakthroughs_per_session: sessionIds.length > 0
+      ? (userBreakthroughs.length / sessionIds.length).toFixed(2)
+      : 0,
+  };
+
+  return new Response(JSON.stringify({ insights }), {
+    headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin") || "";
 
@@ -42,88 +127,9 @@ serve(async (req) => {
     }
 
     if (sessionId) {
-      // Get insights for a specific session
-      const { data: session } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('id', sessionId)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!session) {
-        return new Response(JSON.stringify({ error: 'Session not found' }), {
-          status: 404,
-          headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
-        });
-      }
-
-      const [breakthroughs, entities, frictionPoints, messages] = await Promise.all([
-        supabase.from('breakthroughs').select('*').eq('session_id', sessionId),
-        supabase.from('entities').select('type, energy').eq('session_id', sessionId),
-        supabase.from('friction_points').select('resolved').eq('session_id', sessionId),
-        supabase.from('messages').select('*', { count: 'exact', head: true }).eq('session_id', sessionId),
-      ]);
-
-      const insights = {
-        session_id: sessionId,
-        summary: {
-          total_breakthroughs: breakthroughs.data?.length || 0,
-          total_entities: entities.data?.length || 0,
-          total_friction_points: frictionPoints.data?.length || 0,
-          resolved_friction_points: frictionPoints.data?.filter(f => f.resolved).length || 0,
-          total_messages: messages.count || 0,
-        },
-        breakthroughs: breakthroughs.data || [],
-        entity_types: entities.data?.reduce((acc: Record<string, number>, e) => {
-          acc[e.type] = (acc[e.type] || 0) + 1;
-          return acc;
-        }, {}) || {},
-        energy_distribution: entities.data?.reduce((acc: Record<string, number>, e) => {
-          acc[e.energy] = (acc[e.energy] || 0) + 1;
-          return acc;
-        }, {}) || {},
-      };
-
-      return new Response(JSON.stringify({ insights }), {
-        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
-      });
+      return await handleSessionInsights(supabase, origin, sessionId, userId);
     } else {
-      // Get overall user insights
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('id, created_at')
-        .eq('user_id', userId);
-
-      if (sessionsError) throw sessionsError;
-
-      const sessionIds = sessions?.map(s => s.id) || [];
-      let userBreakthroughs = [];
-
-      if (sessionIds.length > 0) {
-        const { data: breakthroughs, error: breakthroughsError } = await supabase
-          .from('breakthroughs')
-          .select('id, session_id, created_at')
-          .in('session_id', sessionIds);
-
-        if (breakthroughsError) throw breakthroughsError;
-        userBreakthroughs = breakthroughs || [];
-      }
-
-      const insights = {
-        total_sessions: sessions?.length || 0,
-        total_breakthroughs: userBreakthroughs.length,
-        sessions_this_week: sessions?.filter(s => {
-          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-          return new Date(s.created_at) > weekAgo;
-        }).length || 0,
-        avg_breakthroughs_per_session: sessionIds.length > 0
-          ? (userBreakthroughs.length / sessionIds.length).toFixed(2)
-          : 0,
-      };
-
-      return new Response(JSON.stringify({ insights }), {
-        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
-      });
+      return await handleUserInsights(supabase, origin, userId);
     }
 
   } catch (error: unknown) {

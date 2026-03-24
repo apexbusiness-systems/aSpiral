@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * aSpiral Retry Utilities
  * Exponential backoff with jitter
@@ -57,7 +58,7 @@ export async function retryWithBackoff<T>(
 
       // Calculate delay with exponential backoff + jitter
       const exponentialDelay = finalConfig.baseDelay * Math.pow(2, attempt);
-      const jitter = Math.random() * 1000;
+      const jitter = secureMathRandom() * 1000;
       const delay = Math.min(exponentialDelay + jitter, finalConfig.maxDelay);
 
       logger.warn(`Attempt ${attempt + 1} failed, retrying in ${Math.round(delay)}ms`, {

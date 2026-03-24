@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Particle System for ASPIRAL Cinematics
  * GPU-accelerated instanced rendering for thousands of particles
@@ -250,10 +251,10 @@ function createParticle(
   speedVariation: number,
   lifetime: number
 ): Particle {
-  const color = colors[Math.floor(Math.random() * colors.length)];
-  const particleSize = size * (1 + (Math.random() - 0.5) * sizeVariation);
-  const particleSpeed = speed * (1 + (Math.random() - 0.5) * speedVariation);
-  const life = lifetime * (0.8 + Math.random() * 0.4);
+  const color = colors[Math.floor(secureMathRandom() * colors.length)];
+  const particleSize = size * (1 + (secureMathRandom() - 0.5) * sizeVariation);
+  const particleSpeed = speed * (1 + (secureMathRandom() - 0.5) * speedVariation);
+  const life = lifetime * (0.8 + secureMathRandom() * 0.4);
 
   let position: THREE.Vector3;
   let velocity: THREE.Vector3;
@@ -262,9 +263,9 @@ function createParticle(
     case 'vortex': {
       const radius = (patternParams.radius as number) || 5;
       const height = (patternParams.height as number) || 15;
-      const angle = Math.random() * Math.PI * 2;
-      const r = Math.random() * radius;
-      const y = Math.random() * height - height / 2;
+      const angle = secureMathRandom() * Math.PI * 2;
+      const r = secureMathRandom() * radius;
+      const y = secureMathRandom() * height - height / 2;
 
       position = new THREE.Vector3(Math.cos(angle) * r, y, Math.sin(angle) * r);
 
@@ -280,15 +281,15 @@ function createParticle(
       const initialRadius = (patternParams.initialRadius as number) || 0.5;
 
       position = new THREE.Vector3(
-        (Math.random() - 0.5) * initialRadius,
-        (Math.random() - 0.5) * initialRadius,
-        (Math.random() - 0.5) * initialRadius
+        (secureMathRandom() - 0.5) * initialRadius,
+        (secureMathRandom() - 0.5) * initialRadius,
+        (secureMathRandom() - 0.5) * initialRadius
       );
 
       if (spherical) {
         // Spherical explosion
-        const phi = Math.random() * Math.PI * 2;
-        const theta = Math.random() * Math.PI;
+        const phi = secureMathRandom() * Math.PI * 2;
+        const theta = secureMathRandom() * Math.PI;
         velocity = new THREE.Vector3(
           Math.sin(theta) * Math.cos(phi),
           Math.sin(theta) * Math.sin(phi),
@@ -297,9 +298,9 @@ function createParticle(
       } else {
         // Random direction
         velocity = new THREE.Vector3(
-          Math.random() - 0.5,
-          Math.random() - 0.5,
-          Math.random() - 0.5
+          secureMathRandom() - 0.5,
+          secureMathRandom() - 0.5,
+          secureMathRandom() - 0.5
         )
           .normalize()
           .multiplyScalar(particleSpeed);
@@ -313,13 +314,13 @@ function createParticle(
       const fallSpeed = (patternParams.fallSpeed as number) || 5;
 
       const spread = density === 'high' ? 20 : density === 'medium' ? 15 : 10;
-      const col = Math.floor(Math.random() * columns);
+      const col = Math.floor(secureMathRandom() * columns);
       const colWidth = spread / columns;
 
       position = new THREE.Vector3(
-        col * colWidth - spread / 2 + (Math.random() - 0.5) * colWidth,
-        10 + Math.random() * 10,
-        (Math.random() - 0.5) * spread
+        col * colWidth - spread / 2 + (secureMathRandom() - 0.5) * colWidth,
+        10 + secureMathRandom() * 10,
+        (secureMathRandom() - 0.5) * spread
       );
 
       velocity = new THREE.Vector3(0, -fallSpeed, 0);
@@ -332,14 +333,14 @@ function createParticle(
       const radius = (patternParams.radius as number) || 15;
 
       if (cylindrical) {
-        const angle = Math.random() * Math.PI * 2;
-        const r = radius + (Math.random() - 0.5) * 5;
-        position = new THREE.Vector3(Math.cos(angle) * r, (Math.random() - 0.5) * 10, Math.sin(angle) * r);
+        const angle = secureMathRandom() * Math.PI * 2;
+        const r = radius + (secureMathRandom() - 0.5) * 5;
+        position = new THREE.Vector3(Math.cos(angle) * r, (secureMathRandom() - 0.5) * 10, Math.sin(angle) * r);
       } else {
         position = new THREE.Vector3(
-          (Math.random() - 0.5) * radius * 2,
-          (Math.random() - 0.5) * 10,
-          (Math.random() - 0.5) * radius * 2
+          (secureMathRandom() - 0.5) * radius * 2,
+          (secureMathRandom() - 0.5) * 10,
+          (secureMathRandom() - 0.5) * radius * 2
         );
       }
 
@@ -355,10 +356,10 @@ function createParticle(
     case 'ring': {
       const radius = (patternParams.radius as number) || 10;
       const thickness = (patternParams.thickness as number) || 2;
-      const angle = Math.random() * Math.PI * 2;
-      const r = radius + (Math.random() - 0.5) * thickness;
+      const angle = secureMathRandom() * Math.PI * 2;
+      const r = radius + (secureMathRandom() - 0.5) * thickness;
 
-      position = new THREE.Vector3(Math.cos(angle) * r, (Math.random() - 0.5) * thickness, Math.sin(angle) * r);
+      position = new THREE.Vector3(Math.cos(angle) * r, (secureMathRandom() - 0.5) * thickness, Math.sin(angle) * r);
 
       // Tangential velocity (rotation)
       velocity = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle)).multiplyScalar(particleSpeed);
@@ -367,9 +368,9 @@ function createParticle(
 
     case 'spiral':
     default: {
-      const angle = Math.random() * Math.PI * 2;
-      const r = Math.random() * 5;
-      const y = Math.random() * 10;
+      const angle = secureMathRandom() * Math.PI * 2;
+      const r = secureMathRandom() * 5;
+      const y = secureMathRandom() * 10;
 
       position = new THREE.Vector3(Math.cos(angle) * r, y, Math.sin(angle) * r);
       velocity = new THREE.Vector3(

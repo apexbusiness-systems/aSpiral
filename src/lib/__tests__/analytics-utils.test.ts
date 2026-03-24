@@ -3,7 +3,7 @@
  * Verifies core analytics logic and error handling
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { isAnalyticsEnabled, ANALYTICS_ENABLED_KEY } from '../analytics-utils';
 
 // Mock localStorage for Node environment

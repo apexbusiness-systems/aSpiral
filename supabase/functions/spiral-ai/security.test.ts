@@ -1,3 +1,4 @@
+import { secureMathRandom } from "./secureMathRandom.ts";
 /**
  * SECURITY E2E PRODUCTION TESTS
  * 
@@ -55,11 +56,11 @@ import { ComplianceLogger } from "./compliance-logger.ts";
 // =============================================================================
 
 function generateRequestId(): string {
-  return `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `test-${Date.now()}-${secureMathRandom().toString(36).substr(2, 9)}`;
 }
 
 function generateUserId(): string {
-  return `user-${Math.random().toString(36).substr(2, 9)}`;
+  return `user-${secureMathRandom().toString(36).substr(2, 9)}`;
 }
 
 // =============================================================================

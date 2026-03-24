@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 
@@ -23,13 +24,13 @@ export function FloatingParticles({
   const primaryParticles = useMemo(() => 
     Array.from({ length: primaryCount }, (_, i) => ({
       id: i,
-      width: Math.random() * 6 + 3,
-      height: Math.random() * 6 + 3,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      xOffset: Math.random() * 20 - 10,
-      duration: 3 + Math.random() * 2,
-      delay: Math.random() * 2,
+      width: secureMathRandom() * 6 + 3,
+      height: secureMathRandom() * 6 + 3,
+      left: secureMathRandom() * 100,
+      top: secureMathRandom() * 100,
+      xOffset: secureMathRandom() * 20 - 10,
+      duration: 3 + secureMathRandom() * 2,
+      delay: secureMathRandom() * 2,
     })),
     [primaryCount]
   );
@@ -37,12 +38,12 @@ export function FloatingParticles({
   const secondaryParticles = useMemo(() => 
     Array.from({ length: secondaryCount }, (_, i) => ({
       id: i,
-      width: Math.random() * 4 + 2,
-      height: Math.random() * 4 + 2,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      duration: 4 + Math.random() * 2,
-      delay: Math.random() * 3,
+      width: secureMathRandom() * 4 + 2,
+      height: secureMathRandom() * 4 + 2,
+      left: secureMathRandom() * 100,
+      top: secureMathRandom() * 100,
+      duration: 4 + secureMathRandom() * 2,
+      delay: secureMathRandom() * 3,
     })),
     [secondaryCount]
   );

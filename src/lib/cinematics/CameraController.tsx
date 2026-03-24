@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Camera Controller for ASPIRAL Cinematics
  * Handles smooth camera animations with easing
@@ -152,9 +153,9 @@ export const CameraController = forwardRef<CameraControllerRef, CameraController
 
       // Apply camera shake if enabled
       if (enableShake && progress < 0.9) {
-        const shakeX = (Math.random() - 0.5) * shakeIntensity;
-        const shakeY = (Math.random() - 0.5) * shakeIntensity;
-        const shakeZ = (Math.random() - 0.5) * shakeIntensity;
+        const shakeX = (secureMathRandom() - 0.5) * shakeIntensity;
+        const shakeY = (secureMathRandom() - 0.5) * shakeIntensity;
+        const shakeZ = (secureMathRandom() - 0.5) * shakeIntensity;
         shakeVec.current.set(shakeX, shakeY, shakeZ);
         currentPos.current.add(shakeVec.current);
       }

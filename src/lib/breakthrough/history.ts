@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Breakthrough History
  * Persistence layer for user breakthrough history using localStorage
@@ -26,7 +27,7 @@ function getAnonymousUserId(): string {
   
   let userId = localStorage.getItem(ANONYMOUS_USER_ID_KEY);
   if (!userId) {
-    userId = `anon_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    userId = `anon_${Date.now()}_${secureMathRandom().toString(36).substring(2, 15)}`;
     localStorage.setItem(ANONYMOUS_USER_ID_KEY, userId);
   }
   return userId;
