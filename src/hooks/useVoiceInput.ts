@@ -395,6 +395,20 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const commitInterimAsFinal = useCallback(() => {
     const interim = interimTranscriptRef.current.trim();
     if (!interim) return;
+
+    // Deduplication: prevent re-sending text already committed as final
+    const normalized = interim.toLowerCase();
+    const now = Date.now();
+    if (normalized === lastFinalText.current && now - lastFinalCommitTime.current < DEDUPE_WINDOW_MS) {
+      audioDebug.log("stt_dedupe", { text: interim, reason: "commit_interim_duplicate" });
+      interimTranscriptRef.current = "";
+      emitInterimUpdate("", true);
+      return;
+    }
+
+    lastFinalText.current = normalized;
+    lastFinalCommitTime.current = now;
+
     setFinalTranscript((prev) => (prev + " " + interim).trim());
     options.onTranscript?.(interim);
     interimTranscriptRef.current = "";
