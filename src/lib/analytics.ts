@@ -188,11 +188,13 @@ export type BreakthroughRejectionReason =
   | 'force_blocked'        // forceBreakthrough() blocked by V2
   | 'cinematic_no_data'    // Cinematic completed but no valid data
   | 'failsafe_no_data'     // Failsafe path had no valid data
-  | 'parse_no_data';       // Breakthrough parsing found no valid data
+  | 'parse_no_data'        // Breakthrough parsing found no valid data
+  | 'stage_gate'           // Blocked: stage too early (friction/desire)
+  | 'entity_gate';         // Blocked: not enough entities visualized
 
 export interface BreakthroughRejectionData {
   reason: BreakthroughRejectionReason;
-  source: 'forceBreakthrough' | 'handleCinematicComplete' | 'failsafe' | 'parse' | 'skipToBreakthrough';
+  source: 'forceBreakthrough' | 'handleCinematicComplete' | 'failsafe' | 'parse' | 'skipToBreakthrough' | 'shouldStopAsking';
   friction?: string;
   grease?: string;
   insight?: string;

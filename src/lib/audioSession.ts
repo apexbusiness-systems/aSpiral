@@ -711,6 +711,7 @@ const TTS_PLAY_TIMEOUT_MS = 15_000;
 async function processQueue() {
   if (isProcessingQueue || ttsQueue.length === 0) return;
   isProcessingQueue = true;
+  markQueueProcessingStart();
 
   try {
     while (ttsQueue.length > 0) {
@@ -791,6 +792,33 @@ async function processQueue() {
   }
 }
 
+// ============================================================================
+// SELF-HEALING: Detect and recover from stuck queue state
+// If isProcessingQueue stays true for too long, forcefully reset it.
+// This prevents a single failure from permanently silencing TTS.
+// ============================================================================
+const STUCK_QUEUE_THRESHOLD_MS = 20_000;
+let queueProcessingStartedAt = 0;
+
+function markQueueProcessingStart() {
+  queueProcessingStartedAt = Date.now();
+}
+
+function isQueueStuck(): boolean {
+  if (!isProcessingQueue) return false;
+  return Date.now() - queueProcessingStartedAt > STUCK_QUEUE_THRESHOLD_MS;
+}
+
+function forceResetStuckQueue() {
+  logger.warn('TTS queue stuck — forcefully resetting for self-healing');
+  audioDebug.error('tts_error', { status: 'stuck_queue_force_reset', stuckDuration: Date.now() - queueProcessingStartedAt });
+  addBreadcrumb({ type: 'audio', message: 'tts_stuck_queue_reset', data: { duration: Date.now() - queueProcessingStartedAt } });
+
+  isProcessingQueue = false;
+  clearQueue();
+  cancelActive('stuck_reset', true);
+}
+
 export async function speak(options: SpeakOptions): Promise<void> {
   if (!featureFlags.voiceEnabled) {
     logger.warn('Voice disabled via VITE_VOICE_ENABLED');
@@ -801,6 +829,11 @@ export async function speak(options: SpeakOptions): Promise<void> {
   if (!trimmed) {
     logger.warn('speak called with empty text');
     return;
+  }
+
+  // Self-heal: if the queue is stuck, force-reset before enqueuing
+  if (isQueueStuck()) {
+    forceResetStuckQueue();
   }
 
   // Ensure AudioContext is active first

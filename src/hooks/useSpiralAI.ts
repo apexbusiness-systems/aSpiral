@@ -494,9 +494,21 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         // Entity gate: must have at least 2 entities visualized
         if (stage === "friction" || stage === "desire") {
           logger.info("Stop requested but stage too early, continuing spiral", { stage, reason: stopCheck.reason });
+          trackBreakthroughRejected({
+            reason: 'stage_gate',
+            source: 'shouldStopAsking',
+            friction: undefined, grease: undefined, insight: undefined,
+            matchedPhrase: undefined,
+          });
           fastTrackRef.current.stage = advanceStage(stage);
         } else if (entityCount < BREAKTHROUGH_MIN_ENTITIES) {
           logger.info("Stop requested but not enough entities visualized", { entityCount, reason: stopCheck.reason });
+          trackBreakthroughRejected({
+            reason: 'entity_gate',
+            source: 'shouldStopAsking',
+            friction: undefined, grease: undefined, insight: undefined,
+            matchedPhrase: undefined,
+          });
         } else {
           logger.info("Stopping questions", { reason: stopCheck.reason, stage, entityCount });
           fastTrackRef.current.readyForBreakthrough = true;
@@ -844,9 +856,17 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             if (stage === "friction" || stage === "desire") {
               // Not deep enough yet — advance stage and keep asking
               logger.info("Max questions reached but stage too early, advancing", { stage, entityCount });
+              trackBreakthroughRejected({
+                reason: 'stage_gate', source: 'shouldStopAsking',
+                friction: undefined, grease: undefined, insight: undefined, matchedPhrase: undefined,
+              });
               fastTrackRef.current.stage = advanceStage(stage);
             } else if (entityCount < BREAKTHROUGH_MIN_ENTITIES) {
               logger.info("Max questions reached but too few entities, continuing", { entityCount });
+              trackBreakthroughRejected({
+                reason: 'entity_gate', source: 'shouldStopAsking',
+                friction: undefined, grease: undefined, insight: undefined, matchedPhrase: undefined,
+              });
             } else {
               logger.info("Max questions reached, next response will be breakthrough");
               fastTrackRef.current.readyForBreakthrough = true;
