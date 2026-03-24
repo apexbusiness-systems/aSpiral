@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * FilmGrainOverlay - Phase 4 Cinematic Polish
  * 
@@ -48,7 +49,7 @@ export function FilmGrainOverlay({
       const data = imageData.data;
       
       for (let i = 0; i < data.length; i += 4) {
-        const noise = Math.random() * 255;
+        const noise = secureMathRandom() * 255;
         data[i] = noise;     // R
         data[i + 1] = noise; // G
         data[i + 2] = noise; // B

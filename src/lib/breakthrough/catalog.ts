@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Breakthrough Catalog
  * 30+ base variants with mutation schemas and procedural generation
@@ -1687,7 +1688,7 @@ export function mutateVariant(variant: BaseVariant, seed: number): MutatedVarian
  * Generate a random seed
  */
 export function generateSeed(): number {
-  return Math.floor(Math.random() * 2147483647);
+  return Math.floor(secureMathRandom() * 2147483647);
 }
 
 /**

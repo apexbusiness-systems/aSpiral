@@ -37,7 +37,7 @@ describe('Idempotency Utilities', () => {
 
     it('includes the date in the key', () => {
       const key = generateIdempotencyKey('op', 'arg1');
-      expect(key).toContain('Mon Jan 01 2024');
+      expect(key).toContain(new Date('2024-01-01T00:00:00Z').toDateString());
     });
   });
 

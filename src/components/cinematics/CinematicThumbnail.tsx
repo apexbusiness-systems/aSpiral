@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Cinematic Thumbnail Preview Component
  * Displays animated preview thumbnails for each cinematic variant
@@ -67,15 +68,15 @@ const AnimatedParticle: React.FC<{
       case 'spiral_ascend':
         return {
           y: [40, -40],
-          x: [0, Math.random() * 20 - 10],
+          x: [0, secureMathRandom() * 20 - 10],
           rotate: [0, 360],
           opacity: [0, 1, 0],
         };
       case 'particle_explosion':
         return {
           scale: [0, 1, 0.5],
-          x: [0, (Math.random() - 0.5) * 60],
-          y: [0, (Math.random() - 0.5) * 60],
+          x: [0, (secureMathRandom() - 0.5) * 60],
+          y: [0, (secureMathRandom() - 0.5) * 60],
           opacity: [1, 0.8, 0],
         };
       case 'portal_reveal':
@@ -104,11 +105,11 @@ const AnimatedParticle: React.FC<{
     <motion.div
       className="absolute rounded-full"
       style={{
-        width: Math.random() * 4 + 2,
-        height: Math.random() * 4 + 2,
+        width: secureMathRandom() * 4 + 2,
+        height: secureMathRandom() * 4 + 2,
         backgroundColor: color,
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
+        left: `${secureMathRandom() * 100}%`,
+        top: `${secureMathRandom() * 100}%`,
         boxShadow: `0 0 6px ${color}`,
       }}
       initial={{ opacity: 0 }}

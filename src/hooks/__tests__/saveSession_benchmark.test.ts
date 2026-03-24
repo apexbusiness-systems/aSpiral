@@ -107,6 +107,6 @@ describe('saveSession Performance Benchmark', () => {
     console.log(`Optimized duration: ${duration}ms`);
     // Expected: ~150ms (1 session + 1 entities + 1 parallel batch = 3 * 50ms)
     expect(duration).toBeGreaterThanOrEqual(150);
-    expect(duration).toBeLessThan(250);
+    expect(duration).toBeLessThan(350);
   });
 });

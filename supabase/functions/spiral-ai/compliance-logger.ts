@@ -1,3 +1,4 @@
+import { secureMathRandom } from "./secureMathRandom.ts";
 /**
  * COMPLIANCE LOGGER - Multi-Jurisdiction Audit & Compliance System
  * 
@@ -366,7 +367,7 @@ export class ComplianceLogger {
 
   // Generate unique event ID
   private generateEventId(): string {
-    return `evt_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 9)}`;
+    return `evt_${Date.now().toString(36)}_${secureMathRandom().toString(36).substr(2, 9)}`;
   }
 
   // Log an event

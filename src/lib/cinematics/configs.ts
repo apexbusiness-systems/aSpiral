@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Cinematic Configurations for ASPIRAL
  * Defines all 5 cinematic breakthrough reveal variants
@@ -548,7 +549,7 @@ export function getCinematicConfig(variant: CinematicVariant): CinematicConfig {
  */
 export function getRandomVariant(): CinematicVariant {
   const variants = Object.keys(CINEMATIC_CONFIGS) as CinematicVariant[];
-  return variants[Math.floor(Math.random() * variants.length)];
+  return variants[Math.floor(secureMathRandom() * variants.length)];
 }
 
 /**

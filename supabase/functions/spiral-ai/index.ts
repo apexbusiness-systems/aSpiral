@@ -1,3 +1,4 @@
+import { secureMathRandom } from "./secureMathRandom.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { moderateContent, SAFE_RESPONSES, type ModerationResult } from "./content-guard.ts";
@@ -277,7 +278,7 @@ interface RequestBody {
 // =============================================================================
 
 function generateRequestId(): string {
-  return `req_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 9)}`;
+  return `req_${Date.now().toString(36)}_${secureMathRandom().toString(36).substr(2, 9)}`;
 }
 
 // =============================================================================

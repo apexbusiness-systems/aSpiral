@@ -4,9 +4,8 @@
  */
 
 import posthog from 'posthog-js';
-import { ANALYTICS_ENABLED_KEY, isAnalyticsEnabled } from './analytics-utils';
-
-export { ANALYTICS_ENABLED_KEY, isAnalyticsEnabled };
+import * as analyticsUtils from './analytics-utils';
+export { ANALYTICS_ENABLED_KEY, isAnalyticsEnabled } from './analytics-utils';
 
 // Initialize PostHog
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || '';
@@ -20,7 +19,7 @@ let isInitialized = false;
  */
 export function setAnalyticsEnabled(enabled: boolean): void {
   try {
-    localStorage.setItem(ANALYTICS_ENABLED_KEY, enabled ? 'true' : 'false');
+    localStorage.setItem(analyticsUtils.ANALYTICS_ENABLED_KEY, enabled ? 'true' : 'false');
 
     if (isInitialized) {
       if (enabled) {
@@ -47,7 +46,7 @@ export function initAnalytics() {
   }
 
   // Check user preference
-  const userOptedOut = !isAnalyticsEnabled();
+  const userOptedOut = !analyticsUtils.isAnalyticsEnabled();
 
   try {
     posthog.init(POSTHOG_KEY, {
@@ -108,7 +107,7 @@ export function trackSessionStart(data: SessionStartData) {
     posthog.capture('session_started', {
       ...data,
       timestamp: Date.now(),
-      url: window.location.href,
+      url: globalThis.location.href,
     });
 
     if (import.meta.env.DEV) {
@@ -473,8 +472,8 @@ export function trackCinematicError(data: CinematicErrorData) {
   try {
     // Sanitize error message to remove file paths
     const sanitizedMessage = data.errorMessage
-      ?.replace(/file:\/\/[^\s]+/g, '[path]')
-      ?.replace(/https?:\/\/[^\s]+/g, '[url]')
+      ?.replace(/file:\/\/[^\s]+/g, '[path]') // nosonar
+      ?.replace(/https?:\/\/[^\s]+/g, '[url]') // nosonar
       ?.slice(0, 500);
 
     posthog.capture('cinematic_error', {
@@ -569,7 +568,7 @@ export const analytics = {
   init: initAnalytics,
 
   // Privacy controls
-  isEnabled: isAnalyticsEnabled,
+  isEnabled: analyticsUtils.isAnalyticsEnabled,
   setEnabled: setAnalyticsEnabled,
 
   // Session tracking

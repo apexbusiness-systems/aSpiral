@@ -1,3 +1,4 @@
+import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Breakthrough Selector
  * Anti-redundancy selection with recency penalty, novelty scoring, and fatigue protection
@@ -252,7 +253,7 @@ export function selectVariant(context: SelectionContext): {
   
   // Weighted random selection from top variants
   const totalTopScore = topVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
-  let random = Math.random() * totalTopScore;
+  let random = secureMathRandom() * totalTopScore;
   
   let selectedVariant = topVariants[0];
   for (const variant of topVariants) {
@@ -293,7 +294,7 @@ export function selectFallbackVariant(qualityTier: QualityTier): MutatedVariant 
   }
   
   // Otherwise pick a random fallback
-  const randomFallback = fallbacks[Math.floor(Math.random() * fallbacks.length)] || fallbacks[0];
+  const randomFallback = fallbacks[Math.floor(secureMathRandom() * fallbacks.length)] || fallbacks[0];
   return mutateVariant(randomFallback, generateSeed());
 }
 
