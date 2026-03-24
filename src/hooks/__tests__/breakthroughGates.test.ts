@@ -5,8 +5,7 @@
  * and ultra-fast threshold enforcement that prevent premature breakthroughs.
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { isValidBreakthroughData } from '@/hooks/useSpiralAI';
+import { describe, it, expect } from 'vitest';
 import { shouldStopAsking, advanceStage, type ConversationStage } from '@/lib/fastTrack';
 
 // ---------------------------------------------------------------------------
@@ -182,7 +181,7 @@ describe('Pattern Confidence Threshold', () => {
     // 1 keyword: 0.55
     expect(0.4 + 1 * 0.15).toBeCloseTo(0.55);
     // 2 keywords: 0.70
-    expect(0.4 + 2 * 0.15).toBeCloseTo(0.70);
+    expect(0.4 + 2 * 0.15).toBeCloseTo(0.7);
     // 3 keywords: 0.85 (below 0.9 threshold)
     expect(0.4 + 3 * 0.15).toBeCloseTo(0.85);
     // 4 keywords: 1.00 capped at 0.95 (above 0.9 threshold)

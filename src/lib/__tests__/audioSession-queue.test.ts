@@ -8,7 +8,7 @@
  * without requiring full browser APIs (MediaSource, AudioContext, etc.).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // TTS Play Timeout Safety Valve
@@ -55,57 +55,54 @@ describe('TTS Play Timeout Safety Valve', () => {
 describe('endOfStream race condition handling', () => {
   it('streamComplete flag triggers endOfStream after buffer drain', () => {
     // Simulating the race condition pattern from audioSession.ts
-    let streamComplete = false;
-    let endOfStreamCalled = false;
+    const state = { streamComplete: false, endOfStreamCalled: false };
     const bufferQueue: number[] = [];
 
     const tryEndOfStream = () => {
-      if (streamComplete && bufferQueue.length === 0) {
-        endOfStreamCalled = true;
+      if (state.streamComplete && bufferQueue.length === 0) {
+        state.endOfStreamCalled = true;
       }
     };
 
     // Simulate: stream completes while buffer still has items
     bufferQueue.push(1);
-    streamComplete = true;
+    state.streamComplete = true;
     tryEndOfStream();
-    expect(endOfStreamCalled).toBe(false); // Queue not empty yet
+    expect(state.endOfStreamCalled).toBe(false); // Queue not empty yet
 
     // Simulate: updateend handler drains the last buffer
     bufferQueue.shift();
     tryEndOfStream();
-    expect(endOfStreamCalled).toBe(true); // Now it's called
+    expect(state.endOfStreamCalled).toBe(true); // Now it's called
   });
 
   it('endOfStream called immediately if buffer is idle when stream ends', () => {
-    let streamComplete = false;
-    let endOfStreamCalled = false;
+    const state = { streamComplete: false, endOfStreamCalled: false };
     const bufferQueue: number[] = [];
 
     const tryEndOfStream = () => {
-      if (streamComplete && bufferQueue.length === 0) {
-        endOfStreamCalled = true;
+      if (state.streamComplete && bufferQueue.length === 0) {
+        state.endOfStreamCalled = true;
       }
     };
 
     // Stream completes with empty queue
-    streamComplete = true;
+    state.streamComplete = true;
     tryEndOfStream();
-    expect(endOfStreamCalled).toBe(true);
+    expect(state.endOfStreamCalled).toBe(true);
   });
 
   it('endOfStream NOT called before streamComplete even if queue empty', () => {
-    let streamComplete = false;
-    let endOfStreamCalled = false;
+    const state = { streamComplete: false, endOfStreamCalled: false };
 
     const tryEndOfStream = () => {
-      if (streamComplete) {
-        endOfStreamCalled = true;
+      if (state.streamComplete) {
+        state.endOfStreamCalled = true;
       }
     };
 
     tryEndOfStream();
-    expect(endOfStreamCalled).toBe(false);
+    expect(state.endOfStreamCalled).toBe(false);
   });
 });
 
@@ -178,9 +175,11 @@ describe('TTS Queue processing contract', () => {
     const processed: number[] = [];
 
     // Enqueue 3 items
-    queue.push({ id: 1, text: 'first' });
-    queue.push({ id: 2, text: 'second' });
-    queue.push({ id: 3, text: 'third' });
+    queue.push(
+      { id: 1, text: 'first' },
+      { id: 2, text: 'second' },
+      { id: 3, text: 'third' },
+    );
 
     // Process in order
     while (queue.length > 0) {
