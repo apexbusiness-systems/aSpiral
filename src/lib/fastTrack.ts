@@ -107,11 +107,13 @@ export function shouldStopAsking(
   transcript: string,
   conversationHistory: string[],
   patterns: Pattern[],
-  questionsAsked: number
+  questionsAsked: number,
+  maxQuestions = 5,
 ): { stop: boolean; reason: string } {
-  
-  // Hard limit: 3 questions max
-  if (questionsAsked >= 3) {
+
+  // Hard limit based on settings (floor of 3 to ensure friction/desire/blocker stages)
+  const effectiveMax = Math.max(maxQuestions, 3);
+  if (questionsAsked >= effectiveMax) {
     return { stop: true, reason: "max_questions_reached" };
   }
 
@@ -119,14 +121,14 @@ export function shouldStopAsking(
   const iDontKnowCount = conversationHistory.filter(msg =>
     /i don't know|idk|not sure|dunno|no idea/i.test(msg)
   ).length;
-  
+
   if (iDontKnowCount >= 2) {
     logger.info("User stuck - 2+ 'I don't know' responses");
     return { stop: true, reason: "user_stuck" };
   }
 
-  // Check for high-confidence pattern (we know enough)
-  const highConfidencePatterns = patterns.filter(p => p.confidence > 0.8);
+  // Check for high-confidence pattern (requires 4+ keyword matches)
+  const highConfidencePatterns = patterns.filter(p => p.confidence > 0.9);
   if (highConfidencePatterns.length > 0) {
     logger.info("High confidence pattern detected", { pattern: highConfidencePatterns[0].name });
     return { stop: true, reason: "pattern_detected" };

@@ -23,10 +23,11 @@ import { getEntityLimit, type UserTier } from "@/lib/entityLimits";
 import { matchEnergy, adjustQuestionEnergy } from "@/lib/energyMatcher";
 import { antiRepetition } from "@/lib/antiRepetition";
 import { featureFlags } from "@/lib/featureFlags";
-import { 
-  detectPatternsEarly, 
-  shouldStopAsking, 
-  getStageQuestion, 
+import { loadStoredSettings } from "@/lib/settings";
+import {
+  detectPatternsEarly,
+  shouldStopAsking,
+  getStageQuestion,
   advanceStage,
   createFastTrackState,
   type ConversationStage,
@@ -50,10 +51,18 @@ const logger = createLogger("useSpiralAI");
 
 const SPIRAL_AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/spiral-ai`;
 
-// Hard cap: 3 questions max
-const MAX_QUESTIONS = 3;
-const ULTRA_FAST_MIN_FRICTION_ENTITIES = 3;
-const ULTRA_FAST_MIN_SENTENCES = 3;
+// Minimum stage required before breakthrough can trigger
+const BREAKTHROUGH_MIN_STAGE: ConversationStage = "blocker";
+// Minimum entities that must be visualized before breakthrough
+const BREAKTHROUGH_MIN_ENTITIES = 2;
+const ULTRA_FAST_MIN_FRICTION_ENTITIES = 5;
+const ULTRA_FAST_MIN_SENTENCES = 5;
+
+/** Read maxQuestions from persisted settings (floor of 3). */
+function getMaxQuestions(): number {
+  const stored = loadStoredSettings();
+  return Math.max(stored?.maxQuestions ?? 5, 3);
+}
 
 // =============================================================================
 // BREAKTHROUGH QUALITY V2: Anti-generic validation
@@ -468,16 +477,30 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
       }
 
       // SMART STOPPING - Check if we should force breakthrough
+      const effectiveMaxQ = getMaxQuestions();
       const stopCheck = shouldStopAsking(
-        transcript, 
-        conversationHistoryRef.current, 
+        transcript,
+        conversationHistoryRef.current,
         patternsRef.current,
-        fastTrackRef.current.questionsAsked
+        fastTrackRef.current.questionsAsked,
+        effectiveMaxQ,
       );
-      
+
       if (stopCheck.stop) {
-        logger.info("Stopping questions", { reason: stopCheck.reason });
-        fastTrackRef.current.readyForBreakthrough = true;
+        const stage = fastTrackRef.current.stage;
+        const entityCount = currentSession?.entities?.length ?? 0;
+
+        // Stage gate: must be at least "blocker" stage before breakthrough
+        // Entity gate: must have at least 2 entities visualized
+        if (stage === "friction" || stage === "desire") {
+          logger.info("Stop requested but stage too early, continuing spiral", { stage, reason: stopCheck.reason });
+          fastTrackRef.current.stage = advanceStage(stage);
+        } else if (entityCount < BREAKTHROUGH_MIN_ENTITIES) {
+          logger.info("Stop requested but not enough entities visualized", { entityCount, reason: stopCheck.reason });
+        } else {
+          logger.info("Stopping questions", { reason: stopCheck.reason, stage, entityCount });
+          fastTrackRef.current.readyForBreakthrough = true;
+        }
       }
 
       logger.info("Processing transcript via FSM", { 
@@ -692,12 +715,20 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           );
 
           const ready = isUltraFastBreakthroughReady(ultraFastProgressRef.current);
-          fastTrackRef.current.readyForBreakthrough = ready;
+          // Apply stage & entity gates even in ultra-fast mode
+          const ufStage = fastTrackRef.current.stage;
+          const ufEntityCount = currentSession?.entities?.length ?? 0;
+          const gatedReady = ready
+            && ufStage !== "friction" && ufStage !== "desire"
+            && ufEntityCount >= BREAKTHROUGH_MIN_ENTITIES;
+          fastTrackRef.current.readyForBreakthrough = gatedReady;
 
           logger.info("Ultra-fast progress", {
             sentenceCount: ultraFastProgressRef.current.sentenceCount,
             frictionEntityCount: ultraFastProgressRef.current.frictionEntityCount,
-            readyForBreakthrough: ready,
+            readyForBreakthrough: gatedReady,
+            stage: ufStage,
+            entityCount: ufEntityCount,
           });
         }
         
@@ -805,10 +836,21 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           setCurrentStage(fastTrackRef.current.stage);
           options.onQuestion?.(processedQuestion, fastTrackRef.current.stage);
           
-          // Check if this was the last allowed question
-          if (fastTrackRef.current.questionsAsked >= MAX_QUESTIONS) {
-            logger.info("Max questions reached, next response will be breakthrough");
-            fastTrackRef.current.readyForBreakthrough = true;
+          // Check if this was the last allowed question (with stage gate)
+          const maxQ = getMaxQuestions();
+          if (fastTrackRef.current.questionsAsked >= maxQ) {
+            const stage = fastTrackRef.current.stage;
+            const entityCount = currentSession?.entities?.length ?? 0;
+            if (stage === "friction" || stage === "desire") {
+              // Not deep enough yet — advance stage and keep asking
+              logger.info("Max questions reached but stage too early, advancing", { stage, entityCount });
+              fastTrackRef.current.stage = advanceStage(stage);
+            } else if (entityCount < BREAKTHROUGH_MIN_ENTITIES) {
+              logger.info("Max questions reached but too few entities, continuing", { entityCount });
+            } else {
+              logger.info("Max questions reached, next response will be breakthrough");
+              fastTrackRef.current.readyForBreakthrough = true;
+            }
           }
           
           // FSM Transition: RESPONSE_COMPLETE
@@ -1101,7 +1143,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     showBreakthroughCard,
     ultraFastMode,
     questionCount: fastTrackRef.current.questionsAsked,
-    maxQuestions: MAX_QUESTIONS,
+    maxQuestions: getMaxQuestions(),
     detectedPatterns: patternsRef.current,
     
     // Error state (enhanced)

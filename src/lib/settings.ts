@@ -38,7 +38,7 @@ export const defaultSettings: SettingsState = {
   glowEffects: true,
 
   ultraFastMode: false,
-  maxQuestions: 2,
+  maxQuestions: 5,
   autoBreakthrough: true,
   frustrationDetection: true,
   verboseResponses: false,

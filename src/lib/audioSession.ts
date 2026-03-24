@@ -394,7 +394,7 @@ function setupAudioHandlers(
   options: SpeakOptions,
   resolve: () => void,
   reject: (error: Error) => void,
-  context: { backend: AudioBackend; streaming?: boolean; fallbackUrl?: string }
+  context: { backend: AudioBackend; streaming?: boolean; fallbackUrl?: string; skipAutoPlay?: boolean }
 ) {
   audio.onended = () => {
     if (requestId !== status.requestId) return;
@@ -433,25 +433,29 @@ function setupAudioHandlers(
     reject(error);
   };
 
-  audio.play().catch((error) => {
-    if (requestId !== status.requestId) return;
-    const playError = new Error(`Audio play blocked: ${(error as Error).message}`);
-    updateStatus({ isSpeaking: false, isLoading: false, backend: context.backend });
-    useAssistantSpeakingStore.getState().stopSpeaking();
-    if (context.fallbackUrl) URL.revokeObjectURL(context.fallbackUrl);
-    else if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
+  // Skip auto-play for streaming path — play() is called from sourceopen handler
+  // after the first chunk is appended, preventing premature play on empty MediaSource
+  if (!context.skipAutoPlay) {
+    audio.play().catch((error) => {
+      if (requestId !== status.requestId) return;
+      const playError = new Error(`Audio play blocked: ${(error as Error).message}`);
+      updateStatus({ isSpeaking: false, isLoading: false, backend: context.backend });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      if (context.fallbackUrl) URL.revokeObjectURL(context.fallbackUrl);
+      else if (audio.src.startsWith('blob:')) URL.revokeObjectURL(audio.src);
 
-    clearGateAfterDelay();
-    resumeListeningIfNeeded(requestId);
-    addBreadcrumb({
-      type: 'audio',
-      message: 'tts_play_rejected',
-      data: { error: playError.message, backend: context.backend }
+      clearGateAfterDelay();
+      resumeListeningIfNeeded(requestId);
+      addBreadcrumb({
+        type: 'audio',
+        message: 'tts_play_rejected',
+        data: { error: playError.message, backend: context.backend }
+      });
+      console.warn('[TTS] Audio blocked—tap once to enable sound');
+      options.onError?.(playError);
+      reject(playError);
     });
-    console.warn('[TTS] Audio blocked—tap once to enable sound');
-    options.onError?.(playError);
-    reject(playError);
-  });
+  }
 }
 
 async function playOpenAiAudio(response: Response, requestId: number, options: SpeakOptions): Promise<void> {
@@ -472,6 +476,7 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
   let isFirstChunk = true;
   const bufferQueue: Uint8Array[] = [];
   let isAppending = false;
+  let streamComplete = false;
 
   return new Promise<void>((resolve, reject) => {
     mediaSource.addEventListener('sourceopen', async () => {
@@ -489,6 +494,9 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
             const nextChunk = bufferQueue.shift()!;
             isAppending = true;
             sourceBuffer!.appendBuffer(nextChunk as unknown as BufferSource);
+          } else if (streamComplete && bufferQueue.length === 0 && mediaSource.readyState === 'open') {
+            // All chunks appended and stream is done — finalize
+            mediaSource.endOfStream();
           }
         });
 
@@ -523,8 +531,10 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
           }
         }
 
-        // Mark end of stream
-        if (sourceBuffer && !sourceBuffer.updating) {
+        // Mark stream as complete — endOfStream will be called here if idle,
+        // or from the updateend handler after the last buffer is flushed
+        streamComplete = true;
+        if (sourceBuffer && !sourceBuffer.updating && bufferQueue.length === 0 && mediaSource.readyState === 'open') {
           mediaSource.endOfStream();
         }
 
@@ -533,7 +543,7 @@ async function playOpenAiAudio(response: Response, requestId: number, options: S
       }
     });
 
-    setupAudioHandlers(audio, requestId, options, resolve, reject, { backend: 'openai', streaming: true });
+    setupAudioHandlers(audio, requestId, options, resolve, reject, { backend: 'openai', streaming: true, skipAutoPlay: true });
   });
 }
 
@@ -695,6 +705,9 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   }
 }
 
+// Safety valve: prevent a single stuck playback from permanently blocking the queue
+const TTS_PLAY_TIMEOUT_MS = 15_000;
+
 async function processQueue() {
   if (isProcessingQueue || ttsQueue.length === 0) return;
   isProcessingQueue = true;
@@ -722,18 +735,26 @@ async function processQueue() {
       audioDebug.log('tts_enqueue', { queueLength: ttsQueue.length, requestId, textLength });
 
       try {
+        const withTimeout = <T>(promise: Promise<T>): Promise<T> =>
+          Promise.race([
+            promise,
+            new Promise<never>((_, rej) =>
+              setTimeout(() => rej(new Error('TTS playback timeout')), TTS_PLAY_TIMEOUT_MS)
+            ),
+          ]);
+
         if (entry.options.forceWebSpeech) {
           // Force WebSpeech only
-          await speakWithWebSpeech(requestId, entry.options);
+          await withTimeout(speakWithWebSpeech(requestId, entry.options));
           entry.resolve();
         } else {
           // Try OpenAI first, fallback to WebSpeech
-          const blob = await fetchOpenAiAudio(entry.options);
+          const blob = await withTimeout(fetchOpenAiAudio(entry.options));
           if (requestId !== status.requestId) {
             entry.resolve();
             continue;
           }
-          await playOpenAiAudio(blob, requestId, entry.options);
+          await withTimeout(playOpenAiAudio(blob, requestId, entry.options));
           entry.resolve();
         }
       } catch (error) {
