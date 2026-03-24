@@ -16,35 +16,27 @@ import { describe, it, expect } from 'vitest';
 describe('TTS Play Timeout Safety Valve', () => {
   const TTS_PLAY_TIMEOUT_MS = 15_000;
 
+  function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error('TTS playback timeout')), ms)
+      ),
+    ]);
+  }
+
   it('timeout constant is 15 seconds', () => {
     expect(TTS_PLAY_TIMEOUT_MS).toBe(15000);
   });
 
   it('timeout rejects a stuck promise', async () => {
-    const withTimeout = <T>(promise: Promise<T>): Promise<T> =>
-      Promise.race([
-        promise,
-        new Promise<never>((_, rej) =>
-          setTimeout(() => rej(new Error('TTS playback timeout')), 50) // Use 50ms for test speed
-        ),
-      ]);
-
-    // Simulate a stuck TTS playback (never resolves)
     const stuckPromise = new Promise<void>(() => {});
-    await expect(withTimeout(stuckPromise)).rejects.toThrow('TTS playback timeout');
+    await expect(withTimeout(stuckPromise, 50)).rejects.toThrow('TTS playback timeout');
   });
 
   it('timeout does NOT reject a fast promise', async () => {
-    const withTimeout = <T>(promise: Promise<T>): Promise<T> =>
-      Promise.race([
-        promise,
-        new Promise<never>((_, rej) =>
-          setTimeout(() => rej(new Error('TTS playback timeout')), 200)
-        ),
-      ]);
-
     const fastPromise = Promise.resolve('done');
-    const result = await withTimeout(fastPromise);
+    const result = await withTimeout(fastPromise, 200);
     expect(result).toBe('done');
   });
 });
@@ -53,16 +45,23 @@ describe('TTS Play Timeout Safety Valve', () => {
 // endOfStream Race Condition Logic
 // ---------------------------------------------------------------------------
 describe('endOfStream race condition handling', () => {
-  it('streamComplete flag triggers endOfStream after buffer drain', () => {
-    // Simulating the race condition pattern from audioSession.ts
+  /** Shared helper mirroring the endOfStream guard from audioSession.ts */
+  function createEndOfStreamSimulator(opts: { checkQueue: boolean } = { checkQueue: true }) {
     const state = { streamComplete: false, endOfStreamCalled: false };
     const bufferQueue: number[] = [];
 
     const tryEndOfStream = () => {
-      if (state.streamComplete && bufferQueue.length === 0) {
+      const queueReady = !opts.checkQueue || bufferQueue.length === 0;
+      if (state.streamComplete && queueReady) {
         state.endOfStreamCalled = true;
       }
     };
+
+    return { state, bufferQueue, tryEndOfStream };
+  }
+
+  it('streamComplete flag triggers endOfStream after buffer drain', () => {
+    const { state, bufferQueue, tryEndOfStream } = createEndOfStreamSimulator();
 
     // Simulate: stream completes while buffer still has items
     bufferQueue.push(1);
@@ -77,29 +76,15 @@ describe('endOfStream race condition handling', () => {
   });
 
   it('endOfStream called immediately if buffer is idle when stream ends', () => {
-    const state = { streamComplete: false, endOfStreamCalled: false };
-    const bufferQueue: number[] = [];
+    const { state, tryEndOfStream } = createEndOfStreamSimulator();
 
-    const tryEndOfStream = () => {
-      if (state.streamComplete && bufferQueue.length === 0) {
-        state.endOfStreamCalled = true;
-      }
-    };
-
-    // Stream completes with empty queue
     state.streamComplete = true;
     tryEndOfStream();
     expect(state.endOfStreamCalled).toBe(true);
   });
 
   it('endOfStream NOT called before streamComplete even if queue empty', () => {
-    const state = { streamComplete: false, endOfStreamCalled: false };
-
-    const tryEndOfStream = () => {
-      if (state.streamComplete) {
-        state.endOfStreamCalled = true;
-      }
-    };
+    const { state, tryEndOfStream } = createEndOfStreamSimulator({ checkQueue: false });
 
     tryEndOfStream();
     expect(state.endOfStreamCalled).toBe(false);
@@ -111,14 +96,13 @@ describe('endOfStream race condition handling', () => {
 // ---------------------------------------------------------------------------
 describe('skipAutoPlay flag contract', () => {
   it('streaming path should skip auto-play (play() called from sourceopen only)', () => {
-    // This validates the contract: streaming context includes skipAutoPlay: true
-    const streamingContext = { backend: 'openai' as const, streaming: true, skipAutoPlay: true };
+    const streamingContext = { backend: 'openai', streaming: true, skipAutoPlay: true };
     expect(streamingContext.skipAutoPlay).toBe(true);
   });
 
   it('non-streaming fallback should NOT skip auto-play', () => {
-    const fallbackContext = { backend: 'openai' as const, fallbackUrl: 'blob:url' };
-    expect((fallbackContext as any).skipAutoPlay).toBeUndefined();
+    const fallbackContext: Record<string, unknown> = { backend: 'openai', fallbackUrl: 'blob:url' };
+    expect(fallbackContext.skipAutoPlay).toBeUndefined();
   });
 });
 
@@ -174,7 +158,6 @@ describe('TTS Queue processing contract', () => {
     const queue: Array<{ id: number; text: string }> = [];
     const processed: number[] = [];
 
-    // Enqueue 3 items
     queue.push(
       { id: 1, text: 'first' },
       { id: 2, text: 'second' },
@@ -183,8 +166,8 @@ describe('TTS Queue processing contract', () => {
 
     // Process in order
     while (queue.length > 0) {
-      const entry = queue.shift()!;
-      processed.push(entry.id);
+      const entry = queue.shift();
+      if (entry) processed.push(entry.id);
     }
 
     expect(processed).toEqual([1, 2, 3]);

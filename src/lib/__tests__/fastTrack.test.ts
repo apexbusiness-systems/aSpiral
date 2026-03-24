@@ -143,57 +143,53 @@ describe('shouldStopAsking', () => {
 // detectPatternsEarly
 // ---------------------------------------------------------------------------
 describe('detectPatternsEarly', () => {
+  /** Helper: detect patterns and find a specific one by name */
+  function findPattern(text: string, history: string[], name = 'control-vs-chaos') {
+    const patterns = detectPatternsEarly(text, history);
+    return { patterns, match: patterns.find(p => p.name === name) };
+  }
+
   it('detects control-vs-chaos pattern from keywords', () => {
-    const patterns = detectPatternsEarly("I can't control anything, it's chaos", []);
-    const match = patterns.find(p => p.name === 'control-vs-chaos');
+    const { match } = findPattern("I can't control anything, it's chaos", []);
     expect(match).toBeDefined();
     expect(match?.confidence).toBeGreaterThan(0);
   });
 
   it('increases confidence with more keyword matches', () => {
-    const low = detectPatternsEarly("I feel helpless", []);
-    const high = detectPatternsEarly("I feel helpless, out of control, chaos everywhere, can't control anything", []);
-
-    const lowMatch = low.find(p => p.name === 'control-vs-chaos');
-    const highMatch = high.find(p => p.name === 'control-vs-chaos');
-
+    const { match: lowMatch } = findPattern("I feel helpless", []);
+    const { match: highMatch } = findPattern(
+      "I feel helpless, out of control, chaos everywhere, can't control anything", [],
+    );
     expect(highMatch?.confidence).toBeGreaterThan(lowMatch?.confidence ?? 0);
   });
 
   it('requires 4+ keywords to exceed 0.9 confidence', () => {
     // 3 keywords: 0.4 + 3*0.15 = 0.85 (below 0.9)
-    const threeKw = detectPatternsEarly("control chaos helpless", []);
-    const match3 = threeKw.find(p => p.name === 'control-vs-chaos');
+    const { match: match3 } = findPattern("control chaos helpless", []);
     expect(match3).toBeDefined();
     expect(match3?.confidence).toBeLessThanOrEqual(0.9);
 
     // 4 keywords: 0.4 + 4*0.15 = 1.0 capped at 0.95 (above 0.9)
-    const fourKw = detectPatternsEarly("control chaos helpless unpredictable", []);
-    const match4 = fourKw.find(p => p.name === 'control-vs-chaos');
+    const { match: match4 } = findPattern("control chaos helpless unpredictable", []);
     expect(match4).toBeDefined();
     expect(match4?.confidence).toBeGreaterThan(0.9);
   });
 
   it('accumulates keywords from conversation history', () => {
-    const history = ["I feel out of control"];
-    const patterns = detectPatternsEarly("everything is chaos and unpredictable", history);
-    const match = patterns.find(p => p.name === 'control-vs-chaos');
+    const { match } = findPattern("everything is chaos and unpredictable", ["I feel out of control"]);
     expect(match).toBeDefined();
-    // "control" + "out of control" from history + "chaos" + "unpredictable" = 4+ keywords
     expect(match?.confidence).toBeGreaterThan(0.7);
   });
 
   it('returns empty array for no pattern matches', () => {
-    const patterns = detectPatternsEarly("the weather is nice today", []);
+    const { patterns } = findPattern("the weather is nice today", []);
     expect(patterns).toHaveLength(0);
   });
 
   it('returns at most 3 patterns sorted by confidence', () => {
-    // Trigger many patterns at once
     const text = "I can't control anything, they expect me to be perfect, I'm scared and avoiding it, not enough time, they judge me, either this or nothing, worst disaster ever";
-    const patterns = detectPatternsEarly(text, []);
+    const { patterns } = findPattern(text, []);
     expect(patterns.length).toBeLessThanOrEqual(3);
-    // Sorted by confidence descending
     for (let i = 1; i < patterns.length; i++) {
       expect(patterns[i - 1].confidence).toBeGreaterThanOrEqual(patterns[i].confidence);
     }
