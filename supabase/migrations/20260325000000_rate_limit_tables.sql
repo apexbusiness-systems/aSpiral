@@ -64,11 +64,17 @@ ALTER TABLE rate_limit_violations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_prompt_counts ENABLE ROW LEVEL SECURITY;
 
 -- Service role has full access (edge functions authenticate with service_role key)
-CREATE POLICY "service_role_all" ON rate_limit_events
-  FOR ALL USING (auth.role() = 'service_role');
-
-CREATE POLICY "service_role_all" ON rate_limit_violations
-  FOR ALL USING (auth.role() = 'service_role');
-
-CREATE POLICY "service_role_all" ON session_prompt_counts
-  FOR ALL USING (auth.role() = 'service_role');
+DO $$
+DECLARE
+  required_role CONSTANT TEXT := 'service_role';
+  tbl TEXT;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY['rate_limit_events', 'rate_limit_violations', 'session_prompt_counts']
+  LOOP
+    EXECUTE format(
+      'CREATE POLICY "service_role_all" ON %I FOR ALL USING (auth.role() = %L)',
+      tbl, required_role
+    );
+  END LOOP;
+END
+$$;
