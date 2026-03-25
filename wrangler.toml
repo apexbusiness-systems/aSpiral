@@ -1,0 +1,6 @@
+#:schema node_modules/wrangler/config-schema.json
+
+# aSpiral - Cloudflare Pages deployment
+name = "aspiral"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-03-01"
