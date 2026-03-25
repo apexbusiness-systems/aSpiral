@@ -1,9 +1,6 @@
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
 interface HealthResponse {
   status: "ok" | "error" | "disabled";
@@ -15,9 +12,9 @@ interface HealthResponse {
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return handleCorsPreFlight(req);
+
+  const corsHeaders = getCorsHeaders(req);
 
   console.log("[OMNILINK-HEALTH] Health check requested");
 

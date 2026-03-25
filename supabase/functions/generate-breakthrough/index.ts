@@ -1,11 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -43,18 +39,18 @@ function parseBreakthrough(content: string): Breakthrough {
   }
 }
 
-function createErrorResponse(status: number, message: string): Response {
-  return new Response(
-    JSON.stringify({ error: message }),
-    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-}
-
 serve(async (req) => {
   const startTime = Date.now();
 
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return handleCorsPreFlight(req);
+
+  const corsHeaders = getCorsHeaders(req);
+
+  function createErrorResponse(status: number, message: string): Response {
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {

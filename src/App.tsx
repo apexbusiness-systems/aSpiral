@@ -9,7 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { I18nextProvider } from "react-i18next";
 import i18n from "@/lib/i18n/config";
 import { SentinelProvider } from "@/components/SentinelProvider";
-import { Analytics } from "@vercel/analytics/react";
+// Analytics: Vercel Analytics removed (migrated to Cloudflare Pages)
 import { DebugOverlay } from "@/components/DebugOverlay";
 import { toast } from "sonner";
 import { SplashScreen } from '@capacitor/splash-screen';
@@ -176,7 +176,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Analytics />
+            {/* Analytics handled by Cloudflare Web Analytics (script injected via _headers or dashboard) */}
             <PwaManager />
 
             <PremiumSplash isVisible={showSplash} />
