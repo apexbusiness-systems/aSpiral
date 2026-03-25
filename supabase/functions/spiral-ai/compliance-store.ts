@@ -113,44 +113,19 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
    * Should be called early, before any LLM/network operations
    */
   async writeRunStart(run: ComplianceRunRecord): Promise<void> {
-    if (!this.client) {
-      console.log("[COMPLIANCE-STORE] Writer not available, skipping run start");
-      return;
-    }
-
-    try {
-      const record = {
-        request_id: run.request_id,
-        jurisdiction: run.jurisdiction,
-        status: "STARTED" as const,
-        total_events: 0,
-        blocked: false,
-        escalated: false,
-        total_time_ms: 0,
-        session_hash: run.session_hash || this.context.sessionHash,
-        user_hash: run.user_hash || this.context.userHash,
-        user_tier: run.user_tier || this.context.userTier,
-        completed_at: null,
-      };
-
-      const promise = Promise.resolve(
-        this.client
-          .from("compliance_request_runs")
-          .upsert(record, { onConflict: "request_id" })
-      )
-        .then(({ error }) => {
-          if (error) {
-            console.error("[COMPLIANCE-STORE] Failed to write run start:", error.message);
-          }
-        })
-        .catch((err) => {
-          console.error("[COMPLIANCE-STORE] Run start write error:", err);
-        });
-
-      this.pendingPromises.push(promise);
-    } catch (err) {
-      console.error("[COMPLIANCE-STORE] Unexpected error in writeRunStart:", err);
-    }
+    this.upsertRun({
+      request_id: run.request_id,
+      jurisdiction: run.jurisdiction,
+      status: "STARTED" as const,
+      total_events: 0,
+      blocked: false,
+      escalated: false,
+      total_time_ms: 0,
+      session_hash: run.session_hash || this.context.sessionHash,
+      user_hash: run.user_hash || this.context.userHash,
+      user_tier: run.user_tier || this.context.userTier,
+      completed_at: null,
+    }, "run start");
   }
 
   /**
@@ -158,31 +133,36 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
    * Updates existing STARTED record with final state
    */
   async writeRunSummary(run: ComplianceRunRecord): Promise<void> {
+    // First flush any pending events
+    await this.flushEvents();
+
+    this.upsertRun({
+      request_id: run.request_id,
+      jurisdiction: run.jurisdiction,
+      status: run.status,
+      total_events: run.total_events ?? this.pendingEvents.length,
+      blocked: run.blocked ?? false,
+      escalated: run.escalated ?? false,
+      total_time_ms: run.total_time_ms ?? 0,
+      session_hash: run.session_hash || this.context.sessionHash,
+      user_hash: run.user_hash || this.context.userHash,
+      user_tier: run.user_tier || this.context.userTier,
+      error_code: run.error_code,
+      error_message: run.error_message,
+      completed_at: run.completed_at ?? new Date().toISOString(),
+    }, "run summary");
+  }
+
+  /**
+   * Shared upsert logic for compliance run records
+   */
+  private upsertRun(record: Record<string, unknown>, label: string): void {
     if (!this.client) {
-      console.log("[COMPLIANCE-STORE] Writer not available, skipping run summary");
+      console.log(`[COMPLIANCE-STORE] Writer not available, skipping ${label}`);
       return;
     }
 
     try {
-      // First flush any pending events
-      await this.flushEvents();
-
-      const record = {
-        request_id: run.request_id,
-        jurisdiction: run.jurisdiction,
-        status: run.status,
-        total_events: run.total_events ?? this.pendingEvents.length,
-        blocked: run.blocked ?? false,
-        escalated: run.escalated ?? false,
-        total_time_ms: run.total_time_ms ?? 0,
-        session_hash: run.session_hash || this.context.sessionHash,
-        user_hash: run.user_hash || this.context.userHash,
-        user_tier: run.user_tier || this.context.userTier,
-        error_code: run.error_code,
-        error_message: run.error_message,
-        completed_at: run.completed_at ?? new Date().toISOString(),
-      };
-
       const promise = Promise.resolve(
         this.client
           .from("compliance_request_runs")
@@ -190,16 +170,16 @@ export class ComplianceStoreWriter implements ComplianceLogWriter {
       )
         .then(({ error }) => {
           if (error) {
-            console.error("[COMPLIANCE-STORE] Failed to write run summary:", error.message);
+            console.error(`[COMPLIANCE-STORE] Failed to write ${label}:`, error.message);
           }
         })
         .catch((err) => {
-          console.error("[COMPLIANCE-STORE] Run summary write error:", err);
+          console.error(`[COMPLIANCE-STORE] ${label} write error:`, err);
         });
 
       this.pendingPromises.push(promise);
     } catch (err) {
-      console.error("[COMPLIANCE-STORE] Unexpected error in writeRunSummary:", err);
+      console.error(`[COMPLIANCE-STORE] Unexpected error in ${label}:`, err);
     }
   }
 

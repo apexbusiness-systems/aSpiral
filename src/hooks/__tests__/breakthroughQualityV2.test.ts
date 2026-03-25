@@ -62,100 +62,24 @@ describe("isValidBreakthroughData", () => {
     })).toBe(false);
   });
 
-  it("rejects generic phrase: trust the process", () => {
-    expect(isValidBreakthroughData({
-      friction: "Feeling stuck at work",
-      grease: "Start small",
-      insight: "Trust the process and keep going",
-    })).toBe(false);
-  });
+  // Data-driven generic phrase rejection tests
+  const GENERIC_PHRASE_CASES: { name: string; data: { friction: string; grease: string; insight: string } }[] = [
+    { name: "trust the process", data: { friction: "Feeling stuck at work", grease: "Start small", insight: "Trust the process and keep going" } },
+    { name: "move forward with clarity", data: { friction: "Can't decide", grease: "Move forward with clarity", insight: "Decisions reveal themselves" } },
+    { name: "the answer is within you", data: { friction: "Lost direction", grease: "Look inward", insight: "The answer is within you" } },
+    { name: "challenge you're working through", data: { friction: "The challenge you're working through", grease: "Something vague", insight: "Keep at it" } },
+    { name: "path forward is becoming clear", data: { friction: "Confusion", grease: "The path forward is becoming clear", insight: "Just wait" } },
+    { name: "let's cut to what matters", data: { friction: "Busy schedule", grease: "Let's cut to what matters", insight: "Prioritize" } },
+    { name: "take a deep breath", data: { friction: "Anxiety", grease: "Take a deep breath and relax", insight: "Calm down" } },
+    { name: "one small step", data: { friction: "Overwhelmed", grease: "One small step at a time", insight: "Progress is progress" } },
+    { name: "you've got this", data: { friction: "Feeling stuck", grease: "You've got this, just keep going", insight: "Real insight here" } },
+    { name: "believe in yourself", data: { friction: "Self-doubt", grease: "Believe in yourself and try again", insight: "Confidence matters" } },
+    { name: "everything happens for a reason", data: { friction: "Job loss", grease: "Apply elsewhere", insight: "Everything happens for a reason" } },
+    { name: "let go of what no longer serves you", data: { friction: "Old habits", grease: "Let go of what no longer serves you", insight: "Change is growth" } },
+  ];
 
-  it("rejects generic phrase: move forward with clarity", () => {
-    expect(isValidBreakthroughData({
-      friction: "Can't decide",
-      grease: "Move forward with clarity",
-      insight: "Decisions reveal themselves",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: the answer is within you", () => {
-    expect(isValidBreakthroughData({
-      friction: "Lost direction",
-      grease: "Look inward",
-      insight: "The answer is within you",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: challenge you're working through", () => {
-    expect(isValidBreakthroughData({
-      friction: "The challenge you're working through",
-      grease: "Something vague",
-      insight: "Keep at it",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: path forward is becoming clear", () => {
-    expect(isValidBreakthroughData({
-      friction: "Confusion",
-      grease: "The path forward is becoming clear",
-      insight: "Just wait",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: let's cut to what matters", () => {
-    expect(isValidBreakthroughData({
-      friction: "Busy schedule",
-      grease: "Let's cut to what matters",
-      insight: "Prioritize",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: take a deep breath", () => {
-    expect(isValidBreakthroughData({
-      friction: "Anxiety",
-      grease: "Take a deep breath and relax",
-      insight: "Calm down",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: one small step", () => {
-    expect(isValidBreakthroughData({
-      friction: "Overwhelmed",
-      grease: "One small step at a time",
-      insight: "Progress is progress",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: you've got this", () => {
-    expect(isValidBreakthroughData({
-      friction: "Feeling stuck",
-      grease: "You've got this, just keep going",
-      insight: "Real insight here",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: believe in yourself", () => {
-    expect(isValidBreakthroughData({
-      friction: "Self-doubt",
-      grease: "Believe in yourself and try again",
-      insight: "Confidence matters",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: everything happens for a reason", () => {
-    expect(isValidBreakthroughData({
-      friction: "Job loss",
-      grease: "Apply elsewhere",
-      insight: "Everything happens for a reason",
-    })).toBe(false);
-  });
-
-  it("rejects generic phrase: let go of what no longer serves you", () => {
-    expect(isValidBreakthroughData({
-      friction: "Old habits",
-      grease: "Let go of what no longer serves you",
-      insight: "Change is growth",
-    })).toBe(false);
+  it.each(GENERIC_PHRASE_CASES)("rejects generic phrase: $name", ({ data }) => {
+    expect(isValidBreakthroughData(data)).toBe(false);
   });
 
   it("accepts valid complete non-generic data", () => {

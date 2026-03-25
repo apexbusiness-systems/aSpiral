@@ -12,61 +12,29 @@ import { isGenericBreakthroughText, hasValidBreakthrough } from "./index.ts";
 // isGenericBreakthroughText tests
 // =============================================================================
 
-Deno.test("isGenericBreakthroughText: detects 'trust the process'", () => {
-  assertEquals(isGenericBreakthroughText("Trust the process and keep going"), true);
-});
+// Data-driven generic phrase detection tests
+const GENERIC_PHRASES: [string, string, boolean][] = [
+  ["trust the process", "Trust the process and keep going", true],
+  ["move forward with clarity", "You can move forward with clarity now", true],
+  ["one small step", "Take one small step today", true],
+  ["take a deep breath", "Take a deep breath and relax", true],
+  ["the answer is within you", "The answer is within you already", true],
+  ["path forward is becoming clear", "The path forward is becoming clear", true],
+  ["challenge you're working through", "The challenge you're working through is hard", true],
+  ["let's cut to what matters", "Let's cut to what matters here", true],
+  ["you've got this", "You've got this, keep going", true],
+  ["believe in yourself", "Just believe in yourself", true],
+  ["everything happens for a reason", "Remember everything happens for a reason", true],
+  ["let go of what no longer serves you", "Let go of what no longer serves you now", true],
+  ["specific non-generic text", "Your manager micromanages deliverables killing autonomy", false],
+  ["another specific text", "Saying yes to every client destroys weekends", false],
+];
 
-Deno.test("isGenericBreakthroughText: detects 'move forward with clarity'", () => {
-  assertEquals(isGenericBreakthroughText("You can move forward with clarity now"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'one small step'", () => {
-  assertEquals(isGenericBreakthroughText("Take one small step today"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'take a deep breath'", () => {
-  assertEquals(isGenericBreakthroughText("Take a deep breath and relax"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'the answer is within you'", () => {
-  assertEquals(isGenericBreakthroughText("The answer is within you already"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'path forward is becoming clear'", () => {
-  assertEquals(isGenericBreakthroughText("The path forward is becoming clear"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'challenge you're working through'", () => {
-  assertEquals(isGenericBreakthroughText("The challenge you're working through is hard"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'let's cut to what matters'", () => {
-  assertEquals(isGenericBreakthroughText("Let's cut to what matters here"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'you've got this'", () => {
-  assertEquals(isGenericBreakthroughText("You've got this, keep going"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'believe in yourself'", () => {
-  assertEquals(isGenericBreakthroughText("Just believe in yourself"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'everything happens for a reason'", () => {
-  assertEquals(isGenericBreakthroughText("Remember everything happens for a reason"), true);
-});
-
-Deno.test("isGenericBreakthroughText: detects 'let go of what no longer serves you'", () => {
-  assertEquals(isGenericBreakthroughText("Let go of what no longer serves you now"), true);
-});
-
-Deno.test("isGenericBreakthroughText: accepts specific non-generic text", () => {
-  assertEquals(isGenericBreakthroughText("Your manager micromanages deliverables killing autonomy"), false);
-});
-
-Deno.test("isGenericBreakthroughText: accepts another specific text", () => {
-  assertEquals(isGenericBreakthroughText("Saying yes to every client destroys weekends"), false);
-});
+for (const [label, input, expected] of GENERIC_PHRASES) {
+  Deno.test(`isGenericBreakthroughText: ${expected ? "detects" : "accepts"} '${label}'`, () => {
+    assertEquals(isGenericBreakthroughText(input), expected);
+  });
+}
 
 Deno.test("isGenericBreakthroughText: case-insensitive detection", () => {
   assertEquals(isGenericBreakthroughText("TRUST THE PROCESS"), true);
@@ -77,89 +45,25 @@ Deno.test("isGenericBreakthroughText: case-insensitive detection", () => {
 // hasValidBreakthrough tests
 // =============================================================================
 
-Deno.test("hasValidBreakthrough: accepts complete valid data", () => {
-  assert(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: "Your boss blocks every initiative",
-    grease: "Present a proposal with ROI numbers",
-    insight: "You're not asking for permission — you're asking for respect",
-  }));
-});
+// Shared base for hasValidBreakthrough tests
+const BASE_RESPONSE = { entities: [], connections: [], question: "", response: "" };
 
-Deno.test("hasValidBreakthrough: rejects missing friction", () => {
-  assertEquals(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: undefined,
-    grease: "Do something",
-    insight: "Learn something",
-  }), false);
-});
+const HAS_VALID_CASES: [string, Record<string, unknown>, boolean][] = [
+  ["accepts complete valid data", { friction: "Your boss blocks every initiative", grease: "Present a proposal with ROI numbers", insight: "You're not asking for permission — you're asking for respect" }, true],
+  ["rejects missing friction", { friction: undefined, grease: "Do something", insight: "Learn something" }, false],
+  ["rejects empty grease", { friction: "Real problem", grease: "", insight: "Real insight" }, false],
+  ["rejects empty insight", { friction: "Real problem", grease: "Real solution", insight: "   " }, false],
+  ["rejects generic friction", { friction: "The challenge you're working through", grease: "Real solution", insight: "Real insight" }, false],
+  ["rejects generic grease", { friction: "Real problem", grease: "Trust the process and keep going", insight: "Real insight" }, false],
+  ["rejects generic insight", { friction: "Real problem", grease: "Real solution", insight: "Move forward with clarity" }, false],
+];
 
-Deno.test("hasValidBreakthrough: rejects empty grease", () => {
-  assertEquals(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: "Real problem",
-    grease: "",
-    insight: "Real insight",
-  }), false);
-});
-
-Deno.test("hasValidBreakthrough: rejects empty insight", () => {
-  assertEquals(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: "Real problem",
-    grease: "Real solution",
-    insight: "   ",
-  }), false);
-});
-
-Deno.test("hasValidBreakthrough: rejects generic friction", () => {
-  assertEquals(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: "The challenge you're working through",
-    grease: "Real solution",
-    insight: "Real insight",
-  }), false);
-});
-
-Deno.test("hasValidBreakthrough: rejects generic grease", () => {
-  assertEquals(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: "Real problem",
-    grease: "Trust the process and keep going",
-    insight: "Real insight",
-  }), false);
-});
-
-Deno.test("hasValidBreakthrough: rejects generic insight", () => {
-  assertEquals(hasValidBreakthrough({
-    entities: [],
-    connections: [],
-    question: "",
-    response: "",
-    friction: "Real problem",
-    grease: "Real solution",
-    insight: "Move forward with clarity",
-  }), false);
-});
+for (const [label, fields, expected] of HAS_VALID_CASES) {
+  Deno.test(`hasValidBreakthrough: ${label}`, () => {
+    const result = hasValidBreakthrough({ ...BASE_RESPONSE, ...fields });
+    assertEquals(result, expected);
+  });
+}
 
 // =============================================================================
 // createFallbackResponse safety test
