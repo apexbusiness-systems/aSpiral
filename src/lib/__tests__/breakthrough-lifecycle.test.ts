@@ -202,8 +202,8 @@ describe('Breakthrough Director Lifecycle', () => {
 
             director.complete();
 
-            // Wait for settle timeout (300ms) + small buffer
-            await new Promise(resolve => setTimeout(resolve, 350));
+            // Wait for settle timeout (SETTLE_DURATION_MS=1500ms) + small buffer
+            await new Promise(resolve => setTimeout(resolve, 1600));
 
             expect(director.getState().phase).toBe('idle');
             expect(onCompleteMock).toHaveBeenCalled();
@@ -214,8 +214,8 @@ describe('Breakthrough Director Lifecycle', () => {
             await director.play(variant);
             director.complete();
 
-            // Wait for settle timeout
-            await new Promise(resolve => setTimeout(resolve, 350));
+            // Wait for settle timeout (SETTLE_DURATION_MS=1500ms) + small buffer
+            await new Promise(resolve => setTimeout(resolve, 1600));
 
             // After complete, state should be reset to idle
             const state = director.getState();
@@ -312,8 +312,8 @@ describe('Physics Worker Pause/Resume', () => {
         await director.play(variant);
         director.complete();
 
-        // Wait for settle timeout to complete finalization
-        await new Promise(resolve => setTimeout(resolve, 350));
+        // Wait for settle timeout to complete finalization (SETTLE_DURATION_MS = 1500ms)
+        await new Promise(resolve => setTimeout(resolve, 1600));
 
         // Complete should return to idle state
         expect(director.getState().phase).toBe('idle');
