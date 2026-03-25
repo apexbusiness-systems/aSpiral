@@ -128,9 +128,9 @@ describe('Breakthrough Director', () => {
       await director.play();
       director.complete();
       
-      // Fast forward through settle duration
-      vi.advanceTimersByTime(500);
-      
+      // Fast forward through settle duration (SETTLE_DURATION_MS = 1500ms)
+      vi.advanceTimersByTime(1600);
+
       expect(phases).toContain('settling');
       expect(phases).toContain('cleanup');
     });
@@ -140,13 +140,14 @@ describe('Breakthrough Director', () => {
       const onComplete = vi.fn();
       
       director.setCallbacks({ onComplete });
-      
+
       await director.prewarm([], undefined, 'mid', false);
       await director.play();
       director.complete();
-      
-      vi.advanceTimersByTime(500);
-      
+
+      // SETTLE_DURATION_MS = 1500ms
+      vi.advanceTimersByTime(1600);
+
       expect(onComplete).toHaveBeenCalled();
     });
   });
@@ -267,9 +268,9 @@ describe('Breakthrough Director', () => {
       await director.prewarm([], undefined, 'mid', false);
       await director.play();
       
-      // Advance past max duration (15 seconds)
-      vi.advanceTimersByTime(16000);
-      
+      // Advance past max duration (15s) + settle duration (1.5s)
+      vi.advanceTimersByTime(17000);
+
       expect(onComplete).toHaveBeenCalled();
     });
   });
