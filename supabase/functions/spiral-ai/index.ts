@@ -16,11 +16,7 @@ import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 // Enterprise-Grade Hardening with Durable Compliance Logging
 // =============================================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -416,8 +412,11 @@ serve(async (req) => {
   const writer = createComplianceWriter();
   complianceLogger.attachWriter(writer);
   
+  // Build origin-aware CORS headers for this request
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreFlight(req);
   }
 
   try {

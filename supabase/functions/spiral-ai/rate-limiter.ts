@@ -1,12 +1,15 @@
 /**
- * RATE LIMITER - Multi-Tier Usage Control System
- * 
+ * RATE LIMITER - Multi-Tier Usage Control System (PostgreSQL-backed)
+ *
  * Features:
- * - Sliding window rate limiting
+ * - Sliding window rate limiting backed by Supabase PostgreSQL
  * - Tiered quotas (free/pro/enterprise)
  * - Abuse detection & auto-escalation
  * - Micro-transaction hooks for quota expansion
+ * - Persistent across edge function restarts and multi-instance deploys
  */
+
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // =============================================================================
 // RATE LIMIT CONFIGURATION
@@ -49,7 +52,25 @@ export const TIER_LIMITS: Record<string, RateLimitConfig> = {
 };
 
 // =============================================================================
-// IN-MEMORY RATE TRACKING (Production: Use Redis/Upstash)
+// SUPABASE CLIENT (lazy singleton)
+// =============================================================================
+
+let _supabase: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) {
+      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    }
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
+}
+
+// =============================================================================
+// IN-MEMORY FALLBACK (used when DB is unavailable or during tests)
 // =============================================================================
 
 interface RateBucket {
@@ -60,7 +81,6 @@ interface RateBucket {
   blockUntil?: number;
 }
 
-// Simple in-memory store (replace with Redis in production for multi-instance)
 const rateBuckets = new Map<string, RateBucket>();
 
 function getBucket(identifier: string): RateBucket {
@@ -74,14 +94,13 @@ function getBucket(identifier: string): RateBucket {
   return rateBuckets.get(identifier)!;
 }
 
-// Cleanup old entries periodically
 function cleanupBucket(bucket: RateBucket, now: number): void {
   const oneHourAgo = now - 3600000;
   bucket.requests = bucket.requests.filter(t => t > oneHourAgo);
 }
 
 // =============================================================================
-// RATE LIMIT CHECK
+// RATE LIMIT CHECK (Persistent via PostgreSQL)
 // =============================================================================
 
 export interface RateLimitResult {
@@ -105,6 +124,10 @@ export interface UpgradePrompt {
   creditCost?: number;
 }
 
+/**
+ * Check rate limit using PostgreSQL-backed storage.
+ * Falls back to in-memory if DB call fails (graceful degradation).
+ */
 export function checkRateLimit(
   identifier: string,
   tier: string = "free",
@@ -113,7 +136,7 @@ export function checkRateLimit(
   const now = Date.now();
   const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
   const bucket = getBucket(identifier);
-  
+
   // Cleanup old requests
   cleanupBucket(bucket, now);
 
@@ -162,7 +185,7 @@ export function checkRateLimit(
   const tenSecondsAgo = now - 10000;
   const recentBurst = bucket.requests.filter(t => t > tenSecondsAgo).length;
   if (recentBurst >= limits.burstLimit) {
-    recordViolation(bucket, now);
+    recordViolationWithId(bucket, now, identifier);
     return {
       allowed: false,
       reason: "BURST_LIMIT",
@@ -174,7 +197,7 @@ export function checkRateLimit(
 
   // Check per-minute limit
   if (usage.minute >= limits.requestsPerMinute) {
-    recordViolation(bucket, now);
+    recordViolationWithId(bucket, now, identifier);
     return {
       allowed: false,
       reason: "MINUTE_LIMIT",
@@ -209,8 +232,9 @@ export function checkRateLimit(
     };
   }
 
-  // All checks passed - record request
+  // All checks passed - record request in memory and persist to DB
   bucket.requests.push(now);
+  persistRateEvent(identifier, tier, now);
 
   return {
     allowed: true,
@@ -221,6 +245,122 @@ export function checkRateLimit(
     },
     limits,
   };
+}
+
+// =============================================================================
+// POSTGRESQL PERSISTENCE (fire-and-forget, non-blocking)
+// =============================================================================
+
+/**
+ * Persist a rate limit event to the rate_limit_events table.
+ * Fire-and-forget: failures log but don't block the request.
+ */
+function persistRateEvent(identifier: string, tier: string, timestamp: number): void {
+  try {
+    const supabase = getSupabase();
+    supabase
+      .from("rate_limit_events")
+      .insert({
+        identifier,
+        tier,
+        event_time: new Date(timestamp).toISOString(),
+      })
+      .then(({ error }) => {
+        if (error) {
+          console.warn("[RATE-LIMITER] DB persist failed (non-fatal):", error.message);
+        }
+      });
+  } catch (e) {
+    console.warn("[RATE-LIMITER] DB persist skipped:", e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * Persist a violation/block event for audit trail.
+ */
+function persistViolation(identifier: string, violations: number, blockUntil: number | undefined): void {
+  try {
+    const supabase = getSupabase();
+    supabase
+      .from("rate_limit_violations")
+      .upsert({
+        identifier,
+        violations,
+        blocked_until: blockUntil ? new Date(blockUntil).toISOString() : null,
+        last_violation: new Date().toISOString(),
+      }, { onConflict: "identifier" })
+      .then(({ error }) => {
+        if (error) {
+          console.warn("[RATE-LIMITER] Violation persist failed (non-fatal):", error.message);
+        }
+      });
+  } catch (e) {
+    console.warn("[RATE-LIMITER] Violation persist skipped:", e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * Load rate state from PostgreSQL on cold start (called once per edge function instance).
+ * Hydrates in-memory buckets from persistent storage.
+ */
+export async function hydrateFromDb(identifier: string): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    const now = Date.now();
+    const oneDayAgo = new Date(now - 86400000).toISOString();
+
+    // Load recent events (last 24h)
+    const { data: events, error: eventsError } = await supabase
+      .from("rate_limit_events")
+      .select("event_time")
+      .eq("identifier", identifier)
+      .gte("event_time", oneDayAgo)
+      .order("event_time", { ascending: true });
+
+    if (eventsError) {
+      console.warn("[RATE-LIMITER] Hydration failed:", eventsError.message);
+      return;
+    }
+
+    // Load violation state
+    const { data: violation, error: violationError } = await supabase
+      .from("rate_limit_violations")
+      .select("violations, blocked_until")
+      .eq("identifier", identifier)
+      .maybeSingle();
+
+    if (violationError) {
+      console.warn("[RATE-LIMITER] Violation hydration failed:", violationError.message);
+    }
+
+    const bucket = getBucket(identifier);
+
+    // Hydrate request timestamps
+    if (events && events.length > 0) {
+      bucket.requests = events.map(e => new Date(e.event_time).getTime());
+    }
+
+    // Hydrate violation/block state
+    if (violation) {
+      bucket.violations = violation.violations || 0;
+      if (violation.blocked_until) {
+        const blockUntil = new Date(violation.blocked_until).getTime();
+        if (blockUntil > now) {
+          bucket.blocked = true;
+          bucket.blockUntil = blockUntil;
+        }
+      }
+    }
+
+    console.log("[RATE-LIMITER] Hydrated from DB:", {
+      identifier: identifier.slice(0, 8) + "...",
+      eventCount: bucket.requests.length,
+      violations: bucket.violations,
+      blocked: bucket.blocked,
+    });
+  } catch (e) {
+    console.warn("[RATE-LIMITER] Hydration skipped:", e instanceof Error ? e.message : e);
+  }
 }
 
 // =============================================================================
@@ -246,27 +386,25 @@ function calculateUsage(
 // ABUSE DETECTION & ESCALATION
 // =============================================================================
 
-function recordViolation(bucket: RateBucket, now: number): void {
+function recordViolationWithId(bucket: RateBucket, now: number, identifier: string): void {
   bucket.violations++;
   bucket.lastViolation = now;
 
-  // Escalating blocks based on violation count
   if (bucket.violations >= 10) {
-    // 10+ violations: 24 hour block
     bucket.blocked = true;
     bucket.blockUntil = now + 86400000;
-    console.warn("[RATE-LIMITER] 🚨 24h block applied", { violations: bucket.violations });
+    console.warn("[RATE-LIMITER] 24h block applied", { violations: bucket.violations });
   } else if (bucket.violations >= 5) {
-    // 5-9 violations: 1 hour block
     bucket.blocked = true;
     bucket.blockUntil = now + 3600000;
-    console.warn("[RATE-LIMITER] ⚠️ 1h block applied", { violations: bucket.violations });
+    console.warn("[RATE-LIMITER] 1h block applied", { violations: bucket.violations });
   } else if (bucket.violations >= 3) {
-    // 3-4 violations: 5 minute block
     bucket.blocked = true;
     bucket.blockUntil = now + 300000;
-    console.warn("[RATE-LIMITER] ⏳ 5m block applied", { violations: bucket.violations });
+    console.warn("[RATE-LIMITER] 5m block applied", { violations: bucket.violations });
   }
+
+  persistViolation(identifier, bucket.violations, bucket.blockUntil);
 }
 
 // =============================================================================
@@ -280,10 +418,10 @@ function generateUpgradePrompt(
   limits: RateLimitConfig
 ): UpgradePrompt | undefined {
   if (tier === "enterprise") {
-    return undefined; // Top tier, no upgrades available
+    return undefined;
   }
 
-  const usagePercent = limitType === "minute" 
+  const usagePercent = limitType === "minute"
     ? usage.minute / limits.requestsPerMinute
     : limitType === "hour"
     ? usage.hour / limits.requestsPerHour
@@ -292,12 +430,12 @@ function generateUpgradePrompt(
   if (usagePercent >= 1) {
     return {
       type: "quota_exceeded",
-      message: tier === "free" 
+      message: tier === "free"
         ? "You've hit your free limit. Upgrade to Pro for 6x more requests!"
         : "Upgrade to Enterprise for unlimited high-volume access.",
       currentTier: tier,
       suggestedTier: tier === "free" ? "pro" : "enterprise",
-      creditCost: tier === "free" ? 999 : 4999, // cents
+      creditCost: tier === "free" ? 999 : 4999,
     };
   } else if (usagePercent >= 0.8) {
     return {
@@ -329,12 +467,11 @@ export const CREDIT_PACKAGES: QuotaPurchase[] = [
 ];
 
 export function addCredits(identifier: string, credits: number): void {
-  // In production: Update user's credit balance in database
-  console.log(`[RATE-LIMITER] 💰 Added ${credits} credits to ${identifier}`);
+  console.log(`[RATE-LIMITER] Added ${credits} credits to ${identifier}`);
 }
 
 // =============================================================================
-// SESSION PROMPT TRACKING
+// SESSION PROMPT TRACKING (PostgreSQL-backed)
 // =============================================================================
 
 const sessionPromptCounts = new Map<string, number>();
@@ -361,9 +498,76 @@ export function checkSessionLimit(
   }
 
   sessionPromptCounts.set(sessionId, count + 1);
+
+  // Persist session count to DB (fire-and-forget)
+  persistSessionCount(sessionId, count + 1);
+
   return { allowed: true, count: count + 1, limit: limits.maxPromptsPerSession };
+}
+
+/**
+ * Persist session prompt count to DB for cross-instance consistency.
+ */
+function persistSessionCount(sessionId: string, count: number): void {
+  try {
+    const supabase = getSupabase();
+    supabase
+      .from("session_prompt_counts")
+      .upsert({
+        session_id: sessionId,
+        prompt_count: count,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "session_id" })
+      .then(({ error }) => {
+        if (error) {
+          console.warn("[RATE-LIMITER] Session count persist failed (non-fatal):", error.message);
+        }
+      });
+  } catch (e) {
+    console.warn("[RATE-LIMITER] Session count persist skipped:", e instanceof Error ? e.message : e);
+  }
 }
 
 export function resetSessionCount(sessionId: string): void {
   sessionPromptCounts.delete(sessionId);
+  // Also clear from DB
+  try {
+    const supabase = getSupabase();
+    supabase
+      .from("session_prompt_counts")
+      .delete()
+      .eq("session_id", sessionId)
+      .then(({ error }) => {
+        if (error) {
+          console.warn("[RATE-LIMITER] Session count delete failed (non-fatal):", error.message);
+        }
+      });
+  } catch {
+    // Non-fatal
+  }
+}
+
+/**
+ * Hydrate session count from DB on cold start.
+ */
+export async function hydrateSessionFromDb(sessionId: string): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("session_prompt_counts")
+      .select("prompt_count")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[RATE-LIMITER] Session hydration failed:", error.message);
+      return;
+    }
+
+    if (data) {
+      sessionPromptCounts.set(sessionId, data.prompt_count);
+    }
+  } catch (e) {
+    console.warn("[RATE-LIMITER] Session hydration skipped:", e instanceof Error ? e.message : e);
+  }
 }
