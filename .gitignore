@@ -19,6 +19,7 @@ dist-ssr
 .env.test.local
 .env.production.local
 .env*.local
+.dev.vars
 
 # Runtime environment configuration (contains credentials)
 public/config.js
