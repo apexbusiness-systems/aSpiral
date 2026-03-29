@@ -5,6 +5,22 @@ All notable changes to the aSpiral project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-03-29
+
+### Fixed
+- **Auth (CRITICAL)**: Added `.env.production` with Supabase public keys — Cloudflare Pages does not expose dashboard env vars to `process.env` during Vite builds, causing `import.meta.env.VITE_SUPABASE_URL` to be `undefined` and all authentication to fail in production.
+- **CI**: Injected `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` secrets into the GitHub Actions build job `env:` block so `npm run build` succeeds in CI.
+- **Deploy**: Identified and resolved duplicate Cloudflare Worker project causing persistent deploy failures (auth error 10000). The Pages project was deploying correctly; the Worker was redundant.
+
+### Changed
+- **Analytics**: Updated default PostHog host from `app.posthog.com` to `us.i.posthog.com` to match actual project region.
+- **Hosting**: Migrated from Lovable/Vercel to Cloudflare Pages as primary deployment platform.
+- **Build**: Purged Cloudflare Pages build cache to ensure env vars are baked into production bundles.
+
+### Added
+- **Dev**: Added `.dev.vars` to `.gitignore` for local Cloudflare development credentials.
+- **Config**: Added `.env.production` (Supabase anon key is public by design — safe to commit).
+
 ## [1.0.4] - 2026-03-02
 
 ### Added
