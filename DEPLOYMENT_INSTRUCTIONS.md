@@ -1,308 +1,147 @@
-# 🚀 Deployment Instructions - Supabase Fix
+# Deployment Instructions
 
-## What Was Fixed
-✅ Added runtime environment variable support for Supabase credentials
-✅ App now works even when build-time variables are missing
-✅ Supports both Vite build-time variables AND runtime configuration
-
----
-
-## 📋 Files Changed
-
-1. **`src/integrations/supabase/client.ts`**
-   - Added runtime environment variable fallback
-   - Now checks both `import.meta.env` (build-time) and `window.ENV` (runtime)
-
-2. **`index.html`**
-   - Added `<script src="/config.js"></script>` to load runtime configuration
-
-3. **`public/config.example.js`**
-   - Template for runtime environment configuration
-
-4. **`.gitignore`**
-   - Added `public/config.js` to prevent committing credentials
+**Last Updated:** March 29, 2026
+**Primary Platform:** Cloudflare Pages
+**Domain:** https://aspiral.icu
 
 ---
 
-## 🎯 How to Deploy
+## Current Architecture
 
-### Option A: Configure in Lovable.dev (RECOMMENDED)
-
-**This is the EASIEST and CLEANEST solution.**
-
-1. **Log in to Lovable.dev**
-   - Go to your project: https://lovable.dev/projects/[your-project-id]
-
-2. **Add Environment Variables**
-   - Navigate to: Settings → Environment Variables
-   - Add these two variables:
-     ```
-     VITE_SUPABASE_URL = https://your-project-id.supabase.co
-     VITE_SUPABASE_PUBLISHABLE_KEY = eyJhbGc...your-anon-key
-     ```
-
-3. **Get Supabase Credentials**
-   - Go to: https://supabase.com/dashboard
-   - Select your project
-   - Settings → API
-   - Copy:
-     - "Project URL" → use as `VITE_SUPABASE_URL`
-     - "anon public" key → use as `VITE_SUPABASE_PUBLISHABLE_KEY`
-
-4. **Trigger Deployment**
-   - Save environment variables in Lovable
-   - Push this branch to trigger rebuild
-   - OR manually trigger deployment in Lovable dashboard
-
-5. **Verify**
-   - Visit https://aspiral.icu
-   - Hard refresh (Cmd/Ctrl + Shift + R)
-   - Try logging in - should work!
-
----
-
-### Option B: Deploy to Vercel (NEW)
-
-**For instant preview deployments and scaling.**
-
-1. **Prerequisites**
-   - Vercel account
-   - GitHub repository connected
-
-2. **Configuration**
-   - The repository includes a `vercel.json` file optimized for Vite + SPA routing.
-   - No manual build command configuration needed (defaults to `npm run build`).
-
-3. **Environment Variables**
-   - Go to Vercel Project Settings → Environment Variables
-   - Add:
-     - `VITE_SUPABASE_URL`
-     - `VITE_SUPABASE_PUBLISHABLE_KEY`
-     - `VITE_POSTHOG_KEY` (Optional)
-     - `VITE_POSTHOG_HOST` (Optional)
-
-4. **Deploy**
-   - Push to `main` or create a Pull Request to trigger a deployment.
-
----
-
-### Option C: Use Runtime Configuration (Fallback)
-
-**Use this if you can't access Lovable settings.**
-
-1. **Create `public/config.js`**
-   ```bash
-   cp public/config.example.js public/config.js
-   ```
-
-2. **Edit `public/config.js`**
-   - Replace placeholder values with actual Supabase credentials:
-   ```javascript
-   window.ENV = {
-     SUPABASE_URL: 'https://YOUR_ACTUAL_PROJECT_ID.supabase.co',
-     SUPABASE_PUBLISHABLE_KEY: 'YOUR_ACTUAL_ANON_KEY_HERE'
-   };
-   ```
-
-3. **Deploy**
-   - Since `public/config.js` is gitignored, you need to:
-     - **Option 1:** Manually upload to hosting (if FTP/SSH access)
-     - **Option 2:** Temporarily commit it:
-       ```bash
-       git add -f public/config.js
-       git commit -m "Add runtime config (temporary)"
-       git push
-       # After deployment, remove:
-       git rm --cached public/config.js
-       git commit -m "Remove runtime config from git"
-       git push
-       ```
-
-4. **Verify**
-   - Visit https://aspiral.icu
-   - Open DevTools Console (F12)
-   - Should NOT see: `[Supabase] Client not initialized`
-
----
-
-## 🔍 Verification Steps
-
-After deployment:
-
-1. **Open the App**
-   - Navigate to: https://aspiral.icu
-   - Hard refresh: Cmd/Ctrl + Shift + R (clear cache)
-
-2. **Check Console**
-   - Open DevTools (F12)
-   - Go to Console tab
-   - Should see NO errors about Supabase initialization
-
-3. **Test Authentication**
-   - Try email/password login
-   - Try "Continue with Google"
-   - Create a new account
-
-4. **Expected Behavior**
-   - Login should work
-   - No red error banner
-   - App loads properly
-   - User can access authenticated features
-
----
-
-## 🔧 Troubleshooting
-
-### Error Still Appears
 ```
-[Supabase] Client not initialized - missing environment variables
+GitHub (main) → Cloudflare Pages (auto-deploy) → aspiral.icu
+                     │
+                     ├── Build: npm run build (Vite)
+                     ├── Env vars: .env.production (committed, public keys only)
+                     └── Output: dist/
 ```
 
-**Diagnosis:**
-- Environment variables are still not set
-- Or build didn't use new variables
-
-**Solutions:**
-1. Verify environment variables are set in Lovable dashboard
-2. Force a new build (push a new commit)
-3. Clear browser cache completely
-4. Check that `public/config.js` exists and has correct values
+### Key Files
+| File | Purpose |
+|------|---------|
+| `.env.production` | Supabase public keys for Vite build (committed — anon key is public by design) |
+| `.dev.vars` | Local dev credentials (gitignored) |
+| `wrangler.toml` | Cloudflare Pages config |
+| `.github/workflows/ci.yml` | CI pipeline with env var injection |
 
 ---
 
-### "config.js:1 Uncaught ReferenceError: window is not defined"
+## Deploy to Cloudflare Pages (PRIMARY)
 
-**Diagnosis:**
-- Script loading in SSR/Node environment
+### Auto-Deploy
+Push to `main` → Cloudflare Pages auto-builds and deploys.
 
-**Solution:**
-- The code already handles this with `typeof window !== 'undefined'`
-- If persists, check that `config.js` loads AFTER DOM
+### Manual Deploy
+1. Go to Cloudflare Dashboard → Workers & Pages → aspiral
+2. Click "Create deployment" or retry last build
+
+### Environment Variables (Cloudflare Pages Dashboard)
+
+**Production env vars** (Settings → Variables and secrets):
+
+| Name | Type | Required | Notes |
+|------|------|----------|-------|
+| `VITE_SUPABASE_URL` | Plaintext | Yes | Also in `.env.production` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Plaintext | Yes | Also in `.env.production` |
+| `VITE_ENABLE_WEBGL` | Plaintext | No | Default: `true` |
+| `VITE_POSTHOG_KEY` | Secret | No | PostHog analytics |
+| `VITE_POSTHOG_HOST` | Plaintext | No | Default: `https://us.i.posthog.com` |
+| `GROQ_API_KEY` | Secret | No | TTS provider |
+
+> **IMPORTANT:** Cloudflare Pages does NOT expose dashboard env vars to `process.env` during Vite builds. That's why `.env.production` exists in the repo. If you change Supabase credentials, update BOTH the dashboard AND `.env.production`.
+
+### Build Cache
+If env var changes don't take effect, purge the build cache:
+- Dashboard: Settings → Build cache → "Clear Cache"
+- API: `POST /accounts/{id}/pages/projects/aspiral/purge_build_cache`
 
 ---
+
+## Deploy to Vercel (ALTERNATIVE)
+
+1. Connect GitHub repo to Vercel
+2. The repo includes `vercel.json` for Vite + SPA routing
+3. Add env vars in Vercel Project Settings → Environment Variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - `VITE_POSTHOG_KEY` (optional)
+   - `VITE_POSTHOG_HOST` (optional)
+4. Push to `main` to deploy
+
+---
+
+## Runtime Config Fallback
+
+If build-time vars are missing, the app falls back to `window.ENV` from `/config.js`:
+
+1. Copy `public/config.example.js` → `public/config.js`
+2. Fill in Supabase credentials
+3. `config.js` is gitignored — never commit it
+
+---
+
+---
+
+## Verification Steps
+
+After any deployment:
+
+1. Visit https://aspiral.icu (hard refresh: Cmd/Ctrl + Shift + R)
+2. Open DevTools Console — should see NO Supabase initialization errors
+3. Test email/password login
+4. Test "Continue with Google"
+5. Verify authenticated state persists on refresh
+
+---
+
+## Troubleshooting
+
+### `[Supabase] Client not initialized - missing environment variables`
+1. Check `.env.production` has correct values
+2. Purge Cloudflare Pages build cache and redeploy
+3. Verify bundle contains Supabase URL: `curl -s https://aspiral.icu/assets/index-*.js | grep eqtwatyodujxofrdznen`
 
 ### Google Sign-In Redirects but Fails
+1. Supabase Dashboard → Authentication → URL Configuration
+2. Add redirect URLs: `https://aspiral.icu` and `https://aspiral.icu/**`
 
-**Diagnosis:**
-- Redirect URL not configured in Supabase
+### Cloudflare Deploy Fails with Auth Error 10000
+1. Check API token permissions: needs **Cloudflare Pages: Edit** + **Account Settings: Read**
+2. Create token at **My Profile → API Tokens** (User token, not Account token)
+3. Ensure there's no duplicate Worker project with the same name
 
-**Solution:**
-1. Go to: Supabase Dashboard → Authentication → URL Configuration
-2. Add to "Redirect URLs":
-   - `https://aspiral.icu`
-   - `https://aspiral.icu/**`
-3. Save and try again
-
----
-
-## 📚 For Developers
-
-### How It Works
-
-**Before (Build-Time Only):**
-```typescript
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-// ↓ Build without env vars
-const SUPABASE_URL = undefined; // ❌ Fails
-```
-
-**After (Build-Time OR Runtime):**
-```typescript
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||  // Try build-time first
-  window.ENV?.SUPABASE_URL;              // Fallback to runtime
-
-// ↓ Build without env vars
-const SUPABASE_URL = undefined || window.ENV?.SUPABASE_URL;
-// ↓ Runtime
-const SUPABASE_URL = "https://xyz.supabase.co"; // ✅ Works!
-```
-
-### Architecture
-
-```
-┌──────────────────────────────────────┐
-│         index.html                   │
-│  1. <script src="/config.js">        │  ← Loads first
-│  2. <script src="/main.tsx">         │  ← App starts
-└──────────────────────────────────────┘
-           ↓
-┌──────────────────────────────────────┐
-│      public/config.js                │
-│  window.ENV = {                      │
-│    SUPABASE_URL: "...",              │
-│    SUPABASE_PUBLISHABLE_KEY: "..."   │
-│  }                                   │
-└──────────────────────────────────────┘
-           ↓
-┌──────────────────────────────────────┐
-│  src/integrations/supabase/client.ts │
-│  const URL = import.meta.env...      │
-│           || window.ENV.SUPABASE_URL │  ← Fallback
-└──────────────────────────────────────┘
-```
+### Build Cache Not Clearing
+1. Purge via dashboard: Settings → Build cache → "Clear Cache"
+2. Push a code change (not just env var change) to force new bundle hash
 
 ---
 
-## 🎓 Why This Solution
+## Supabase Edge Function Secrets
 
-### Pros ✅
-- **Backwards Compatible:** Still works with build-time variables
-- **Zero Breaking Changes:** Existing deployments unaffected
-- **Graceful Degradation:** Falls back to runtime if build-time missing
-- **Secure:** Anon key is safe to expose (designed for client-side)
-- **Flexible:** Works with any hosting platform
+Set in **Supabase Dashboard → Project Settings → Edge Functions → Secrets**:
 
-### Cons ⚠️
-- **Extra HTTP Request:** Loads `config.js` before app starts (~50ms)
-- **Manual Config:** Option B requires manual file management
-- **Not Git-Tracked:** Runtime config not version controlled
-
-### Why Not Just Fix Build?
-- Can't always access platform settings (Lovable, etc.)
-- Provides migration path for different hosting
-- Future-proof for runtime environment switching
+| Name | Required | Notes |
+|------|----------|-------|
+| `LOVABLE_API_KEY` | Yes | AI gateway for spiral-ai, breakthroughs, transcripts |
+| `GROQ_API_KEY` | Yes | Primary TTS provider |
+| `OPENAI_API_KEY` | Legacy | Chat function fallback (migration to Groq pending) |
+| `SUPABASE_URL` | Auto | Set automatically by Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Auto | Set automatically by Supabase |
 
 ---
 
-## 📞 Support
+## GitHub Actions Secrets
 
-### If Issues Persist
+Set in **GitHub → Settings → Secrets → Actions**:
 
-1. **Check Supabase Project**
-   - Ensure project is active (not paused)
-   - Verify API keys are valid
-   - Check RLS policies allow authentication
-
-2. **Check Browser Console**
-   - Look for specific error messages
-   - Network tab → check if Supabase requests are firing
-   - Application tab → check localStorage for auth tokens
-
-3. **Contact Info**
-   - Supabase Docs: https://supabase.com/docs
-   - Lovable Support: https://lovable.dev/support
-   - Project Owner: michael@apexbiz.io
+| Name | Purpose |
+|------|---------|
+| `VITE_SUPABASE_URL` | CI build job |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | CI build job |
 
 ---
 
-## ✅ Success Checklist
-
-Before considering this deployed:
-
-- [ ] Environment variables added to Lovable (OR config.js created)
-- [ ] Code changes committed and pushed
-- [ ] New deployment triggered
-- [ ] App loads without Supabase errors
-- [ ] Email/password authentication works
-- [ ] Google OAuth authentication works
-- [ ] Authenticated state persists on refresh
-- [ ] No console errors related to Supabase
-
----
-
-**Deployment Time:** 5-10 minutes
-**Risk Level:** Low
-**Rollback:** Simple git revert
-
-**Ready to deploy!** 🚀
+## Contact
+- Project Owner: michael@apexbiz.io
+- Supabase Docs: https://supabase.com/docs
+- Cloudflare Pages Docs: https://developers.cloudflare.com/pages
