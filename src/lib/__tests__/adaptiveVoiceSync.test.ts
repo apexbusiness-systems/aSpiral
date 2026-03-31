@@ -230,12 +230,6 @@ describe('adaptiveVoiceSync', () => {
             // naturalDelay = 200 + factor * 150 -> Max 350
             // total = base + natural -> Max 650
 
-            // Wait, let me check the code again.
-            // const baseDelay = Math.min(state.emaLatency * 0.5, 300)
-            // const lengthFactor = Math.min(textLength / 100, 1)
-            // const naturalDelay = MIN_SYNC_DELAY_MS + lengthFactor * 150
-            // let totalDelay = baseDelay + naturalDelay
-
             // If the code is:
             // MIN_SYNC_DELAY_MS = 200
             // MAX_SYNC_DELAY_MS = 1500
