@@ -1,7 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { corsHeaders as defaultCorsHeaders } from "../_shared/cors.ts";
 import { validateAuth } from "../_shared/auth.ts";
+
+const uuidSchema = z.string().uuid();
 
 // Configuration for secure CORS
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "*").split(",");
@@ -116,6 +119,14 @@ serve(async (req) => {
       });
     }
 
+    const userValidation = uuidSchema.safeParse(userId);
+    if (!userValidation.success) {
+      return new Response(JSON.stringify({ error: 'Invalid user identity', details: userValidation.error.format() }), {
+        status: 400,
+        headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
+      });
+    }
+
     const url = new URL(req.url);
     const sessionId = url.searchParams.get('session_id');
 
@@ -127,6 +138,13 @@ serve(async (req) => {
     }
 
     if (sessionId) {
+      const sessionValidation = uuidSchema.safeParse(sessionId);
+      if (!sessionValidation.success) {
+        return new Response(JSON.stringify({ error: 'Invalid session ID format', details: sessionValidation.error.format() }), {
+          status: 400,
+          headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
+        });
+      }
       return await handleSessionInsights(supabase, origin, sessionId, userId);
     } else {
       return await handleUserInsights(supabase, origin, userId);
