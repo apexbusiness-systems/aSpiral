@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SilentSentinel } from '../SilentSentinel';
 
 describe('SilentSentinel', () => {
-  const localStorageMock = (() => {
+  const createMockStorage = () => {
     let store: Record<string, string> = {};
     return {
       getItem: vi.fn((key: string) => store[key] || null),
@@ -19,26 +19,10 @@ describe('SilentSentinel', () => {
         return store;
       },
     };
-  })();
+  };
 
-  const sessionStorageMock = (() => {
-    let store: Record<string, string> = {};
-    return {
-      getItem: vi.fn((key: string) => store[key] || null),
-      setItem: vi.fn((key: string, value: string) => {
-        store[key] = value.toString();
-      }),
-      removeItem: vi.fn((key: string) => {
-        delete store[key];
-      }),
-      clear: vi.fn(() => {
-        store = {};
-      }),
-      get store() {
-        return store;
-      },
-    };
-  })();
+  const localStorageMock = createMockStorage();
+  const sessionStorageMock = createMockStorage();
 
   beforeEach(() => {
     vi.stubGlobal('localStorage', localStorageMock);
