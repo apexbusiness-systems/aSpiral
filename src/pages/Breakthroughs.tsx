@@ -27,7 +27,6 @@ import {
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { exportBreakthroughCard } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
-import { fetchUserStreakDays } from '@/lib/profileStreak';
 import { cn } from '@/lib/utils';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/normalizeError';
@@ -157,14 +156,14 @@ const Breakthroughs = () => {
                 Breakthrough Gallery
               </h1>
               <p className="text-sm text-muted-foreground">
-                {breakthroughs.length} breakthrough{breakthroughs.length !== 1 ? 's' : ''} achieved
+                {breakthroughs.length} breakthrough{breakthroughs.length === 1 ? '' : 's'} achieved
               </p>
             </div>
             {streakDays > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/15 border border-warning/30 text-warning">
                 <Flame className="w-4 h-4" />
                 <span className="text-sm font-semibold">{streakDays}</span>
-                <span className="text-xs text-warning/80">day{streakDays !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-warning/80">day{streakDays === 1 ? '' : 's'}</span>
               </div>
             )}
           </div>
