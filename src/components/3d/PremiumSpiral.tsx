@@ -54,9 +54,9 @@ export function PremiumSpiral({
   }, [resolvedCapabilities, instanceCount]);
 
   const flow = useMemo(() => {
-    // Audit Fix: Changed from Sphere to Tetrahedron for "Crystalline/Stardust" look
+    // Changed from Sphere to Tetrahedron for "Crystalline/Stardust" look
     const geometry = new THREE.TetrahedronGeometry(0.08, 0);
-    // Audit Fix: Organic material settings
+    // Organic material settings
     const material = new THREE.MeshStandardMaterial({
       color: new THREE.Color("#b8c1ec"),
       emissive: new THREE.Color("#8860d0"),
@@ -73,12 +73,23 @@ export function PremiumSpiral({
   const curve = useMemo(() => createSpiralCurve(160), []);
   const speedRef = useRef(0.12); // Slower, more majestic speed
 
+  // Resource disposal for Three.js objects
+  useEffect(() => {
+    return () => {
+      flow.geometry.dispose();
+      if (Array.isArray(flow.material)) {
+        flow.material.forEach((m) => m.dispose());
+      } else {
+        flow.material.dispose();
+      }
+    };
+  }, [flow]);
+
   useEffect(() => {
     flow.updateCurve(0, curve);
 
     for (let i = 0; i < count; i += 1) {
-      flow.setCurve(i, 0);
-      const offset = (i / count);
+      const offset = i / count;
       flow.moveIndividualAlongCurve(i, offset);
       // Note: InstancedFlow handles positions along the curve.
       // The geometry change (Tetrahedron) handles the crystalline look.
@@ -91,7 +102,7 @@ export function PremiumSpiral({
     if (isPaused || reducedMotion) return;
     const speed = speedRef.current * delta;
     flow.moveAlongCurve(speed);
-    // Audit Fix: Slowly rotate the entire spiral container for "drift"
+    // Slowly rotate the entire spiral container for "drift"
     flow.object3D.rotation.y += delta * 0.05;
     invalidate();
   });
