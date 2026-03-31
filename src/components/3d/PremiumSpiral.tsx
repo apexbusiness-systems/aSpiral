@@ -53,37 +53,35 @@ export function PremiumSpiral({
     return 360;
   }, [resolvedCapabilities, instanceCount]);
 
+  const geometry = useMemo(() => new THREE.TetrahedronGeometry(0.08, 0), []);
+  const material = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#b8c1ec"),
+        emissive: new THREE.Color("#8860d0"),
+        emissiveIntensity: 0.8,
+        roughness: 0.1,
+        metalness: 0.9,
+        flatShading: true, // Enhances the crystal look
+      }),
+    []
+  );
+
   const flow = useMemo(() => {
-    // Changed from Sphere to Tetrahedron for "Crystalline/Stardust" look
-    const geometry = new THREE.TetrahedronGeometry(0.08, 0);
-    // Organic material settings
-    const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#b8c1ec"),
-      emissive: new THREE.Color("#8860d0"),
-      emissiveIntensity: 0.8,
-      roughness: 0.1,
-      metalness: 0.9,
-      flatShading: true, // Enhances the crystal look
-    });
-
-    const instancedFlow = new InstancedFlow(count, 1, geometry, material);
-    return instancedFlow;
-  }, [count]);
-
-  const curve = useMemo(() => createSpiralCurve(160), []);
-  const speedRef = useRef(0.12); // Slower, more majestic speed
+    return new InstancedFlow(count, 1, geometry, material);
+  }, [count, geometry, material]);
 
   // Resource disposal for Three.js objects
   useEffect(() => {
     return () => {
-      flow.geometry.dispose();
-      if (Array.isArray(flow.material)) {
-        flow.material.forEach((m) => m.dispose());
-      } else {
-        flow.material.dispose();
-      }
+      geometry.dispose();
+      material.dispose();
     };
-  }, [flow]);
+  }, [geometry, material]);
+
+  const curve = useMemo(() => createSpiralCurve(160), []);
+  const speedRef = useRef(0.12); // Slower, more majestic speed
+
 
   useEffect(() => {
     flow.updateCurve(0, curve);
