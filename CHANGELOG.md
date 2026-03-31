@@ -5,6 +5,14 @@ All notable changes to the aSpiral project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-03-26
+
+### Added
+- **Sentinel Reliability**: Added a dedicated unit test suite for `SilentSentinel.ts` to verify the recovery flow and crash counting logic.
+
+### Fixed
+- **Sentinel Crash Recovery**: Implemented a critical fix to signal successful recovery to the next boot session via `sessionStorage` and ensure that the `LAST_BOOT` timestamp is not prematurely updated during the emergency protocol phase.
+
 ## [1.0.4] - 2026-03-02
 
 ### Added

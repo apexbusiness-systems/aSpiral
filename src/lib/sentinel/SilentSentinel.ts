@@ -5,6 +5,7 @@ const logger = createLogger('SilentSentinel');
 const SENTINEL_KEYS = {
   CRASH_COUNT: 'sentinel_crash_count',
   LAST_BOOT: 'sentinel_last_boot',
+  JUST_RECOVERED: 'sentinel_just_recovered',
 };
 
 const CRASH_THRESHOLD = 3;
@@ -15,9 +16,9 @@ export const SilentSentinel = {
   init: () => {
     try {
       // 1. Check if we just recovered from an emergency
-      if (sessionStorage.getItem('sentinel_just_recovered')) {
+      if (sessionStorage.getItem(SENTINEL_KEYS.JUST_RECOVERED)) {
         logger.debug('Recovery successful. Monitoring resumed.');
-        sessionStorage.removeItem('sentinel_just_recovered');
+        sessionStorage.removeItem(SENTINEL_KEYS.JUST_RECOVERED);
         // Reset last boot to now so we don't flag this valid boot as a crash later
         localStorage.setItem(SENTINEL_KEYS.LAST_BOOT, Date.now().toString());
         return;
@@ -67,7 +68,7 @@ export const SilentSentinel = {
     localStorage.setItem(SENTINEL_KEYS.CRASH_COUNT, '0');
 
     // CRITICAL FIX: Signal recovery to next boot and DO NOT update LAST_BOOT here
-    sessionStorage.setItem('sentinel_just_recovered', 'true');
+    sessionStorage.setItem(SENTINEL_KEYS.JUST_RECOVERED, 'true');
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
