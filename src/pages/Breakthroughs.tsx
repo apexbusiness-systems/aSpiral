@@ -97,10 +97,10 @@ const Breakthroughs = () => {
   }, [loadBreakthroughs, loadStreak]);
 
   const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
     return breakthroughs.filter((b) => {
       // Text search
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+      if (q) {
         const matches =
           b.friction.toLowerCase().includes(q) ||
           b.grease.toLowerCase().includes(q) ||
