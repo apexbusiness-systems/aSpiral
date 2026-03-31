@@ -81,7 +81,7 @@ describe('settings', () => {
     });
 
     it('should return null if stored data is not a valid SettingsState', () => {
-      const invalidSettings = { ...defaultSettings, theme: 'invalid-theme' };
+      const invalidSettings = { ...defaultSettings, theme: 'invalid-theme' as any };
       store[SETTINGS_STORAGE_KEY] = JSON.stringify(invalidSettings);
 
       const settings = loadStoredSettings();
@@ -89,14 +89,14 @@ describe('settings', () => {
     });
 
     it('should return null if a required field is missing', () => {
-        const incompleteSettings = { ...defaultSettings };
-        // @ts-ignore - simulating missing field
-        delete incompleteSettings.voiceEnabled;
+      const incompleteSettings = { ...defaultSettings };
+      // @ts-ignore - simulating missing field
+      delete incompleteSettings.voiceEnabled;
 
-        store[SETTINGS_STORAGE_KEY] = JSON.stringify(incompleteSettings);
+      store[SETTINGS_STORAGE_KEY] = JSON.stringify(incompleteSettings);
 
-        const settings = loadStoredSettings();
-        expect(settings).toBeNull();
+      const settings = loadStoredSettings();
+      expect(settings).toBeNull();
     });
 
     it('should handle localStorage.getItem errors gracefully', () => {
