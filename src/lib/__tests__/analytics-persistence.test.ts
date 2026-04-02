@@ -1,5 +1,5 @@
 /**
- * Analytics Opt-Out Persistence Tests
+ * Analytics Persistence Tests
  * Verifies that user preference persists across sessions via localStorage
  */
 
@@ -36,11 +36,10 @@ Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 // Import after mocks are set up
 import { isAnalyticsEnabled, setAnalyticsEnabled } from '../analytics';
 
-describe('Analytics Opt-Out Persistence', () => {
+describe('Analytics Persistence', () => {
   const STORAGE_KEY = 'aspiral_analytics_enabled';
 
   beforeEach(() => {
-    // Clear localStorage before each test
     localStorageMock.clear();
   });
 
@@ -48,71 +47,37 @@ describe('Analytics Opt-Out Persistence', () => {
     localStorageMock.clear();
   });
 
-  it('defaults to enabled when no preference is set', () => {
+  it('manages analytics preferences in localStorage', () => {
+    // Initial state
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(isAnalyticsEnabled()).toBe(true);
+
+    // Opt out
+    setAnalyticsEnabled(false);
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('false');
+    expect(isAnalyticsEnabled()).toBe(false);
+
+    // Opt in
+    setAnalyticsEnabled(true);
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
     expect(isAnalyticsEnabled()).toBe(true);
   });
 
-  it('persists opt-out preference to localStorage', () => {
-    setAnalyticsEnabled(false);
-    expect(localStorage.getItem(STORAGE_KEY)).toBe('false');
-  });
-
-  it('persists opt-in preference to localStorage', () => {
-    setAnalyticsEnabled(true);
-    expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
-  });
-
-  it('reads persisted opt-out preference correctly', () => {
+  it('reads persisted preferences', () => {
     localStorage.setItem(STORAGE_KEY, 'false');
     expect(isAnalyticsEnabled()).toBe(false);
-  });
 
-  it('reads persisted opt-in preference correctly', () => {
     localStorage.setItem(STORAGE_KEY, 'true');
     expect(isAnalyticsEnabled()).toBe(true);
   });
 
-  it('survives simulated session restart (localStorage persistence)', () => {
-    // User opts out
-    setAnalyticsEnabled(false);
-    expect(isAnalyticsEnabled()).toBe(false);
-
-    // Simulate "new session" by clearing module state but keeping localStorage
-    // In real app, this is a page refresh
-    const storedValue = localStorage.getItem(STORAGE_KEY);
-
-    // Verify localStorage still has the value
-    expect(storedValue).toBe('false');
-
-    // Function should read from localStorage
-    expect(isAnalyticsEnabled()).toBe(false);
-  });
-
-  it('allows toggling preference multiple times', () => {
-    expect(isAnalyticsEnabled()).toBe(true); // default
-
-    setAnalyticsEnabled(false);
-    expect(isAnalyticsEnabled()).toBe(false);
-
-    setAnalyticsEnabled(true);
-    expect(isAnalyticsEnabled()).toBe(true);
-
-    setAnalyticsEnabled(false);
-    expect(isAnalyticsEnabled()).toBe(false);
-  });
-
-  it('handles localStorage unavailable gracefully', () => {
-    // Mock localStorage to throw
+  it('handles localStorage errors gracefully', () => {
     const originalGetItem = localStorageMock.getItem;
     localStorageMock.getItem = () => {
       throw new Error('localStorage unavailable');
     };
 
-    // Should default to true (enabled) when localStorage fails
     expect(isAnalyticsEnabled()).toBe(true);
-
-    // Restore
     localStorageMock.getItem = originalGetItem;
   });
 });
