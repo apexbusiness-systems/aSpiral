@@ -5,7 +5,22 @@
 
 import posthog from 'posthog-js';
 import * as analyticsUtils from './analytics-utils';
+import { createLogger } from './logger';
 export { ANALYTICS_ENABLED_KEY, isAnalyticsEnabled } from './analytics-utils';
+
+const logger = createLogger('Analytics');
+
+/**
+ * Safely execute an analytics operation
+ * Prevents errors from bubbling up and crashing the UI
+ */
+function safeExecute(fn: () => void, errorMessage: string) {
+  try {
+    fn();
+  } catch (error) {
+    logger.error(errorMessage, error instanceof Error ? error : new Error(String(error)));
+  }
+}
 
 // Initialize PostHog
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || '';
@@ -18,21 +33,19 @@ let isInitialized = false;
  * Respects user preference and persists across sessions
  */
 export function setAnalyticsEnabled(enabled: boolean): void {
-  try {
+  safeExecute(() => {
     localStorage.setItem(analyticsUtils.ANALYTICS_ENABLED_KEY, enabled ? 'true' : 'false');
 
     if (isInitialized) {
       if (enabled) {
         posthog.opt_in_capturing();
-        console.log('[Analytics] User opted in to analytics');
+        logger.info('User opted in to analytics');
       } else {
         posthog.opt_out_capturing();
-        console.log('[Analytics] User opted out of analytics');
+        logger.info('User opted out of analytics');
       }
     }
-  } catch (error) {
-    console.error('[Analytics] Failed to set analytics preference:', error);
-  }
+  }, 'Failed to set analytics preference');
 }
 
 /**
@@ -48,7 +61,7 @@ export function initAnalytics() {
   // Check user preference
   const userOptedOut = !analyticsUtils.isAnalyticsEnabled();
 
-  try {
+  safeExecute(() => {
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
       autocapture: false, // Manual tracking only
@@ -66,13 +79,11 @@ export function initAnalytics() {
     isInitialized = true;
 
     if (userOptedOut) {
-      console.log('[Analytics] PostHog initialized (user opted out)');
+      logger.info('PostHog initialized (user opted out)');
     } else {
-      console.log('[Analytics] PostHog initialized');
+      logger.info('PostHog initialized');
     }
-  } catch (error) {
-    console.error('[Analytics] Failed to initialize PostHog:', error);
-  }
+  }, 'Failed to initialize PostHog');
 }
 
 // ============================================
@@ -103,19 +114,15 @@ export interface SessionEndData {
 export function trackSessionStart(data: SessionStartData) {
   if (!isInitialized) initAnalytics();
   
-  try {
+  safeExecute(() => {
     posthog.capture('session_started', {
       ...data,
       timestamp: Date.now(),
       url: globalThis.location.href,
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] session_started:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track session start:', error);
-  }
+    logger.debug('session_started:', { data });
+  }, 'Failed to track session start');
 }
 
 /**
@@ -124,18 +131,14 @@ export function trackSessionStart(data: SessionStartData) {
 export function trackSessionEnd(data: SessionEndData) {
   if (!isInitialized) initAnalytics();
   
-  try {
+  safeExecute(() => {
     posthog.capture('session_ended', {
       ...data,
       timestamp: Date.now(),
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] session_ended:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track session end:', error);
-  }
+    logger.debug('session_ended:', { data });
+  }, 'Failed to track session end');
 }
 
 // ============================================
@@ -159,7 +162,7 @@ export interface BreakthroughData {
 export function trackBreakthrough(data: BreakthroughData) {
   if (!isInitialized) initAnalytics();
   
-  try {
+  safeExecute(() => {
     posthog.capture('breakthrough_achieved', {
       ...data,
       timestamp: Date.now(),
@@ -169,12 +172,8 @@ export function trackBreakthrough(data: BreakthroughData) {
       insight: data.insight.slice(0, 500),
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] breakthrough_achieved:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track breakthrough:', error);
-  }
+    logger.debug('breakthrough_achieved:', { data });
+  }, 'Failed to track breakthrough');
 }
 
 // ============================================
@@ -207,7 +206,7 @@ export interface BreakthroughRejectionData {
 export function trackBreakthroughRejected(data: BreakthroughRejectionData) {
   if (!isInitialized) initAnalytics();
 
-  try {
+  safeExecute(() => {
     posthog.capture('breakthrough_rejected', {
       ...data,
       timestamp: Date.now(),
@@ -217,12 +216,8 @@ export function trackBreakthroughRejected(data: BreakthroughRejectionData) {
       insight: data.insight?.slice(0, 200),
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] breakthrough_rejected:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track breakthrough rejection:', error);
-  }
+    logger.debug('breakthrough_rejected:', { data });
+  }, 'Failed to track breakthrough rejection');
 }
 
 // ============================================
@@ -243,18 +238,14 @@ export interface EntityCreatedData {
 export function trackEntityCreated(data: EntityCreatedData) {
   if (!isInitialized) initAnalytics();
   
-  try {
+  safeExecute(() => {
     posthog.capture('entity_created', {
       ...data,
       timestamp: Date.now(),
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] entity_created:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track entity:', error);
-  }
+    logger.debug('entity_created:', { data });
+  }, 'Failed to track entity');
 }
 
 // ============================================
@@ -291,19 +282,15 @@ export interface FeatureUsageData {
 export function trackFeatureUsed(data: FeatureUsageData) {
   if (!isInitialized) initAnalytics();
   
-  try {
+  safeExecute(() => {
     posthog.capture('feature_used', {
       ...data,
       timestamp: Date.now(),
       deviceType: getDeviceType(),
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] feature_used:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track feature usage:', error);
-  }
+    logger.debug('feature_used:', { data });
+  }, 'Failed to track feature usage');
 }
 
 // ============================================
@@ -333,19 +320,15 @@ export function getSessionDuration(): number {
 export function trackDurationMilestone(milestone: number, sessionId: string) {
   if (!isInitialized) initAnalytics();
   
-  try {
+  safeExecute(() => {
     posthog.capture('session_duration_milestone', {
       sessionId,
       milestone, // in seconds
       timestamp: Date.now(),
     });
 
-    if (import.meta.env.DEV) {
-      console.log(`[Analytics] Duration milestone: ${milestone}s`);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track duration milestone:', error);
-  }
+    logger.debug(`Duration milestone: ${milestone}s`);
+  }, 'Failed to track duration milestone');
 }
 
 // ============================================
@@ -392,7 +375,7 @@ export function trackCinematic(
 ) {
   if (!isInitialized) initAnalytics();
 
-  try {
+  safeExecute(() => {
     const eventName = `cinematic_${event}`;
     const eventData = {
       ...data,
@@ -409,12 +392,8 @@ export function trackCinematic(
       trackFeatureUsed({ feature: 'cinematic_skipped', metadata: { variant: data.variant, progress: data.progress } });
     }
 
-    if (import.meta.env.DEV) {
-      console.log(`[Analytics] ${eventName}:`, eventData);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track cinematic event:', error);
-  }
+    logger.debug(`${eventName}:`, { eventData });
+  }, 'Failed to track cinematic event');
 }
 
 /**
@@ -423,22 +402,18 @@ export function trackCinematic(
 export function trackPerformance(metrics: CinematicPerformanceMetrics) {
   if (!isInitialized) initAnalytics();
 
-  try {
+  safeExecute(() => {
     posthog.capture('cinematic_performance', {
       ...metrics,
       timestamp: Date.now(),
     });
 
     if (metrics.avgFps < 30) {
-      console.warn(`[Analytics] Poor performance in ${metrics.variant}:`, metrics);
+      logger.warn(`Poor performance in ${metrics.variant}:`, { metrics });
     }
 
-    if (import.meta.env.DEV) {
-      console.log(`[Analytics] Performance (${metrics.variant}):`, metrics);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track performance:', error);
-  }
+    logger.debug(`Performance (${metrics.variant}):`, { metrics });
+  }, 'Failed to track performance');
 }
 
 // ============================================
@@ -469,7 +444,7 @@ export interface CinematicErrorData {
 export function trackCinematicError(data: CinematicErrorData) {
   if (!isInitialized) initAnalytics();
 
-  try {
+  safeExecute(() => {
     // Sanitize error message to remove file paths
     const sanitizedMessage = data.errorMessage
       ?.replace(/file:\/\/[^\s]+/g, '[path]') // nosonar
@@ -483,15 +458,13 @@ export function trackCinematicError(data: CinematicErrorData) {
       timestamp: Date.now(),
     });
 
-    console.error('[Analytics] Cinematic error tracked:', {
+    logger.error('Cinematic error tracked:', undefined, {
       variant: data.variant,
       errorType: data.errorType,
       deviceType: data.deviceType,
       gpuTier: data.gpuTier,
     });
-  } catch (error) {
-    console.error('[Analytics] Failed to track cinematic error:', error);
-  }
+  }, 'Failed to track cinematic error');
 }
 
 // ============================================
@@ -509,18 +482,14 @@ export interface FatalUiErrorData {
 export function trackFatalUiError(data: FatalUiErrorData) {
   if (!isInitialized) initAnalytics();
 
-  try {
+  safeExecute(() => {
     posthog.capture('fatal_ui_error', {
       ...data,
       timestamp: Date.now(),
     });
 
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] fatal_ui_error:', data);
-    }
-  } catch (error) {
-    console.error('[Analytics] Failed to track fatal_ui_error:', error);
-  }
+    logger.debug('fatal_ui_error:', { data });
+  }, 'Failed to track fatal_ui_error');
 }
 
 // ============================================
@@ -602,11 +571,11 @@ export const analytics = {
    */
   identify: (userId: string, traits?: Record<string, unknown>) => {
     if (!isInitialized) initAnalytics();
-    posthog.identify(userId, traits);
     
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] User identified:', userId, traits);
-    }
+    safeExecute(() => {
+      posthog.identify(userId, traits);
+      logger.debug('User identified:', { userId, traits });
+    }, 'Failed to identify user');
   },
 
   /**
@@ -614,12 +583,12 @@ export const analytics = {
    */
   reset: () => {
     if (!isInitialized) return;
-    posthog.reset();
-    sessionStartTime = null;
     
-    if (import.meta.env.DEV) {
-      console.log('[Analytics] User reset');
-    }
+    safeExecute(() => {
+      posthog.reset();
+      sessionStartTime = null;
+      logger.debug('User reset');
+    }, 'Failed to reset user identity');
   },
   
   /**
@@ -627,7 +596,10 @@ export const analytics = {
    */
   setUserProperties: (properties: Record<string, unknown>) => {
     if (!isInitialized) initAnalytics();
-    posthog.people.set(properties);
+
+    safeExecute(() => {
+      posthog.people.set(properties);
+    }, 'Failed to set user properties');
   },
 };
 
