@@ -6,6 +6,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import breakthroughIcon from "@/assets/breakthrough-icon.png";
 import { useToast } from "@/hooks/use-toast";
 import { exportBreakthroughCard } from "@/lib/pdfExport";
+import { secureMathRandom } from "@/lib/secureMathRandom";
 
 interface BreakthroughData {
   friction: string;
@@ -25,12 +26,12 @@ function BreakthroughParticles() {
   const particles = useMemo(() => 
     Array.from({ length: 12 }, (_, i) => ({
       id: i,
-      size: Math.random() * 5 + 3,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      xOffset: Math.random() * 30 - 15,
-      duration: 2.5 + Math.random() * 2,
-      delay: Math.random() * 1.5,
+      size: secureMathRandom() * 5 + 3,
+      left: secureMathRandom() * 100,
+      top: secureMathRandom() * 100,
+      xOffset: secureMathRandom() * 30 - 15,
+      duration: 2.5 + secureMathRandom() * 2,
+      delay: secureMathRandom() * 1.5,
       isPrimary: i < 7,
     })),
     []
