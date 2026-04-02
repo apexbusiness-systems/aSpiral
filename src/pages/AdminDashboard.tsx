@@ -93,6 +93,7 @@ const AdminDashboard = () => {
         from: (table: string) => {
           select: (columns: string) => {
             eq: (column: string, value: string) => Promise<{ data: DatabaseRow[] | null; error: Error | null }>;
+            in: (column: string, values: string[]) => Promise<{ data: DatabaseRow[] | null; error: Error | null }>;
             then: (resolve: (value: { data: DatabaseRow[] | null; error: Error | null }) => void) => Promise<{ data: DatabaseRow[] | null; error: Error | null }>;
           };
         };
@@ -114,12 +115,29 @@ const AdminDashboard = () => {
       }
 
       const sessionIds = new Set(sessions?.map((s) => s.id) || []);
+      const sessionIdsArray = Array.from(sessionIds);
+
+      // If no sessions, skip sub-queries as there will be no user-specific data
+      if (sessionIdsArray.length === 0) {
+        setUsageStats({
+          totalSessions: 0,
+          totalBreakthroughs: 0,
+          totalEntities: 0,
+          totalMessages: 0,
+          activeUsers: 1,
+        });
+        setEntityTypes([]);
+        setDailyStats([]);
+        setIsLoading(false);
+        setIsRetrying(false);
+        return;
+      }
 
       // Get other stats - use Promise.allSettled for partial rendering
       const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.allSettled([
-        db.from('breakthroughs').select('id, created_at, session_id'),
-        db.from('entities').select('id, type, created_at, session_id'),
-        db.from('messages').select('id, session_id'),
+        db.from('breakthroughs').select('id, created_at, session_id').in('session_id', sessionIdsArray),
+        db.from('entities').select('id, type, created_at, session_id').in('session_id', sessionIdsArray),
+        db.from('messages').select('id, session_id').in('session_id', sessionIdsArray),
       ]);
 
       // Extract data, treating errors as empty arrays (partial rendering)
