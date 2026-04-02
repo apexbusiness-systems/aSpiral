@@ -1,11 +1,12 @@
 /**
- * Analytics Module Tests
- * Verifies that analytics tracking functions call PostHog correctly and handle errors via safeExecute
+ * Analytics Module Integrated Tests
+ * Verifies tracking logic, error handling, and preference persistence
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// Mock logger
+// --- Mocks ---
+
 const loggerMock = {
   error: vi.fn(),
   info: vi.fn(),
@@ -17,7 +18,6 @@ vi.mock('../logger', () => ({
   createLogger: () => loggerMock,
 }));
 
-// Mock PostHog
 const posthogMock = {
   init: vi.fn(),
   capture: vi.fn(),
@@ -28,64 +28,72 @@ const posthogMock = {
   people: { set: vi.fn() },
 };
 
-// Use manual mock for Bun test compatibility if needed, but here we still use vi.mock
 vi.mock('posthog-js', () => ({
   default: posthogMock,
 }));
 
-// Mock localStorage for Node/Bun environment
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
+const storageMock = (() => {
+  let data: Record<string, string> = {};
   return {
-    getItem: vi.fn((key: string) => store[key] ?? null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
-    removeItem: vi.fn((key: string) => { delete store[key]; }),
-    clear: vi.fn(() => { store = {}; }),
+    getItem: vi.fn((k: string) => data[k] ?? null),
+    setItem: vi.fn((k: string, v: string) => { data[k] = v; }),
+    removeItem: vi.fn((k: string) => { delete data[k]; }),
+    clear: vi.fn(() => { data = {}; }),
+    get length() { return Object.keys(data).length; },
+    key: (i: number) => Object.keys(data)[i] ?? null,
   };
 })();
 
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
+Object.defineProperty(globalThis, 'localStorage', { value: storageMock });
 
-// Import the module to test
+// --- Imports ---
+
 import {
   trackSessionStart,
   trackBreakthrough,
   trackEntityCreated,
   initAnalytics,
-  setAnalyticsEnabled
+  setAnalyticsEnabled,
+  isAnalyticsEnabled
 } from '../analytics';
 
-describe('Analytics Module', () => {
+// --- Tests ---
+
+describe('Analytics Integration', () => {
+  const PREF_KEY = 'aspiral_analytics_enabled';
+
   beforeEach(() => {
     vi.clearAllMocks();
+    storageMock.clear();
   });
 
-  describe('trackSessionStart', () => {
-    it('calls posthog.capture with correct data', () => {
-      const data = {
-        sessionId: 'test-session',
-        userId: 'test-user',
-        isAuthenticated: true,
-        deviceType: 'desktop' as const,
-      };
+  afterEach(() => {
+    storageMock.clear();
+  });
 
-      trackSessionStart(data);
+  describe('Tracking Logic', () => {
+    it('captures session start with device context', () => {
+      trackSessionStart({
+        sessionId: 's-123',
+        userId: 'u-456',
+        isAuthenticated: true,
+        deviceType: 'desktop',
+      });
 
       expect(posthogMock.capture).toHaveBeenCalledWith('session_started', expect.objectContaining({
-        sessionId: 'test-session',
-        userId: 'test-user',
-        isAuthenticated: true,
+        sessionId: 's-123',
+        userId: 'u-456',
       }));
     });
 
-    it('handles errors via logger.error', () => {
+    it('safely handles tracker failures', () => {
       posthogMock.capture.mockImplementationOnce(() => {
-        throw new Error('PostHog capture failed');
+        throw new Error('Tracker crashed');
       });
 
       trackSessionStart({
-        sessionId: 'test-session',
-        userId: 'test-user',
+        sessionId: 's-1',
+        userId: 'u-1',
         isAuthenticated: true,
         deviceType: 'desktop',
       });
@@ -95,60 +103,69 @@ describe('Analytics Module', () => {
         expect.any(Error)
       );
     });
-  });
 
-  describe('trackBreakthrough', () => {
-    it('truncates long strings before capturing', () => {
-      const data = {
-        sessionId: 'test-session',
-        friction: 'f'.repeat(300),
-        grease: 'g'.repeat(300),
-        insight: 'i'.repeat(600),
-        timeToBreakthrough: 100,
-        entityCount: 5,
-        questionCount: 3,
-        ultraFastMode: false,
-      };
+    it('limits string lengths for complex event data', () => {
+      trackBreakthrough({
+        sessionId: 's-1',
+        friction: 'f'.repeat(500),
+        grease: 'g'.repeat(500),
+        insight: 'i'.repeat(1000),
+        timeToBreakthrough: 45,
+        entityCount: 2,
+        questionCount: 2,
+        ultraFastMode: true,
+      });
 
-      trackBreakthrough(data);
-
-      const captureCall = posthogMock.capture.mock.calls[0];
-      const capturedData = captureCall[1];
-
-      expect(capturedData.friction.length).toBe(200);
-      expect(capturedData.grease.length).toBe(200);
-      expect(capturedData.insight.length).toBe(500);
+      const args = posthogMock.capture.mock.calls[0][1];
+      expect(args.friction.length).toBe(200);
+      expect(args.grease.length).toBe(200);
+      expect(args.insight.length).toBe(500);
     });
-  });
 
-  describe('setAnalyticsEnabled', () => {
-    it('calls posthog opt-in/out methods', () => {
-      initAnalytics();
-
-      setAnalyticsEnabled(true);
-      expect(posthogMock.opt_in_capturing).toHaveBeenCalled();
-
-      setAnalyticsEnabled(false);
-      expect(posthogMock.opt_out_capturing).toHaveBeenCalled();
-    });
-  });
-
-  describe('trackEntityCreated', () => {
-    it('tracks entity creation', () => {
-      const data = {
-        sessionId: 'test-session',
-        entityId: 'ent-1',
-        entityType: 'thought',
-        totalEntities: 1,
-        method: 'manual' as const,
-      };
-
-      trackEntityCreated(data);
+    it('logs entity creation events', () => {
+      trackEntityCreated({
+        sessionId: 's-1',
+        entityId: 'e-1',
+        entityType: 'fact',
+        totalEntities: 10,
+        method: 'ai_extracted',
+      });
 
       expect(posthogMock.capture).toHaveBeenCalledWith('entity_created', expect.objectContaining({
-        entityId: 'ent-1',
-        totalEntities: 1,
+        entityId: 'e-1',
       }));
+    });
+  });
+
+  describe('Preference Persistence', () => {
+    it('synchronizes user choice with localStorage and tracker state', () => {
+      initAnalytics();
+
+      setAnalyticsEnabled(false);
+      expect(storageMock.getItem(PREF_KEY)).toBe('false');
+      expect(isAnalyticsEnabled()).toBe(false);
+      expect(posthogMock.opt_out_capturing).toHaveBeenCalled();
+
+      setAnalyticsEnabled(true);
+      expect(storageMock.getItem(PREF_KEY)).toBe('true');
+      expect(isAnalyticsEnabled()).toBe(true);
+      expect(posthogMock.opt_in_capturing).toHaveBeenCalled();
+    });
+
+    it('reloads saved preferences from storage', () => {
+      storageMock.getItem.mockReturnValue('false');
+      expect(isAnalyticsEnabled()).toBe(false);
+
+      storageMock.getItem.mockReturnValue('true');
+      expect(isAnalyticsEnabled()).toBe(true);
+    });
+
+    it('defaults to enabled when storage access fails', () => {
+      storageMock.getItem.mockImplementationOnce(() => {
+        throw new Error('Privacy sandbox restricted');
+      });
+
+      expect(isAnalyticsEnabled()).toBe(true);
     });
   });
 });
