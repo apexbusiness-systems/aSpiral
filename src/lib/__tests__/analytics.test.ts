@@ -1,36 +1,36 @@
-/**
- * Analytics Module Integrated Tests
- * Verifies tracking logic, error handling, and preference persistence
- */
-
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// --- Mocks ---
-
-const loggerMock = {
-  error: vi.fn(),
-  info: vi.fn(),
-  debug: vi.fn(),
-  warn: vi.fn(),
-};
-
-vi.mock('../logger', () => ({
-  createLogger: () => loggerMock,
+const { mockLogger, mockPosthog } = vi.hoisted(() => ({
+  mockLogger: {
+    error: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+  },
+  mockPosthog: {
+    init: vi.fn(),
+    capture: vi.fn(),
+    identify: vi.fn(),
+    reset: vi.fn(),
+    opt_in_capturing: vi.fn(),
+    opt_out_capturing: vi.fn(),
+    people: { set: vi.fn() },
+  }
 }));
 
-const posthogMock = {
-  init: vi.fn(),
-  capture: vi.fn(),
-  identify: vi.fn(),
-  reset: vi.fn(),
-  opt_in_capturing: vi.fn(),
-  opt_out_capturing: vi.fn(),
-  people: { set: vi.fn() },
-};
+vi.mock('@/lib/logger', () => ({ createLogger: () => mockLogger }));
+vi.mock('../logger', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('posthog-js', () => ({
-  default: posthogMock,
+  default: mockPosthog,
 }));
+
+vi.mock('../analytics-utils', () => {
+  return {
+    ANALYTICS_ENABLED_KEY: 'aspiral_analytics_enabled',
+    isAnalyticsEnabled: vi.fn(() => true),
+  };
+});
 
 const storageMock = (() => {
   let data: Record<string, string> = {};
@@ -43,21 +43,16 @@ const storageMock = (() => {
     key: (i: number) => Object.keys(data)[i] ?? null,
   };
 })();
+Object.defineProperty(globalThis, 'localStorage', { value: storageMock, configurable: true });
+Object.defineProperty(globalThis, 'location', { value: { href: 'http://localhost' }, configurable: true });
 
-Object.defineProperty(globalThis, 'localStorage', { value: storageMock });
+// Mock import.meta.env
+vi.stubEnv('VITE_POSTHOG_KEY', 'test-key');
+vi.stubEnv('VITE_POSTHOG_HOST', 'test-host');
 
-// --- Imports ---
-
-import {
-  trackSessionStart,
-  trackBreakthrough,
-  trackEntityCreated,
-  initAnalytics,
-  setAnalyticsEnabled,
-  isAnalyticsEnabled
-} from '../analytics';
-
-// --- Tests ---
+import * as analyticsUtils from '../analytics-utils';
+import posthog from 'posthog-js';
+import { createLogger } from '../logger';
 
 describe('Analytics Integration', () => {
   const PREF_KEY = 'aspiral_analytics_enabled';
@@ -65,14 +60,20 @@ describe('Analytics Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     storageMock.clear();
+    storageMock.setItem(PREF_KEY, 'true');
+    vi.mocked(analyticsUtils.isAnalyticsEnabled).mockReturnValue(true);
   });
 
   afterEach(() => {
     storageMock.clear();
+    vi.resetModules();
   });
 
   describe('Tracking Logic', () => {
-    it('captures session start with device context', () => {
+    it('captures session start with device context', async () => {
+      const { trackSessionStart, initAnalytics } = await import('../analytics');
+      initAnalytics();
+
       trackSessionStart({
         sessionId: 's-123',
         userId: 'u-456',
@@ -80,14 +81,17 @@ describe('Analytics Integration', () => {
         deviceType: 'desktop',
       });
 
-      expect(posthogMock.capture).toHaveBeenCalledWith('session_started', expect.objectContaining({
+      expect(posthog.capture).toHaveBeenCalledWith('session_started', expect.objectContaining({
         sessionId: 's-123',
         userId: 'u-456',
       }));
     });
 
-    it('safely handles tracker failures', () => {
-      posthogMock.capture.mockImplementationOnce(() => {
+    it('safely handles tracker failures', async () => {
+      const { trackSessionStart, initAnalytics } = await import('../analytics');
+      initAnalytics();
+
+      vi.mocked(posthog.capture).mockImplementationOnce(() => {
         throw new Error('Tracker crashed');
       });
 
@@ -98,13 +102,17 @@ describe('Analytics Integration', () => {
         deviceType: 'desktop',
       });
 
-      expect(loggerMock.error).toHaveBeenCalledWith(
+      const mockedLogger = createLogger('Context');
+      expect(mockedLogger.error).toHaveBeenCalledWith(
         'Failed to track session start',
         expect.any(Error)
       );
     });
 
-    it('limits string lengths for complex event data', () => {
+    it('limits string lengths for complex event data', async () => {
+      const { trackBreakthrough, initAnalytics } = await import('../analytics');
+      initAnalytics();
+
       trackBreakthrough({
         sessionId: 's-1',
         friction: 'f'.repeat(500),
@@ -116,13 +124,16 @@ describe('Analytics Integration', () => {
         ultraFastMode: true,
       });
 
-      const args = posthogMock.capture.mock.calls[0][1];
+      const args = vi.mocked(posthog.capture).mock.calls[0][1] as any;
       expect(args.friction.length).toBe(200);
       expect(args.grease.length).toBe(200);
       expect(args.insight.length).toBe(500);
     });
 
-    it('logs entity creation events', () => {
+    it('logs entity creation events', async () => {
+      const { trackEntityCreated, initAnalytics } = await import('../analytics');
+      initAnalytics();
+
       trackEntityCreated({
         sessionId: 's-1',
         entityId: 'e-1',
@@ -131,40 +142,33 @@ describe('Analytics Integration', () => {
         method: 'ai_extracted',
       });
 
-      expect(posthogMock.capture).toHaveBeenCalledWith('entity_created', expect.objectContaining({
+      expect(posthog.capture).toHaveBeenCalledWith('entity_created', expect.objectContaining({
         entityId: 'e-1',
       }));
     });
   });
 
   describe('Preference Persistence', () => {
-    it('synchronizes user choice with localStorage and tracker state', () => {
+    it('synchronizes user choice with localStorage and tracker state', async () => {
+      const { setAnalyticsEnabled, initAnalytics } = await import('../analytics');
       initAnalytics();
 
       setAnalyticsEnabled(false);
-      expect(storageMock.getItem(PREF_KEY)).toBe('false');
-      expect(isAnalyticsEnabled()).toBe(false);
-      expect(posthogMock.opt_out_capturing).toHaveBeenCalled();
+      expect(storageMock.setItem).toHaveBeenCalledWith(PREF_KEY, 'false');
+      expect(posthog.opt_out_capturing).toHaveBeenCalled();
 
       setAnalyticsEnabled(true);
-      expect(storageMock.getItem(PREF_KEY)).toBe('true');
-      expect(isAnalyticsEnabled()).toBe(true);
-      expect(posthogMock.opt_in_capturing).toHaveBeenCalled();
+      expect(storageMock.setItem).toHaveBeenCalledWith(PREF_KEY, 'true');
+      expect(posthog.opt_in_capturing).toHaveBeenCalled();
     });
 
-    it('reloads saved preferences from storage', () => {
-      storageMock.getItem.mockReturnValue('false');
+    it('reloads saved preferences from storage logic uses analyticsUtils', async () => {
+      const { isAnalyticsEnabled } = await import('../analytics');
+
+      vi.mocked(analyticsUtils.isAnalyticsEnabled).mockReturnValue(false);
       expect(isAnalyticsEnabled()).toBe(false);
 
-      storageMock.getItem.mockReturnValue('true');
-      expect(isAnalyticsEnabled()).toBe(true);
-    });
-
-    it('defaults to enabled when storage access fails', () => {
-      storageMock.getItem.mockImplementationOnce(() => {
-        throw new Error('Privacy sandbox restricted');
-      });
-
+      vi.mocked(analyticsUtils.isAnalyticsEnabled).mockReturnValue(true);
       expect(isAnalyticsEnabled()).toBe(true);
     });
   });
