@@ -43,21 +43,20 @@ interface BreakthroughItem {
 
 const logger = createLogger('BreakthroughsPage');
 
-const matchesSearch = (b: BreakthroughItem, q: string) => {
-  if (!q) return true;
-  const query = q.toLowerCase();
+const matchesSearch = (b: BreakthroughItem, queryLower: string) => {
+  if (!queryLower) return true;
   return (
-    b.friction.toLowerCase().includes(query) ||
-    b.grease.toLowerCase().includes(query) ||
-    b.insight.toLowerCase().includes(query)
+    b.friction.toLowerCase().includes(queryLower) ||
+    b.grease.toLowerCase().includes(queryLower) ||
+    b.insight.toLowerCase().includes(queryLower)
   );
 };
 
-const matchesDateRange = (dateString: string, from?: Date, to?: Date) => {
-  if (!from && !to) return true;
+const matchesDateRange = (dateString: string, startOfFrom?: Date, endOfTo?: Date) => {
+  if (!startOfFrom && !endOfTo) return true;
   const date = new Date(dateString);
-  if (from && isBefore(date, startOfDay(from))) return false;
-  if (to && isAfter(date, endOfDay(to))) return false;
+  if (startOfFrom && isBefore(date, startOfFrom)) return false;
+  if (endOfTo && isAfter(date, endOfTo)) return false;
   return true;
 };
 
@@ -115,8 +114,12 @@ const Breakthroughs = () => {
   }, [loadBreakthroughs, loadStreak]);
 
   const filtered = useMemo(() => {
+    const queryLower = searchQuery.toLowerCase();
+    const startOfFrom = dateFrom ? startOfDay(dateFrom) : undefined;
+    const endOfTo = dateTo ? endOfDay(dateTo) : undefined;
+
     return breakthroughs.filter((b) => {
-      return matchesSearch(b, searchQuery) && matchesDateRange(b.achieved_at, dateFrom, dateTo);
+      return matchesSearch(b, queryLower) && matchesDateRange(b.achieved_at, startOfFrom, endOfTo);
     });
   }, [breakthroughs, searchQuery, dateFrom, dateTo]);
 
