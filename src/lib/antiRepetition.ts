@@ -24,12 +24,15 @@ export class AntiRepetitionEngine {
 
     // Check structural similarity
     const newStructure = this.extractStructure(newQuestion);
+
+    // Check if starts with same 3 words
+    // ⚡ Bolt: Hoisted constant calculation out of loop to save CPU cycles
+    const newWords = newQuestion.toLowerCase().split(" ").slice(0, 3).join(" ");
+
     for (const oldQ of recent) {
       const oldStructure = this.extractStructure(oldQ);
       if (newStructure === oldStructure) return true;
 
-      // Check if starts with same 3 words
-      const newWords = newQuestion.toLowerCase().split(" ").slice(0, 3).join(" ");
       const oldWords = oldQ.toLowerCase().split(" ").slice(0, 3).join(" ");
       if (newWords === oldWords) return true;
     }
