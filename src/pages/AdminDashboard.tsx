@@ -141,20 +141,17 @@ const AdminDashboard = () => {
       ]);
 
       // Extract data, treating errors as empty arrays (partial rendering)
-      const breakthroughsData = breakthroughsRes.status === 'fulfilled'
+      // Since the db query already used .in('session_id', sessionIdsArray),
+      // we don't need redundant client-side filtering.
+      const userBreakthroughs = breakthroughsRes.status === 'fulfilled'
         ? breakthroughsRes.value.data || []
         : [];
-      const entitiesData = entitiesRes.status === 'fulfilled'
+      const userEntities = entitiesRes.status === 'fulfilled'
         ? entitiesRes.value.data || []
         : [];
-      const messagesData = messagesRes.status === 'fulfilled'
+      const userMessages = messagesRes.status === 'fulfilled'
         ? messagesRes.value.data || []
         : [];
-
-      // Filter to user's sessions
-      const userBreakthroughs = breakthroughsData.filter((b) => sessionIds.has(b.session_id || ''));
-      const userEntities = entitiesData.filter((e) => sessionIds.has(e.session_id || ''));
-      const userMessages = messagesData.filter((m) => sessionIds.has(m.session_id || ''));
 
       // Calculate usage stats - zeros are valid for first-run
       setUsageStats({
