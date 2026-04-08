@@ -1,7 +1,7 @@
 # aSpiral Production Status Report
 
-**Document Version:** 2.1
-**Last Updated:** March 29, 2026
+**Document Version:** 2.0
+**Last Updated:** March 26, 2026
 **Confidential - For Investor Review**
 
 ---
@@ -942,3 +942,4 @@ Comprehensive device-aware rendering optimization:
 | 1.8 | Jan 19, 2026 | aSpiral Team | Fixed launch-blocking voice failures: STT watchdog, silence timeout, gate wedge prevention, TTS play rejection handling, Supabase auth correction, UI truthfulness with VoiceState enum, diagnostics snapshots |
 | 1.9 | Jan 23, 2026 | aSpiral Team | Fixed Aurora Platform visual regression (null placeholder removed), SonarQube compliance (seeded PRNG for sparkle positions), audio complexity reduction (selectBestVoice helper extraction) |
 | 2.0 | Feb 11, 2026 | aSpiral Team | Improved testing reliability: Added unit tests for Visual Variety Engine (100% coverage) |
+| 2.1 | Mar 26, 2026 | aSpiral Team | Hardened crash recovery logic: Implemented `JUST_RECOVERED` signal to prevent boot-loop false positives; added dedicated unit tests for `SilentSentinel`. |
