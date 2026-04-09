@@ -31,14 +31,10 @@ export default defineConfig(({ mode }) => ({
           "vendor-react": ["react", "react-dom", "react-router-dom"],
           // 3D rendering (largest dependency)
           "vendor-three": ["three", "@react-three/fiber", "@react-three/drei", "@react-three/postprocessing"],
-          // UI framework
-          "vendor-ui": ["framer-motion", "@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-tooltip", "@radix-ui/react-tabs", "@radix-ui/react-accordion"],
-          // Data & state
-          "vendor-data": ["@tanstack/react-query", "zustand", "@supabase/supabase-js"],
-          // i18n
-          "vendor-i18n": ["i18next", "react-i18next"],
-          // Charts
+          // Charts (large independent dependency)
           "vendor-charts": ["recharts"],
+          // Allow Vite/Rollup to handle the rest automatically to prevent circular dependency issues
+          // that cause 'createContext' is undefined errors at runtime.
         },
       },
     },
