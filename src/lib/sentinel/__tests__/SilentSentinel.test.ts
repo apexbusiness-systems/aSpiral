@@ -28,6 +28,7 @@ describe('SilentSentinel', () => {
     vi.stubGlobal('localStorage', localStorageMock);
     vi.stubGlobal('sessionStorage', sessionStorageMock);
     vi.stubGlobal('location', { reload: vi.fn() });
+    vi.stubGlobal('window', { location: { reload: vi.fn() } });
     vi.stubGlobal('navigator', {
       serviceWorker: {
         getRegistrations: vi.fn().mockResolvedValue([]),
