@@ -418,19 +418,19 @@ const Landing = () => {
                   }}
                 />
               ))}
-              <motion.img 
-                src={heromark} 
-                alt="aSpiral Heromark" 
+              <div
+                className="absolute inset-0 m-auto h-[60%] w-[60%] rounded-full bg-primary/20 blur-3xl pointer-events-none"
+                aria-hidden="true"
+              />
+              <motion.img
+                src={heromark}
+                alt="aSpiral Heromark"
                 fetchPriority="high"
+                loading="eager"
                 decoding="async"
-                className="w-full max-w-[360px] sm:max-w-[450px] lg:max-w-[550px] xl:max-w-[620px] h-auto drop-shadow-[0_0_60px_hsl(var(--primary)/0.3)] relative z-10"
-                animate={{ 
-                  filter: [
-                    "drop-shadow(0 0 40px hsl(var(--primary)/0.2))",
-                    "drop-shadow(0 0 80px hsl(var(--primary)/0.4))",
-                    "drop-shadow(0 0 40px hsl(var(--primary)/0.2))"
-                  ]
-                }}
+                draggable={false}
+                className="w-full max-w-[360px] sm:max-w-[450px] lg:max-w-[550px] xl:max-w-[620px] h-auto relative z-10 pointer-events-none select-none"
+                animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               />
             </motion.div>
