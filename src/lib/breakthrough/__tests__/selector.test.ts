@@ -88,9 +88,8 @@ describe('Breakthrough Selector', () => {
         }
       }
       
-      // Should have very few consecutive repeats (weighted random can occasionally repeat)
-      // With 5 variants and 10 selections, expect < 50% consecutive repeats
-      expect(consecutiveRepeats).toBeLessThan(5);
+      // Immediate repeats should be prevented when alternatives exist in the top candidate pool.
+      expect(consecutiveRepeats).toBe(0);
     });
   });
 

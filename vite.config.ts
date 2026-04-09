@@ -26,15 +26,42 @@ export default defineConfig(({ mode }) => ({
     target: "es2020",
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core React runtime
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          // 3D rendering (largest dependency)
-          "vendor-three": ["three", "@react-three/fiber", "@react-three/drei", "@react-three/postprocessing"],
-          // Charts (large independent dependency)
-          "vendor-charts": ["recharts"],
-          // Allow Vite/Rollup to handle the rest automatically to prevent circular dependency issues
-          // that cause 'createContext' is undefined errors at runtime.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+
+          // Core React/runtime stack
+          if (
+            id.includes("react-dom") ||
+            id.includes("react-router") ||
+            /node_modules\/react(\/|\\)/.test(id) ||
+            id.includes("scheduler")
+          ) return "vendor-react";
+
+          // 3D rendering stack (largest dependency family)
+          if (
+            id.includes("@react-three") ||
+            /node_modules\/three(\/|\\)/.test(id) ||
+            id.includes("troika-three-text") ||
+            id.includes("postprocessing")
+          ) return "vendor-three";
+
+          // Data-viz stack
+          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+
+          // PDF/export stack
+          if (id.includes("html2pdf.js") || id.includes("jspdf") || id.includes("html2canvas")) return "vendor-export";
+
+          // Data/cache/network stacks
+          if (id.includes("@supabase/supabase-js") || id.includes("@supabase/")) return "vendor-supabase";
+          if (id.includes("@tanstack/react-query")) return "vendor-query";
+
+          // i18n stack
+          if (id.includes("i18next") || id.includes("react-i18next")) return "vendor-i18n";
+
+          // Animation stack
+          if (id.includes("framer-motion") || id.includes("motion-dom")) return "vendor-motion";
+
+          return undefined;
         },
       },
     },

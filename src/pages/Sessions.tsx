@@ -33,7 +33,6 @@ import {
   Flame,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { exportSessionToPDF, exportSessionToCSV } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/normalizeError';
@@ -162,6 +161,7 @@ const Sessions = () => {
     try {
       const session = await loadSession(sessionId);
       if (session) {
+        const { exportSessionToPDF } = await import("@/lib/pdfExport");
         await exportSessionToPDF({
           session,
           messages: [],
@@ -182,6 +182,7 @@ const Sessions = () => {
     try {
       const session = await loadSession(sessionId);
       if (session) {
+        const { exportSessionToCSV } = await import("@/lib/pdfExport");
         exportSessionToCSV({
           session,
           messages: [],
