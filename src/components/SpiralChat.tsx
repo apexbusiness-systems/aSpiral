@@ -51,7 +51,9 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const navigate = useNavigate();
   const { user } = useAuth();
   const [input, setInput] = useState("");
-  const [is3DExpanded, setIs3DExpanded] = useState(true);
+  const [is3DExpanded, setIs3DExpanded] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : true
+  );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -579,9 +581,13 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
               : "h-32 sm:h-48 lg:h-full lg:w-1/3"
           )}
         >
-          <Suspense fallback={<div className="absolute inset-0 bg-background/50 backdrop-blur-sm transition-colors duration-500" />}>
-            <SpiralStage />
-          </Suspense>
+          {is3DExpanded ? (
+            <Suspense fallback={<div className="absolute inset-0 bg-background/50 backdrop-blur-sm transition-colors duration-500" />}>
+              <SpiralStage />
+            </Suspense>
+          ) : (
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm transition-colors duration-500" />
+          )}
 
           {/* Question Bubble - positioned in 3D area */}
           <QuestionBubble

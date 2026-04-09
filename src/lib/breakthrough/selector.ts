@@ -224,7 +224,18 @@ export function selectVariant(context: SelectionContext): {
   scores: Map<string, number>;
 } {
   const history = getBreakthroughHistory();
-  const eligibleVariants = getEligibleVariants(context);
+
+  // Refresh recency/fatigue signals from persisted history so callers with a stale context
+  // still get anti-repetition behavior across sequential selections.
+  const effectiveContext: SelectionContext = {
+    ...context,
+    recentVariantIds: history.entries.slice(-RECENCY_WINDOW).map((entry) => entry.variantId),
+    recentIntensities: history.entries
+      .slice(-FATIGUE_CONFIG.fatigueWindow)
+      .map((entry) => entry.intensity),
+  };
+
+  const eligibleVariants = getEligibleVariants(effectiveContext);
   
   if (eligibleVariants.length === 0) {
     logger.warn('No eligible variants, using fallback');
@@ -238,7 +249,7 @@ export function selectVariant(context: SelectionContext): {
   // Calculate scores for all eligible variants
   const scores = new Map<string, number>();
   for (const variant of eligibleVariants) {
-    const score = calculateTotalScore(variant, context, history);
+    const score = calculateTotalScore(variant, effectiveContext, history);
     scores.set(variant.id, score);
   }
   
@@ -250,13 +261,21 @@ export function selectVariant(context: SelectionContext): {
   // Select top variant (with some randomness for variety)
   const topN = Math.min(3, sortedVariants.length);
   const topVariants = sortedVariants.slice(0, topN);
-  
-  // Weighted random selection from top variants
-  const totalTopScore = topVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+
+  // Avoid immediate repeats when viable: if last selected variant is in the top pool,
+  // remove it when at least one alternative remains.
+  const mostRecentVariantId = effectiveContext.recentVariantIds[effectiveContext.recentVariantIds.length - 1];
+  const candidateTopVariants =
+    mostRecentVariantId && topVariants.length > 1
+      ? topVariants.filter((variant) => variant.id !== mostRecentVariantId)
+      : topVariants;
+
+  // Weighted random selection from the filtered top pool.
+  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
   let random = secureMathRandom() * totalTopScore;
-  
-  let selectedVariant = topVariants[0];
-  for (const variant of topVariants) {
+
+  let selectedVariant = candidateTopVariants[0] || topVariants[0];
+  for (const variant of candidateTopVariants) {
     random -= scores.get(variant.id) || 0;
     if (random <= 0) {
       selectedVariant = variant;
