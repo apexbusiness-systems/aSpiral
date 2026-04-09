@@ -30,17 +30,6 @@ export function useEntities() {
         [currentSession?.connections]
     );
 
-    // DEV-ONLY: Track memoization effectiveness
-    useEffect(() => {
-        if (import.meta.env.DEV) {
-            console.log('[useEntities] entities/connections updated', {
-                entitiesCount: entities.length,
-                connectionsCount: connections.length,
-                timestamp: Date.now()
-            });
-        }
-    }, [entities, connections]);
-
     // Physics integration
     const handlePositionsUpdate = useCallback((positions: Map<string, Position3D>) => {
         positions.forEach((pos, id) => {
