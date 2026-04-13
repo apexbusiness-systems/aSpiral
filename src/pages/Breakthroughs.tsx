@@ -24,7 +24,7 @@ import {
   Lightbulb,
   X,
 } from 'lucide-react';
-import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { exportBreakthroughCard } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,11 +52,11 @@ const matchesSearch = (b: BreakthroughItem, queryLower: string) => {
   );
 };
 
-const matchesDateRange = (dateString: string, startOfFrom?: Date, endOfTo?: Date) => {
-  if (!startOfFrom && !endOfTo) return true;
-  const date = new Date(dateString);
-  if (startOfFrom && isBefore(date, startOfFrom)) return false;
-  if (endOfTo && isAfter(date, endOfTo)) return false;
+const matchesDateRange = (dateString: string, startOfFromMs?: number, endOfToMs?: number) => {
+  if (!startOfFromMs && !endOfToMs) return true;
+  const timeMs = new Date(dateString).getTime();
+  if (startOfFromMs && timeMs < startOfFromMs) return false;
+  if (endOfToMs && timeMs > endOfToMs) return false;
   return true;
 };
 
@@ -115,11 +115,11 @@ const Breakthroughs = () => {
 
   const filtered = useMemo(() => {
     const queryLower = searchQuery.toLowerCase();
-    const startOfFrom = dateFrom ? startOfDay(dateFrom) : undefined;
-    const endOfTo = dateTo ? endOfDay(dateTo) : undefined;
+    const startOfFromMs = dateFrom ? startOfDay(dateFrom).getTime() : undefined;
+    const endOfToMs = dateTo ? endOfDay(dateTo).getTime() : undefined;
 
     return breakthroughs.filter((b) => {
-      return matchesSearch(b, queryLower) && matchesDateRange(b.achieved_at, startOfFrom, endOfTo);
+      return matchesSearch(b, queryLower) && matchesDateRange(b.achieved_at, startOfFromMs, endOfToMs);
     });
   }, [breakthroughs, searchQuery, dateFrom, dateTo]);
 
