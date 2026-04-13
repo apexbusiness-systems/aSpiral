@@ -457,8 +457,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i];
         const text = result[0].transcript;
+        const textLower = text.toLowerCase();
 
-        if (VOICE_STOP_KEYWORDS.some((k) => text.toLowerCase().includes(k))) {
+        if (VOICE_STOP_KEYWORDS.some((k) => textLower.includes(k))) {
           stopRecording();
           return;
         }
