@@ -52,11 +52,11 @@ const matchesSearch = (b: BreakthroughItem, queryLower: string) => {
   );
 };
 
-const matchesDateRange = (dateString: string, startOfFrom?: Date, endOfTo?: Date) => {
-  if (!startOfFrom && !endOfTo) return true;
-  const date = new Date(dateString);
-  if (startOfFrom && isBefore(date, startOfFrom)) return false;
-  if (endOfTo && isAfter(date, endOfTo)) return false;
+const matchesDateRange = (dateString: string, startOfFromTime?: number, endOfToTime?: number) => {
+  if (!startOfFromTime && !endOfToTime) return true;
+  const dateTime = new Date(dateString).getTime();
+  if (startOfFromTime && dateTime < startOfFromTime) return false;
+  if (endOfToTime && dateTime > endOfToTime) return false;
   return true;
 };
 
@@ -115,11 +115,11 @@ const Breakthroughs = () => {
 
   const filtered = useMemo(() => {
     const queryLower = searchQuery.toLowerCase();
-    const startOfFrom = dateFrom ? startOfDay(dateFrom) : undefined;
-    const endOfTo = dateTo ? endOfDay(dateTo) : undefined;
+    const startOfFromTime = dateFrom ? startOfDay(dateFrom).getTime() : undefined;
+    const endOfToTime = dateTo ? endOfDay(dateTo).getTime() : undefined;
 
     return breakthroughs.filter((b) => {
-      return matchesSearch(b, queryLower) && matchesDateRange(b.achieved_at, startOfFrom, endOfTo);
+      return matchesSearch(b, queryLower) && matchesDateRange(b.achieved_at, startOfFromTime, endOfToTime);
     });
   }, [breakthroughs, searchQuery, dateFrom, dateTo]);
 
