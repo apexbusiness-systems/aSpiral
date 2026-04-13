@@ -457,6 +457,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i];
         const text = result[0].transcript;
+
+        // ⚡ Bolt Optimization: Cache lowercase text outside the loop to avoid redundant string transformations
         const textLower = text.toLowerCase();
 
         if (VOICE_STOP_KEYWORDS.some((k) => textLower.includes(k))) {
