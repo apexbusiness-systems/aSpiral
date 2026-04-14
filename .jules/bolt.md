@@ -5,3 +5,6 @@
 ## 2024-04-11 - [Hoist string transformation out of loop]
 **Learning:** Calling `.toLowerCase()` repeatedly inside an inner loop, such as array iteration via `.some()` across a list of strings (`VOICE_STOP_KEYWORDS`), incurs a measurable performance overhead. By hoisting the string conversion out of the loop and computing it once, we save CPU cycles per frame or event tick without compromising readability.
 **Action:** Extract expensive transformations like `.toLowerCase()` outside iterative checks to ensure they are calculated exactly once.
+## 2024-04-14 - Optimize Date filtering in loops
+**Learning:** Instantiating `Date` objects and utilizing heavy date utility functions (like `isBefore`/`isAfter` from `date-fns`) inside array iterations (e.g., `.filter()`) causes measurable overhead.
+**Action:** Extract timestamp conversions (`.getTime()`) outside the loop and use primitive numeric comparisons (`>` and `<`) for efficient date filtering.
