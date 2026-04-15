@@ -39,12 +39,15 @@ interface BreakthroughItem {
   insight: string;
   achieved_at: string;
   session_id: string;
+  _achievedAtTime?: number;
+  _searchString?: string;
 }
 
 const logger = createLogger('BreakthroughsPage');
 
 const matchesSearch = (b: BreakthroughItem, queryLower: string) => {
   if (!queryLower) return true;
+  if (b._searchString) return b._searchString.includes(queryLower);
   return (
     b.friction.toLowerCase().includes(queryLower) ||
     b.grease.toLowerCase().includes(queryLower) ||
@@ -52,9 +55,9 @@ const matchesSearch = (b: BreakthroughItem, queryLower: string) => {
   );
 };
 
-const matchesDateRange = (dateString: string, startOfFromTime?: number, endOfToTime?: number) => {
+const matchesDateRange = (time?: number, startOfFromTime?: number, endOfToTime?: number) => {
   if (!startOfFromTime && !endOfToTime) return true;
-  const time = new Date(dateString).getTime();
+  if (time === undefined) return true; // Fallback if time isn't pre-computed
   if (startOfFromTime && time < startOfFromTime) return false;
   if (endOfToTime && time > endOfToTime) return false;
   return true;
@@ -85,7 +88,13 @@ const Breakthroughs = () => {
         .order('achieved_at', { ascending: false });
 
       if (error) throw error;
-      setBreakthroughs(data || []);
+
+      const enrichedData = (data || []).map((b: any) => ({
+        ...b,
+        _achievedAtTime: new Date(b.achieved_at).getTime(),
+        _searchString: `${b.friction} ${b.grease} ${b.insight}`.toLowerCase()
+      }));
+      setBreakthroughs(enrichedData);
     } catch (err) {
       console.error('Failed to load breakthroughs:', err);
     } finally {
@@ -119,7 +128,7 @@ const Breakthroughs = () => {
     const endOfToTime = dateTo ? endOfDay(dateTo).getTime() : undefined;
 
     return breakthroughs.filter((b) => {
-      return matchesSearch(b, queryLower) && matchesDateRange(b.achieved_at, startOfFromTime, endOfToTime);
+      return matchesSearch(b, queryLower) && matchesDateRange(b._achievedAtTime ?? new Date(b.achieved_at).getTime(), startOfFromTime, endOfToTime);
     });
   }, [breakthroughs, searchQuery, dateFrom, dateTo]);
 
