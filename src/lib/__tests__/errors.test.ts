@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isRetriableError,
+  createError,
   AppError,
   SessionError,
   AIServiceError,
@@ -88,5 +89,48 @@ describe('isRetriableError', () => {
       statusCode: 500,
     };
     expect(isRetriableError(error)).toBe(false);
+  });
+});
+
+describe('createError', () => {
+  it('creates a SessionError', () => {
+    const context = { userId: '123' };
+    const error = createError('session', 'Session failed', context);
+    expect(error).toBeInstanceOf(SessionError);
+    expect(error.message).toBe('Session failed');
+    expect(error.context).toEqual(context);
+  });
+
+  it('creates an AIServiceError', () => {
+    const context = { model: 'gpt-4' };
+    const error = createError('ai', 'AI failed', context);
+    expect(error).toBeInstanceOf(AIServiceError);
+    expect(error.message).toBe('AI failed');
+    expect(error.context).toEqual(context);
+  });
+
+  it('creates an AuthenticationError', () => {
+    const error = createError('auth', 'Auth failed');
+    expect(error).toBeInstanceOf(AuthenticationError);
+    expect(error.message).toBe('Auth failed');
+  });
+
+  it('creates a ValidationError', () => {
+    const error = createError('validation', 'Validation failed');
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error.message).toBe('Validation failed');
+  });
+
+  it('creates a NetworkError', () => {
+    const error = createError('network', 'Network failed');
+    expect(error).toBeInstanceOf(NetworkError);
+    expect(error.message).toBe('Network failed');
+  });
+
+  it('falls back to SessionError for unknown types', () => {
+    // @ts-expect-error - testing invalid input
+    const error = createError('unknown', 'Unknown failed');
+    expect(error).toBeInstanceOf(SessionError);
+    expect(error.message).toBe('Unknown failed');
   });
 });
