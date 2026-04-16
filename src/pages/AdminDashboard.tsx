@@ -53,6 +53,36 @@ interface UsageStats {
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
 
+// Performance Optimization: Cache the base daily stats template to avoid redundant
+// date calculations (startOfDay, subDays, format) which are expensive when
+// processed repeatedly.
+let memoizedLast7Days: { date: string; dateObj: Date; sessions: number; breakthroughs: number; entities: number; }[] | null = null;
+let lastUpdateDate: number | null = null;
+
+const getDailyStatsTemplate = () => {
+  const now = startOfDay(new Date()).getTime();
+
+  if (memoizedLast7Days && lastUpdateDate === now) {
+    // Return fresh object copies because the template is mutated during stat aggregation
+    return memoizedLast7Days.map(d => ({ ...d }));
+  }
+
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = startOfDay(subDays(new Date(), 6 - i));
+    return {
+      date: format(date, 'MMM d'),
+      dateObj: date,
+      sessions: 0,
+      breakthroughs: 0,
+      entities: 0,
+    };
+  });
+
+  memoizedLast7Days = last7Days;
+  lastUpdateDate = now;
+  return last7Days.map(d => ({ ...d }));
+};
+
 /**
  * Default stats for first-run / empty states.
  * These are NOT errors - zero is a valid state.
@@ -171,16 +201,7 @@ const AdminDashboard = () => {
       setEntityTypes(Object.entries(typeCounts).map(([name, value]) => ({ name, value })));
 
       // Calculate daily stats for last 7 days - zeros are fine
-      const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const date = startOfDay(subDays(new Date(), 6 - i));
-        return {
-          date: format(date, 'MMM d'),
-          dateObj: date,
-          sessions: 0,
-          breakthroughs: 0,
-          entities: 0,
-        };
-      });
+      const last7Days = getDailyStatsTemplate();
 
       // Use a Map for O(1) lookup while maintaining local timezone correctness
       const dayMap = new Map<number, (typeof last7Days)[0]>();

@@ -8,3 +8,6 @@
 ## 2024-04-14 - Optimize Date filtering in loops
 **Learning:** Instantiating `Date` objects and utilizing heavy date utility functions (like `isBefore`/`isAfter` from `date-fns`) inside array iterations (e.g., `.filter()`) causes measurable overhead.
 **Action:** Extract timestamp conversions (`.getTime()`) outside the loop and use primitive numeric comparisons (`>` and `<`) for efficient date filtering.
+## 2026-04-16 - [Cache expensive date-dependent templates]
+**Learning:** Generating fixed-length temporal templates (e.g., last 7 days) involves expensive date-fns calls (format, subDays, startOfDay) which are redundant if processed repeatedly within the same day.
+**Action:** Cache these templates at the module level using a start-of-day timestamp for invalidation, ensuring to return fresh clones if the template is mutated by the consumer.
