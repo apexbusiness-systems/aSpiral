@@ -245,6 +245,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // ── Refs — ALL declared before any render-time use ─────────────────────────
   //
+  // optionsRef: always contains the latest provided options to avoid stale closures.
+  const optionsRef = useRef(options);
+
   // isPausedRef: mirror of isPaused state. Set during render (after declaration).
   // Prevents stale-closure bugs in onEnd / resumeRecording callbacks.
   const isPausedRef = useRef(false);
@@ -284,6 +287,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   // ── Render-time ref sync ───────────────────────────────────────────────────
   // Both refs are declared above — no TDZ risk.
+  optionsRef.current = options;
   isPausedRef.current = isPaused;
 
   // ── External state ─────────────────────────────────────────────────────────
@@ -409,10 +413,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     lastFinalCommitTime.current = now;
 
     setFinalTranscript((prev) => (prev + " " + interim).trim());
-    options.onTranscript?.(interim);
+    optionsRef.current.onTranscript?.(interim);
     interimTranscriptRef.current = "";
     emitInterimUpdate("", true);
-  }, [emitInterimUpdate, options]);
+  }, [emitInterimUpdate]);
 
   // ── Stop recording ─────────────────────────────────────────────────────────
 
@@ -504,7 +508,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         setTimeout(() => globalFinalHistory.delete(bucketKey), 10_000);
 
         setFinalTranscript((prev) => (prev + " " + newFinalText).trim());
-        options.onTranscript?.(newFinalText.trim());
+        optionsRef.current.onTranscript?.(newFinalText.trim());
         emitDebugEvent({ type: "stt.final", data: { text: newFinalText, count: finalCountRef.current } });
         audioDebug.log("stt_final", { text: newFinalText, count: finalCountRef.current });
       }
@@ -513,7 +517,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       assistantIsSpeakingRef,
       emitInterimUpdate,
       silenceTimeoutMs,
-      options,
       stopRecording,
       startWatchdog,
       clearInactivityTimer,
@@ -558,9 +561,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       setRecording(false);
       setIsPaused(false);
       isStartedRef.current = false;
-      options.onError?.(new Error(error));
+      optionsRef.current.onError?.(new Error(error));
     },
-    [options, setError, setRecording, releaseSttSession]
+    [setError, setRecording, releaseSttSession]
   );
 
   // ── Recognition factory ────────────────────────────────────────────────────
@@ -594,11 +597,32 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         if (restartRequestedRef.current && isStartedRef.current) {
           // Watchdog restart: always recreate the instance
           restartRequestedRef.current = false;
-          const newR = createRecognitionRef.current?.({ onErrorContext: "watchdog_restart" });
+          const newR = createRecognitionRef.current?.({
+            onStart: opts.onStart,
+            onEnd: opts.onEnd,
+            onErrorContext: "watchdog_restart",
+          });
           if (newR) {
             recognitionRef.current = newR;
             setTimeout(() => {
               try { newR.start(); } catch (e) { logger.warn("Watchdog restart failed", { error: e }); }
+            }, RESTART_BACKOFF_BASE_MS);
+          }
+          return;
+        }
+
+        // ⚡ Bolt: Robust auto-restart logic for iOS Safari and accidental drops
+        if (!isIntentionalStop.current && !isPausedRef.current && isStartedRef.current) {
+          audioDebug.log("stt.auto_restart", { reason: "ios_safari_or_drop" });
+          const newR = createRecognitionRef.current?.({
+            onStart: opts.onStart,
+            onEnd: opts.onEnd,
+            onErrorContext: opts.onErrorContext,
+          });
+          if (newR) {
+            recognitionRef.current = newR;
+            setTimeout(() => {
+              try { newR.start(); } catch (e) { logger.warn("Auto-restart failed", { error: e }); }
             }, RESTART_BACKOFF_BASE_MS);
           }
           return;
@@ -696,13 +720,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         },
         onEnd: () => {
           audioDebug.log("session_end", { intentional: isIntentionalStop.current });
-          // isPausedRef.current — never stale, unlike the isPaused closure value
-          if (!isIntentionalStop.current && !isPausedRef.current && isStartedRef.current) {
-            if (recognition) {
-              recognition.lang = getActiveSpeechLocale();
-              try { recognition.start(); } catch { /* handled by onerror */ }
-            }
-          } else {
+          // If we reached here without an auto-restart triggered in createRecognition's onend,
+          // then it's time to actually stop or it's just a pause.
+          if (!isPausedRef.current) {
             setRecording(false);
             isStartedRef.current = false;
             releaseSttSession("recognition_end");
@@ -737,6 +757,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   const pauseRecording = useCallback(() => {
     if (isRecording && !isPaused) {
+      isPausedRef.current = true;
       isIntentionalStop.current = true;
       recognitionRef.current?.stop();
       setIsPaused(true);
@@ -747,17 +768,24 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
   const resumeRecording = useCallback(() => {
     if (!isPausedRef.current) return;
+    isPausedRef.current = false;
+    isIntentionalStop.current = false;
     setIsPaused(false);
     isStartedRef.current = false;
 
     const recognition = createRecognition({
-      onStart: () => emitDebugEvent({ type: "stt.start", data: { action: "resume" } }),
+      onStart: () => {
+        emitDebugEvent({ type: "stt.start", data: { action: "resume" } });
+        audioDebug.log("recognizer_start", { mode: "resume", lang: recognition?.lang ?? "unknown" });
+      },
       onEnd: () => {
-        // isPausedRef.current — never stale
+        audioDebug.log("session_end", { source: "resume", intentional: isIntentionalStop.current });
         if (!isPausedRef.current) {
           commitInterimAsFinal();
           setRecording(false);
           isStartedRef.current = false;
+          releaseSttSession("resume_end");
+          clearWatchdog();
         }
       },
       onErrorContext: "resume",
