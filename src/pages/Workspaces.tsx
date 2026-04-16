@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,26 +32,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-interface Workspace {
-  id: string;
-  name: string;
-  slug: string;
-  owner_id: string;
-  settings: Record<string, unknown>;
-  created_at: string;
-}
-
-interface WorkspaceMember {
-  id: string;
-  workspace_id: string;
-  user_id: string;
-  role: string;
-  joined_at: string;
-  profile?: {
-    display_name: string;
-    avatar_url: string;
-  };
-}
+type Workspace = Tables<'workspaces'>;
 
 const Workspaces = () => {
   const { t } = useTranslation();
@@ -75,10 +57,8 @@ const Workspaces = () => {
     setError(null);
 
     try {
-      const db = supabase as any;
-
       // Get workspaces where user is a member
-      const { data: memberData, error: memberError } = await db
+      const { data: memberData, error: memberError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user!.id);
@@ -92,10 +72,10 @@ const Workspaces = () => {
         }
       }
 
-      const workspaceIds = memberData?.map((m: any) => m.workspace_id) || [];
+      const workspaceIds = memberData?.map(m => m.workspace_id) || [];
 
       if (workspaceIds.length > 0) {
-        const { data: workspacesData, error: workspacesError } = await db
+        const { data: workspacesData, error: workspacesError } = await supabase
           .from('workspaces')
           .select('*')
           .in('id', workspaceIds);
@@ -159,8 +139,7 @@ const Workspaces = () => {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      const db = supabase as any;
-      const { data: workspace, error: workspaceError } = await db
+      const { data: workspace, error: workspaceError } = await supabase
         .from('workspaces')
         .insert({
           name: newWorkspaceName.trim(),
@@ -173,7 +152,7 @@ const Workspaces = () => {
       if (workspaceError) throw workspaceError;
 
       // Add creator as admin
-      const { error: memberError } = await db
+      const { error: memberError } = await supabase
         .from('workspace_members')
         .insert({
           workspace_id: workspace.id,
