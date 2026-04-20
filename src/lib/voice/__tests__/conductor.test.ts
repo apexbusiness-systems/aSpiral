@@ -198,7 +198,7 @@ describe('planUtterance façade', () => {
     const plan = planUtterance('Hello there. How are you today?');
     expect(plan.utteranceId).toMatch(/^utt_/);
     expect(plan.chunks.length).toBeGreaterThan(0);
-    expect(plan.chunks.at(-1)?.isFinal).toBe(true);
+    expect(plan.chunks[plan.chunks.length - 1].isFinal).toBe(true);
     expect(plan.recommendedRate).toBeGreaterThan(0);
     expect(plan.bargeInGateMs).toBeGreaterThan(0);
     expect(Array.isArray(plan.preferredBackends)).toBe(true);
