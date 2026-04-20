@@ -136,7 +136,12 @@ function emitDebugEvent(event: Omit<VoiceDebugEvent, "timestamp">) {
   debugBuffer = [...debugBuffer.slice(-(DEBUG_BUFFER_SIZE - 1)), full];
   debugSubscribers.forEach((cb) => cb(debugBuffer));
   if (event.type === "stt.start" || event.type === "stt.stop" || event.type === "stt.error") {
-    addBreadcrumb({ type: "voice", message: event.type, data: event.data });
+    const analyticsMap: Record<string, import('@/lib/analytics').FeatureType | string> = {
+      "stt.start": "voice_input",
+      "stt.stop": "voice_input_stop",
+      "stt.error": "voice_input_error"
+    };
+    addBreadcrumb({ type: "voice", message: analyticsMap[event.type] || event.type, data: event.data });
   }
   logger.debug(`[${event.type}]`, event.data);
 }
@@ -232,7 +237,7 @@ function playTone(startHz: number, endHz: number): void {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}) {
-  const silenceTimeoutMs = Math.max(800, Math.min(30_000, options.silenceTimeoutMs ?? 15_000));
+  const dynamicSilenceMs = getAdaptiveEndpointMs();
   const watchdogIntervalMs = Math.max(15_000, Math.min(180_000, options.watchdogIntervalMs ?? WATCHDOG_DEFAULT_MS));
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -484,7 +489,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         postUtteranceSilenceTimer.current = setTimeout(() => {
           logger.info(`Post-utterance silence after ${silenceTimeoutMs}ms — stopping`);
           stopRecording();
-        }, silenceTimeoutMs);
+        }, dynamicSilenceMs);
 
         // Deduplicate: normalized text + 2s window + global 5s bucket
         const normalized = newFinalText.trim().toLowerCase();
@@ -516,7 +521,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     [
       assistantIsSpeakingRef,
       emitInterimUpdate,
-      silenceTimeoutMs,
+      dynamicSilenceMs,
       stopRecording,
       startWatchdog,
       clearInactivityTimer,
@@ -583,7 +588,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         setVoiceState("Listening");
         startWatchdog();
         startInactivityTimer();
-        emitDebugEvent({ type: "stt.start", data: { context: opts.onErrorContext } });
+        emitDebugEvent({ type: "stt.start", data: { action: "start" } });
         opts.onStart?.();
       };
 
@@ -775,7 +780,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
     const recognition = createRecognition({
       onStart: () => {
-        emitDebugEvent({ type: "stt.start", data: { action: "resume" } });
+        emitDebugEvent({ type: "stt.start", data: { action: "start" } });
         audioDebug.log("recognizer_start", { mode: "resume", lang: recognition?.lang ?? "unknown" });
       },
       onEnd: () => {
@@ -796,7 +801,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     emitDebugEvent({ type: "listener.attach", data: { action: "resume" } });
     recognition.start();
     logger.info("Recording resumed");
-  }, [setRecording, commitInterimAsFinal, createRecognition]);
+  }, [setRecording, commitInterimAsFinal, createRecognition, clearWatchdog, releaseSttSession]);
 
   // ── Toggle helpers ─────────────────────────────────────────────────────────
 

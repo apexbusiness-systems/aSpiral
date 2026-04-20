@@ -11,3 +11,6 @@
 ## 2026-04-16 - [Cache expensive date-dependent templates]
 **Learning:** Generating fixed-length temporal templates (e.g., last 7 days) involves expensive date-fns calls (format, subDays, startOfDay) which are redundant if processed repeatedly within the same day.
 **Action:** Cache these templates at the module level using a start-of-day timestamp for invalidation, ensuring to return fresh clones if the template is mutated by the consumer.
+## 2024-05-19 - Wire VoiceConductor and fix strict-mode build errors
+**Learning:** Hardcoded dependencies (`require` lacking types) and non-strict types (`catch (err: any)`) will fail production build environments with standard TypeScript setups.
+**Action:** Always prefer Vitest mocking like `vi.stubGlobal` over `require` injection for global variables when ambient types are absent, and use `unknown` in catch blocks. Ensure exhaustive dependencies are provided in `useCallback`.

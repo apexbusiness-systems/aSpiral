@@ -92,7 +92,6 @@ let sttSessionCounter = 0;
 // REVERB BUFFER: Prevents echo/feedback loops by gating STT input after TTS ends
 // The AI needs 600ms of silence to prevent picking up its own voice echo
 // ============================================================================
-const REVERB_BUFFER_MS = 600;
 let isGatedFlag = false;
 let gateTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -109,15 +108,16 @@ function setGate(): void {
   if (gateTimeoutId) {
     clearTimeout(gateTimeoutId);
   }
-  audioDebug.log('audio_route_change', { status: 'gated_for_reverb', duration: REVERB_BUFFER_MS });
+  audioDebug.log('audio_route_change', { status: 'gated_for_reverb', duration: getReverbTailMs(getDeviceType()) });
 }
 
 function clearGateAfterDelay(): void {
+  const reverbTailMs = getReverbTailMs(getDeviceType());
   gateTimeoutId = setTimeout(() => {
     isGatedFlag = false;
     gateTimeoutId = null;
     audioDebug.log('audio_route_change', { status: 'gate_cleared' });
-  }, REVERB_BUFFER_MS);
+  }, reverbTailMs);
 }
 
 const notify = () => {
@@ -376,7 +376,7 @@ function resumeListeningIfNeeded(requestId: number) {
   // CRITICAL: Start the gate clear timer - this gives 600ms of silence before STT resumes
   clearGateAfterDelay();
 
-  // Delay the actual STT resume by REVERB_BUFFER_MS to prevent echo
+  // Delay the actual STT resume by reverb tail to prevent echo
   setTimeout(() => {
     if (!sttController) return;
     if (resumeListeningRequestId !== requestId) return; // Request may have been superseded
@@ -603,12 +603,12 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
 
   window.speechSynthesis.cancel();
 
-  // iOS Safari: use sentence chunking for reliability
-  const useChunking = needsSentenceChunking();
-  const sentences = useChunking ? splitIntoSentences(options.text) : [options.text];
+  // Use VoiceConductor for chunking and pacing
+  const plan = planUtterance(options.text);
+  const chunks = plan.chunks;
 
-  if (useChunking && sentences.length > 1) {
-    audioDebug.log('tts_enqueue', { chunking: true, sentenceCount: sentences.length });
+  if (chunks.length > 1) {
+    audioDebug.log('tts_enqueue', { chunking: true, chunkCount: chunks.length });
   }
 
   // Wait for voices to load if empty (async on some browsers/PWAs)
@@ -628,18 +628,18 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
 
   const preferredVoice = selectBestVoice(voices, desiredLang);
 
-  let isFirstSentence = true;
+  let isFirstChunk = true;
   let hasErrored = false;
 
   // Speak each sentence sequentially
-  for (let i = 0; i < sentences.length; i++) {
+  for (let i = 0; i < chunks.length; i++) {
     if (requestId !== status.requestId || hasErrored) break;
 
-    const sentence = sentences[i];
-    const isLastSentence = i === sentences.length - 1;
+    const chunk = chunks[i];
+    const isLastChunk = i === chunks.length - 1;
 
     await new Promise<void>((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(sentence);
+      const utterance = new SpeechSynthesisUtterance(chunk.text);
       utterance.rate = options.speed;
       utterance.pitch = 1.0;
       utterance.volume = options.volume ?? 1;
@@ -653,20 +653,20 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
 
       utterance.onstart = () => {
         if (requestId !== status.requestId) return;
-        if (isFirstSentence) {
+        if (isFirstChunk) {
           // Mark playback start for adaptive sync latency measurement
           markAudioPlaybackStart();
           updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
           useAssistantSpeakingStore.getState().startSpeaking();
           audioDebug.log('tts_start', { backend: 'webSpeech', chunked: useChunking, syncStats: getSyncStats() });
           options.onStart?.();
-          isFirstSentence = false;
+          isFirstChunk = false;
         }
       };
 
       utterance.onend = () => {
         if (requestId !== status.requestId) return;
-        if (isLastSentence) {
+        if (isLastChunk) {
           updateStatus({ isSpeaking: false, backend: 'webSpeech' });
           useAssistantSpeakingStore.getState().stopSpeaking();
           resumeListeningIfNeeded(requestId);
@@ -679,7 +679,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       utterance.onerror = (event) => {
         if (requestId !== status.requestId) return;
         // On iOS, 'interrupted' errors are common during chunking - ignore them
-        if (event.error === 'interrupted' && useChunking && !isLastSentence) {
+        if (event.error === 'interrupted' && useChunking && !isLastChunk) {
           resolve();
           return;
         }
@@ -698,9 +698,9 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       window.speechSynthesis.speak(utterance);
     });
 
-    // Small pause between sentences for natural pacing (iOS needs this)
-    if (useChunking && !isLastSentence && requestId === status.requestId) {
-      await new Promise(r => setTimeout(r, 50));
+    // Adaptive pause based on utterance plan
+    if (!isLastChunk && requestId === status.requestId && chunk.trailingPauseMs > 0) {
+      await new Promise(r => setTimeout(r, chunk.trailingPauseMs));
     }
   }
 }
@@ -745,18 +745,41 @@ async function processQueue() {
           ]);
 
         if (entry.options.forceWebSpeech) {
-          // Force WebSpeech only
           await withTimeout(speakWithWebSpeech(requestId, entry.options));
           entry.resolve();
         } else {
-          // Try OpenAI first, fallback to WebSpeech
-          const blob = await withTimeout(fetchOpenAiAudio(entry.options));
-          if (requestId !== status.requestId) {
-            entry.resolve();
-            continue;
+          const preferences = getBackendPreference();
+          let success = false;
+          let lastError = null;
+
+          for (const backend of preferences) {
+            if (backend === 'openai') {
+              try {
+                const start = Date.now();
+                const blob = await withTimeout(fetchOpenAiAudio(entry.options));
+                if (requestId !== status.requestId) {
+                  entry.resolve();
+                  success = true;
+                  break;
+                }
+                await withTimeout(playOpenAiAudio(blob, requestId, entry.options));
+                recordBackendSuccess('openai', Date.now() - start);
+                success = true;
+                break;
+              } catch (e) {
+                lastError = e;
+                recordBackendFailure('openai');
+              }
+            } else if (backend === 'groq') {
+                // Not implemented yet
+            }
           }
-          await withTimeout(playOpenAiAudio(blob, requestId, entry.options));
-          entry.resolve();
+
+          if (success) {
+            entry.resolve();
+          } else {
+            throw lastError || new Error('All primary TTS backends failed');
+          }
         }
       } catch (error) {
         if ((error as Error).name === 'AbortError') {

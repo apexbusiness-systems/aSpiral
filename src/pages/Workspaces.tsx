@@ -49,6 +49,7 @@ const Workspaces = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const loadWorkspaces = useCallback(async (isRetry = false) => {
+    if (!user) return;
     if (isRetry) {
       setIsRetrying(true);
     } else {
@@ -61,7 +62,7 @@ const Workspaces = () => {
       const { data: memberData, error: memberError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
-        .eq('user_id', user!.id);
+        .eq('user_id', user.id);
 
       // Handle member query errors - but empty is OK
       if (memberError) {
@@ -130,6 +131,7 @@ const Workspaces = () => {
   };
 
   const createWorkspace = async () => {
+    if (!user) return;
     if (!newWorkspaceName.trim()) return;
 
     setIsCreating(true);
@@ -144,7 +146,7 @@ const Workspaces = () => {
         .insert({
           name: newWorkspaceName.trim(),
           slug: `${slug}-${Date.now().toString(36)}`,
-          owner_id: user!.id,
+          owner_id: user.id,
         })
         .select()
         .single();
@@ -156,7 +158,7 @@ const Workspaces = () => {
         .from('workspace_members')
         .insert({
           workspace_id: workspace.id,
-          user_id: user!.id,
+          user_id: user.id,
           role: 'admin',
         });
 
@@ -166,7 +168,7 @@ const Workspaces = () => {
       setNewWorkspaceName('');
       setDialogOpen(false);
       loadWorkspaces();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating workspace:', err);
       const normalized = normalizeError(err);
       toast({
