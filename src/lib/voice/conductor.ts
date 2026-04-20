@@ -52,7 +52,7 @@ const SPOKEN_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bvs\.\s*/gi, 'versus '],
   [/\bw\/\s*/gi, 'with '],
   [/\bw\/o\s*/gi, 'without '],
-  [/\b&\b/g, 'and'],
+  [/(^|\s)&(\s|$)/g, '$1and$2'],
 ];
 
 /** Strip AI-tells, expand abbreviations, normalize whitespace. */
