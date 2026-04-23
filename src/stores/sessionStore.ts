@@ -16,6 +16,8 @@ interface FrictionVisualization {
 interface SessionState {
   // Current session
   currentSession: Session | null;
+  _entityLookup: Record<string, boolean>;
+  _connectionLookup: Record<string, boolean>;
   messages: Message[];
   
   // Visualization state
@@ -77,6 +79,8 @@ export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
       currentSession: null,
+      _entityLookup: {},
+      _connectionLookup: {},
       messages: [],
       activeFriction: null,
       isApplyingGrease: false,
@@ -109,6 +113,8 @@ export const useSessionStore = create<SessionState>()(
 
         set({
           currentSession: session,
+          _entityLookup: {},
+          _connectionLookup: {},
           messages: [],
           error: null,
         });
@@ -188,11 +194,9 @@ export const useSessionStore = create<SessionState>()(
           
           // Idempotent: check for existing entity with same label
           const normalized = entity.label.toLowerCase().trim();
-          const existing = state.currentSession.entities.find(
-            (e) => e.label.toLowerCase().trim() === normalized && e.type === entity.type
-          );
+          const lookupKey = `${entity.type}:${normalized}`;
           
-          if (existing) {
+          if (state._entityLookup[lookupKey]) {
             logger.debug("Entity already exists", { label: entity.label });
             return state;
           }
@@ -200,6 +204,7 @@ export const useSessionStore = create<SessionState>()(
           logger.info("Entity added", { type: entity.type, label: entity.label });
 
           return {
+            _entityLookup: { ...state._entityLookup, [lookupKey]: true },
             currentSession: {
               ...state.currentSession,
               entities: [...state.currentSession.entities, entity],
@@ -221,16 +226,12 @@ export const useSessionStore = create<SessionState>()(
           if (!state.currentSession) return state;
 
           // Idempotent: check for existing connection
-          const existing = state.currentSession.connections.find(
-            (c) =>
-              c.fromEntityId === connection.fromEntityId &&
-              c.toEntityId === connection.toEntityId &&
-              c.type === connection.type
-          );
+          const lookupKey = `${connection.fromEntityId}:${connection.toEntityId}:${connection.type}`;
 
-          if (existing) return state;
+          if (state._connectionLookup[lookupKey]) return state;
 
           return {
+            _connectionLookup: { ...state._connectionLookup, [lookupKey]: true },
             currentSession: {
               ...state.currentSession,
               connections: [...state.currentSession.connections, connection],
@@ -323,6 +324,8 @@ export const useSessionStore = create<SessionState>()(
         logger.info("Store reset");
         set({
           currentSession: null,
+          _entityLookup: {},
+          _connectionLookup: {},
           messages: [],
           isRecording: false,
           isProcessing: false,
@@ -337,6 +340,24 @@ export const useSessionStore = create<SessionState>()(
         currentSession: state.currentSession,
         messages: state.messages,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.currentSession) {
+          const entityLookup: Record<string, boolean> = {};
+          state.currentSession.entities.forEach((e) => {
+            entityLookup[`${e.type}:${e.label.toLowerCase().trim()}`] = true;
+          });
+
+          const connectionLookup: Record<string, boolean> = {};
+          state.currentSession.connections.forEach((c) => {
+            connectionLookup[`${c.fromEntityId}:${c.toEntityId}:${c.type}`] = true;
+          });
+
+          useSessionStore.setState({
+            _entityLookup: entityLookup,
+            _connectionLookup: connectionLookup,
+          });
+        }
+      },
     }
   )
 );
