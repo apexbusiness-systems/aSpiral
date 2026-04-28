@@ -83,7 +83,8 @@ export function detectPatternsEarly(
 
   for (const [name, config] of Object.entries(BEHAVIORAL_PATTERNS)) {
     const matchingKeywords = config.keywords.filter(kw => 
-      allText.includes(kw.toLowerCase())
+      // ⚡ Bolt Optimization: Omitted redundant .toLowerCase() check because BEHAVIORAL_PATTERNS keywords are already lowercase
+      allText.includes(kw)
     );
     
     if (matchingKeywords.length > 0) {
