@@ -726,3 +726,27 @@
 .spiral-hero-container {
   animation: spiral-rotate 30s linear infinite;
 }
+
+
+.hero-lcp-image {
+  animation: hero-lcp-float 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-lcp-image {
+    animation: none;
+  }
+}
+
+@keyframes hero-lcp-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
