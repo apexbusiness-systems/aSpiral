@@ -98,10 +98,14 @@ export function useEntities() {
         const timeoutIds = remainingEntities.map((entity, index) => {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
             return setTimeout(() => {
-                // ⚡ Bolt Performance Optimization:
-                // Avoid array spread `new Set([...prev, id])` in rapidly firing timeouts
-                // to prevent intermediate array creation and reduce garbage collection spikes.
-                setVisibleEntityIds(prev => new Set(prev).add(entity.id));
+                // Bolt Performance Optimization:
+                // Cloning the Set directly avoids intermediate array allocations
+                // that previously caused garbage collection spikes during staggered timeouts.
+                setVisibleEntityIds((prev) => {
+                    const next = new Set(prev);
+                    next.add(entity.id);
+                    return next;
+                });
                 invalidate();
             }, delay);
         });
