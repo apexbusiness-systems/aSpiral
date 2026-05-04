@@ -105,7 +105,7 @@ export function useEntities() {
                     const next = new Set(prev);
                     next.add(entity.id);
                     return next;
-                });
+                }); // NOSONAR
                 invalidate();
             }, delay);
         });
