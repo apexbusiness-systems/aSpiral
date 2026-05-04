@@ -101,11 +101,7 @@ export function useEntities() {
                 // ⚡ Bolt Performance Optimization:
                 // Avoid array spread `new Set([...prev, id])` in rapidly firing timeouts
                 // to prevent intermediate array creation and reduce garbage collection spikes.
-                setVisibleEntityIds(prev => {
-                    const next = new Set(prev);
-                    next.add(entity.id);
-                    return next;
-                });
+                setVisibleEntityIds(prev => new Set(prev).add(entity.id));
                 invalidate();
             }, delay);
         });
