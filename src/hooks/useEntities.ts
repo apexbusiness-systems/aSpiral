@@ -98,7 +98,14 @@ export function useEntities() {
         const timeoutIds = remainingEntities.map((entity, index) => {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
             return setTimeout(() => {
-                setVisibleEntityIds(prev => new Set([...prev, entity.id]));
+                // ⚡ Bolt Performance Optimization:
+                // Avoid array spread `new Set([...prev, id])` in rapidly firing timeouts
+                // to prevent intermediate array creation and reduce garbage collection spikes.
+                setVisibleEntityIds(prev => {
+                    const next = new Set(prev);
+                    next.add(entity.id);
+                    return next;
+                });
                 invalidate();
             }, delay);
         });
