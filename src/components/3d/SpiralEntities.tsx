@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { AdaptiveEntity } from "./AdaptiveEntity";
 import { ConnectionLine } from "./ConnectionLine";
 import { useEntities } from "@/hooks/useEntities";
@@ -17,45 +18,57 @@ export function SpiralEntities() {
     workerState
   } = useEntities();
 
-  const handleEntityClick = (entity: Entity) => {
+  // Memoize callback to prevent redundant execution of useEffects in child components
+  const handleEntityClick = useCallback((entity: Entity) => {
     console.log("Entity clicked:", entity);
-  };
+  }, []);
+
+  // Performance Optimization: Wrap .map() loops that generate Three.js subcomponents
+  // in useMemo. This stabilizes props like higher-order callbacks and derived arrays,
+  // preventing redundant execution of useEffect hooks in child components that depend on these references.
+  const renderedEntities = useMemo(() => {
+    return entities.map((entity) => {
+      const position = getEntityPosition(entity.id);
+      const isVisible = visibleEntityIds.has(entity.id);
+      const importance = entity.metadata?.importance || 0.5;
+
+      return (
+        <AdaptiveEntity
+          key={entity.id}
+          entity={entity}
+          position={position}
+          isVisible={isVisible}
+          onClick={handleEntityClick}
+          showLabel={importance > 0.7 ? "important" : "hover"}
+          onMeshRef={handleMeshRef(entity.id)}
+        />
+      );
+    });
+  }, [entities, getEntityPosition, visibleEntityIds, handleEntityClick, handleMeshRef]);
+
+  const renderedConnections = useMemo(() => {
+    return visibleConnections.map((connection) => {
+      const fromPos = getEntityPosition(connection.fromEntityId);
+      const toPos = getEntityPosition(connection.toEntityId);
+
+      return (
+        <ConnectionLine
+          key={connection.id}
+          connection={connection}
+          fromPosition={fromPos}
+          toPosition={toPos}
+        />
+      );
+    });
+  }, [visibleConnections, getEntityPosition]);
 
   return (
     <>
       {/* Render entities with adaptive visibility */}
-      {entities.map((entity) => {
-        const position = getEntityPosition(entity.id);
-        const isVisible = visibleEntityIds.has(entity.id);
-        const importance = entity.metadata?.importance || 0.5;
-
-        return (
-          <AdaptiveEntity
-            key={entity.id}
-            entity={entity}
-            position={position}
-            isVisible={isVisible}
-            onClick={handleEntityClick}
-            showLabel={importance > 0.7 ? "important" : "hover"}
-            onMeshRef={handleMeshRef(entity.id)}
-          />
-        );
-      })}
+      {renderedEntities}
 
       {/* Only show connections for visible entities */}
-      {visibleConnections.map((connection) => {
-        const fromPos = getEntityPosition(connection.fromEntityId);
-        const toPos = getEntityPosition(connection.toEntityId);
-
-        return (
-          <ConnectionLine
-            key={connection.id}
-            connection={connection}
-            fromPosition={fromPos}
-            toPosition={toPos}
-          />
-        );
-      })}
+      {renderedConnections}
 
       {/* Debug: Show worker state in development */}
       {import.meta.env.DEV && workerState.lastError && (
