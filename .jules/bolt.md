@@ -17,6 +17,6 @@
 ## 2024-05-20 - [Zustand State Synchronization for Deduplication Lookups]
 **Learning:** When optimizing Zustand stores with O(1) lookup maps (e.g., `_entityLookup` and `_connectionLookup`) alongside arrays to avoid O(N) deduplication loops, any function that performs bulk updates or replaces the array state (such as `updateSession` or Rehydration) must reconstruct the lookup maps. If they are merely initialized to empty objects, subsequent operations will fail to recognize pre-existing items, breaking deduplication and state integrity.
 **Action:** Always rebuild auxiliary lookup maps iteratively whenever their underlying source-of-truth arrays are replaced or bulk-updated in the store, and ensure `useStore.setState` is used within rehydration callbacks rather than directly mutating the state argument.
-## 2024-04-18 - Caching array lookups
-**Learning:** Checking for existence using `.some()` and then extracting the element using `.find()` inside the same conditional block causes duplicate array iterations (O(N) * 2).
-**Action:** Call `.find()` once, store the result in a variable, and use that truthy/falsy value for both the conditional check and the element extraction.
+## 2024-04-30 - [Consolidate Array Iterations for Statistics]
+**Learning:** Consolidating multiple sequential array iterations (.filter(), .map(), .reduce()) into a single pass loop significantly reduces execution overhead and allocations, especially when multiple stats are derived from the same dataset.
+**Action:** Replace multiple functional array methods with a single `for...of` or `for` loop to compute multiple aggregates in one pass.
