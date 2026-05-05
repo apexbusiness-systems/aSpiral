@@ -253,6 +253,13 @@ export function getOverallStats(): {
     high: 3,
     extreme: 4,
   };
+
+  for (const e of entries) {
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+    totalIntensity += intensityValues[e.intensity];
+    uniqueVariantsSet.add(e.variantId);
+  }
   
   for (const entry of entries) {
     if (entry.completed) completedCount++;
