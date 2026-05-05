@@ -1,21 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { scheduleSessionReminder } from '../pushNotifications';
 
-// Define global variables if they don't exist (for bun test environment)
-if (typeof window === 'undefined') {
-  (globalThis as any).window = {
-    location: { href: '' },
-    setTimeout: (cb: any, ms: any) => setTimeout(cb, ms),
-    clearTimeout: (id: any) => clearTimeout(id),
-    focus: vi.fn(),
-  };
-}
-
+/**
+ * Security verification for push notification redirection
+ * Ensures sessionId is correctly encoded to prevent Open Redirect / Path Traversal
+ */
 describe('pushNotifications security', () => {
   const originalLocation = window.location;
 
   beforeEach(() => {
-    // Properly mock window.location
+    // Setup window.location mock
     const locationMock = {
       ...originalLocation,
       href: '',
@@ -26,7 +20,7 @@ describe('pushNotifications security', () => {
       configurable: true
     });
 
-    // Mock Notification
+    // Setup Notification API mock
     const mockNotification = vi.fn().mockImplementation(function(this: any) {
       this.onclick = null;
       this.close = vi.fn();
@@ -40,46 +34,38 @@ describe('pushNotifications security', () => {
     vi.restoreAllMocks();
   });
 
-  it('vulnerability check: sessionId can cause path traversal if not escaped', async () => {
-    const maliciousSessionId = '../malicious-target';
-    const sessionTitle = 'Test Session';
-    // Small delay for testing without fake timers if they are not available
+  it('neutralizes path traversal attempts in sessionId', async () => {
+    const maliciousId = '../traversal';
     const reminderTime = new Date(Date.now() + 10);
 
-    scheduleSessionReminder(maliciousSessionId, sessionTitle, reminderTime);
+    scheduleSessionReminder(maliciousId, 'Test', reminderTime);
 
-    // Wait for the timeout to trigger
+    // Wait for the internal setTimeout in scheduleSessionReminder
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Get the notification instance
-    const notificationInstance = (window.Notification as any).mock.instances[0] as any;
-
-    // Trigger the click
-    if (notificationInstance && notificationInstance.onclick) {
-      notificationInstance.onclick();
+    const notification = (window.Notification as any).mock.instances[0];
+    if (notification && notification.onclick) {
+      notification.onclick();
     }
 
-    // Check where it tried to redirect
-    // Expect encoded version
-    expect(window.location.href).toBe('/sessions/..%2Fmalicious-target');
+    // Expect: encoded path segment
+    expect(window.location.href).toBe('/sessions/..%2Ftraversal');
   });
 
-  it('vulnerability check: sessionId can cause open redirect if it starts with //', async () => {
-    const maliciousSessionId = '//evil.com';
-    const sessionTitle = 'Test Session';
+  it('neutralizes protocol-relative open redirect attempts', async () => {
+    const maliciousId = '//evil.com';
     const reminderTime = new Date(Date.now() + 10);
 
-    scheduleSessionReminder(maliciousSessionId, sessionTitle, reminderTime);
+    scheduleSessionReminder(maliciousId, 'Test', reminderTime);
 
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    const notificationInstance = (window.Notification as any).mock.instances[0] as any;
-
-    if (notificationInstance && notificationInstance.onclick) {
-      notificationInstance.onclick();
+    const notification = (window.Notification as any).mock.instances[0];
+    if (notification && notification.onclick) {
+      notification.onclick();
     }
 
-    // Expect encoded version
+    // Expect: encoded slashes to prevent browser interpretation as protocol-relative
     expect(window.location.href).toBe('/sessions/%2F%2Fevil.com');
   });
 });
