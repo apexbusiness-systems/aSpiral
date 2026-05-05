@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { AdaptiveEntity } from "./AdaptiveEntity";
 import { ConnectionLine } from "./ConnectionLine";
 import { useEntities } from "@/hooks/useEntities";
@@ -18,14 +18,10 @@ export function SpiralEntities() {
     workerState
   } = useEntities();
 
-  // Memoize callback to prevent redundant execution of useEffects in child components
   const handleEntityClick = useCallback((entity: Entity) => {
     console.log("Entity clicked:", entity);
   }, []);
 
-  // Performance Optimization: Wrap .map() loops that generate Three.js subcomponents
-  // in useMemo. This stabilizes props like higher-order callbacks and derived arrays,
-  // preventing redundant execution of useEffect hooks in child components that depend on these references.
   const renderedEntities = useMemo(() => {
     return entities.map((entity) => {
       const position = getEntityPosition(entity.id);
@@ -44,7 +40,7 @@ export function SpiralEntities() {
         />
       );
     });
-  }, [entities, getEntityPosition, visibleEntityIds, handleEntityClick, handleMeshRef]);
+  }, [entities, visibleEntityIds, getEntityPosition, handleEntityClick, handleMeshRef]);
 
   const renderedConnections = useMemo(() => {
     return visibleConnections.map((connection) => {
