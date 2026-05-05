@@ -74,18 +74,6 @@ export function useEntities() {
         return [0, 0, 0];
     }, [fallbackPositions]);
 
-    const revealEntity = useCallback((entityId: string) => {
-        // Bolt Performance Optimization:
-        // Cloning the Set directly avoids intermediate array allocations
-        // that previously caused garbage collection spikes during staggered timeouts.
-        setVisibleEntityIds((prev) => {
-            const next = new Set(prev);
-            next.add(entityId);
-            return next;
-        });
-        invalidate();
-    }, [invalidate]);
-
     // Progressive Disclosure
     useEffect(() => {
         if (entities.length === 0) {
@@ -105,6 +93,17 @@ export function useEntities() {
         setVisibleEntityIds(initial);
         invalidate();
 
+        // Helper to reveal a specific entity
+        const revealEntity = (entityId: string) => {
+            // Optimization: Cloning a Set and adding is faster than array spread [...prev]
+            setVisibleEntityIds(prev => {
+                const next = new Set(prev);
+                next.add(entityId);
+                return next;
+            });
+            invalidate();
+        };
+
         // Schedule staggered rest
         const remainingEntities = sorted.slice(visibleLimit);
         const timeoutIds = remainingEntities.map((entity, index) => {
@@ -116,7 +115,7 @@ export function useEntities() {
         return () => {
             timeoutIds.forEach(clearTimeout);
         };
-    }, [entities, profile, invalidate, revealEntity]);
+    }, [entities, profile, invalidate]);
 
     // Register mesh ref for direct physics updates
     const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {

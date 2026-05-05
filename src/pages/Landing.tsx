@@ -422,17 +422,16 @@ const Landing = () => {
                 className="absolute inset-0 m-auto h-[60%] w-[60%] rounded-full bg-primary/20 blur-3xl pointer-events-none"
                 aria-hidden="true"
               />
-              <img
+              <motion.img
                 src={heromark}
                 alt="aSpiral Heromark"
                 fetchPriority="high"
                 loading="eager"
                 decoding="async"
-                width={620}
-                height={620}
-                sizes="(max-width: 639px) 360px, (max-width: 1023px) 450px, (max-width: 1279px) 550px, 620px"
                 draggable={false}
-                className="hero-lcp-image w-full max-w-[360px] sm:max-w-[450px] lg:max-w-[550px] xl:max-w-[620px] h-auto relative z-10 pointer-events-none select-none"
+                className="w-full max-w-[360px] sm:max-w-[450px] lg:max-w-[550px] xl:max-w-[620px] h-auto relative z-10 pointer-events-none select-none"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               />
             </motion.div>
           </div>
