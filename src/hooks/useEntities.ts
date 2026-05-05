@@ -74,6 +74,18 @@ export function useEntities() {
         return [0, 0, 0];
     }, [fallbackPositions]);
 
+    const revealEntity = useCallback((entityId: string) => {
+        // Bolt Performance Optimization:
+        // Cloning the Set directly avoids intermediate array allocations
+        // that previously caused garbage collection spikes during staggered timeouts.
+        setVisibleEntityIds((prev) => {
+            const next = new Set(prev);
+            next.add(entityId);
+            return next;
+        });
+        invalidate();
+    }, [invalidate]);
+
     // Progressive Disclosure
     useEffect(() => {
         if (entities.length === 0) {
@@ -112,7 +124,7 @@ export function useEntities() {
         return () => {
             timeoutIds.forEach(clearTimeout);
         };
-    }, [entities, profile, invalidate]);
+    }, [entities, profile, invalidate, revealEntity]);
 
     // Register mesh ref for direct physics updates
     const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {
