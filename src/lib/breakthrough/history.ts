@@ -197,8 +197,14 @@ export function getVariantStats(variantId: string): {
     };
   }
   
-  const completed = variantEntries.filter((e) => e.completed).length;
-  const fallbacks = variantEntries.filter((e) => e.wasFallback).length;
+  let completed = 0;
+  let fallbacks = 0;
+
+  for (const e of variantEntries) {
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+  }
+
   const lastEntry = variantEntries[variantEntries.length - 1];
   
   return {
@@ -232,9 +238,10 @@ export function getOverallStats(): {
     };
   }
   
-  const completed = entries.filter((e) => e.completed).length;
-  const fallbacks = entries.filter((e) => e.wasFallback).length;
-  const uniqueVariants = new Set(entries.map((e) => e.variantId)).size;
+  let completed = 0;
+  let fallbacks = 0;
+  let totalIntensity = 0;
+  const uniqueVariantsSet = new Set<string>();
   
   const intensityValues: Record<IntensityBand, number> = {
     low: 1,
@@ -242,9 +249,16 @@ export function getOverallStats(): {
     high: 3,
     extreme: 4,
   };
+
+  for (const e of entries) {
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+    totalIntensity += intensityValues[e.intensity];
+    uniqueVariantsSet.add(e.variantId);
+  }
   
-  const avgIntensity =
-    entries.reduce((sum, e) => sum + intensityValues[e.intensity], 0) / entries.length;
+  const uniqueVariants = uniqueVariantsSet.size;
+  const avgIntensity = totalIntensity / entries.length;
   
   return {
     totalPlays: entries.length,
