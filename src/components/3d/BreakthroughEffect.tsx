@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { secureMathRandom } from "@/lib/secureMathRandom";
 
 interface BreakthroughEffectProps {
   isActive: boolean;
@@ -71,9 +72,9 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
       const colors = ["#22c55e", "#10b981", "#34d399", "#6ee7b7", "#ffffff", "#fbbf24"];
 
       for (let i = 0; i < 50; i++) {
-        const angle = Math.random() * Math.PI * 2; // nosonar:typescript:S2245
-        const elevation = (Math.random() - 0.5) * Math.PI; // nosonar:typescript:S2245
-        const speed = 2 + Math.random() * 4; // nosonar:typescript:S2245
+        const angle = secureMathRandom() * Math.PI * 2;
+        const elevation = (secureMathRandom() - 0.5) * Math.PI;
+        const speed = 2 + secureMathRandom() * 4;
 
         newParticles.push({
           id: i,
@@ -83,8 +84,8 @@ export function BreakthroughEffect({ isActive, onComplete }: BreakthroughEffectP
             Math.sin(elevation) * speed,
             Math.sin(angle) * Math.cos(elevation) * speed
           ),
-          color: colors[Math.floor(Math.random() * colors.length)], // nosonar:typescript:S2245
-          size: 0.5 + Math.random() * 0.5, // nosonar:typescript:S2245
+          color: colors[Math.floor(secureMathRandom() * colors.length)],
+          size: 0.5 + secureMathRandom() * 0.5,
         });
       }
 

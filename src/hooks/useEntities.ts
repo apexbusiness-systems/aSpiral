@@ -93,14 +93,22 @@ export function useEntities() {
         setVisibleEntityIds(initial);
         invalidate();
 
+        // Helper to reveal a specific entity
+        const revealEntity = (entityId: string) => {
+            // Optimization: Cloning a Set and adding is faster than array spread [...prev]
+            setVisibleEntityIds(prev => {
+                const next = new Set(prev);
+                next.add(entityId);
+                return next;
+            });
+            invalidate();
+        };
+
         // Schedule staggered rest
         const remainingEntities = sorted.slice(visibleLimit);
         const timeoutIds = remainingEntities.map((entity, index) => {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
-            return setTimeout(() => {
-                setVisibleEntityIds(prev => new Set([...prev, entity.id]));
-                invalidate();
-            }, delay);
+            return setTimeout(() => revealEntity(entity.id), delay);
         });
 
         // Cleanup timeouts on unmount or dependency change
