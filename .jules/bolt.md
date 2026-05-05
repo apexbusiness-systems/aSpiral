@@ -14,6 +14,9 @@
 ## 2024-05-19 - Wire VoiceConductor and fix strict-mode build errors
 **Learning:** Hardcoded dependencies (`require` lacking types) and non-strict types (`catch (err: any)`) will fail production build environments with standard TypeScript setups.
 **Action:** Always prefer Vitest mocking like `vi.stubGlobal` over `require` injection for global variables when ambient types are absent, and use `unknown` in catch blocks. Ensure exhaustive dependencies are provided in `useCallback`.
-## 2024-11-09 - [Optimize Zustand Store Array Lookups]
-**Learning:** O(N) deduplication using \`.find()\` on arrays (like entities/connections) in Zustand stores degrades performance during frequent updates.
-**Action:** Replace \`.find()\` array iterations with O(1) object lookups using \`Record<string, boolean>\`. Avoid using \`Set\` for this purpose if the store requires immutable state updates, as copying a \`Set\` is an O(N) operation that negates the lookup performance benefits. Exclude these non-persisted lookups from storage via \`partialize\` and reconstruct them during \`onRehydrateStorage\` using \`setTimeout\` to avoid synchronous race conditions.
+## 2024-05-20 - [Zustand State Synchronization for Deduplication Lookups]
+**Learning:** When optimizing Zustand stores with O(1) lookup maps (e.g., `_entityLookup` and `_connectionLookup`) alongside arrays to avoid O(N) deduplication loops, any function that performs bulk updates or replaces the array state (such as `updateSession` or Rehydration) must reconstruct the lookup maps. If they are merely initialized to empty objects, subsequent operations will fail to recognize pre-existing items, breaking deduplication and state integrity.
+**Action:** Always rebuild auxiliary lookup maps iteratively whenever their underlying source-of-truth arrays are replaced or bulk-updated in the store, and ensure `useStore.setState` is used within rehydration callbacks rather than directly mutating the state argument.
+## 2024-05-21 - Remove redundant string transformation on constant lowercase arrays
+**Learning:** Calling `.toLowerCase()` inside a `.filter()` or iteration loop on keywords that are already defined entirely in lowercase (such as those in `BEHAVIORAL_PATTERNS`) incurs unnecessary CPU overhead per element check.
+**Action:** When filtering against a statically defined list of lowercase strings where the input text has already been lowercased, omit the redundant `.toLowerCase()` call to speed up the loop.
