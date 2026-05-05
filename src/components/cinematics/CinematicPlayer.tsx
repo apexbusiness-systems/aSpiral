@@ -376,24 +376,24 @@ export function CinematicPlayer({
     }
 
     const effects = config.effects || [];
-    const bloomEffect = effects.find((e) => e.type === 'bloom');
-    const chromaticAberrationEffect = effects.find((e) => e.type === 'chromaticAberration');
+    const hasBloom = effects.some((e) => e.type === 'bloom');
+    const hasChromaticAberration = effects.some((e) => e.type === 'chromaticAberration');
 
     return (
       <EffectComposer>
-        {bloomEffect && (
+        {hasBloom && (
           <Bloom
-            intensity={bloomEffect.intensity || 1.5}
+            intensity={effects.find((e) => e.type === 'bloom')?.intensity || 1.5}
             luminanceThreshold={0.8}
             luminanceSmoothing={0.9}
             blendFunction={BlendFunction.ADD}
           />
         )}
-        {chromaticAberrationEffect && (
+        {hasChromaticAberration && (
           <ChromaticAberration
             offset={
               new THREE.Vector2(0.002, 0.002).multiplyScalar(
-                chromaticAberrationEffect.intensity || 1.0
+                effects.find((e) => e.type === 'chromaticAberration')?.intensity || 1.0
               )
             }
             blendFunction={BlendFunction.NORMAL}
