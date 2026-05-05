@@ -17,6 +17,3 @@
 ## 2024-05-20 - [Zustand State Synchronization for Deduplication Lookups]
 **Learning:** When optimizing Zustand stores with O(1) lookup maps (e.g., `_entityLookup` and `_connectionLookup`) alongside arrays to avoid O(N) deduplication loops, any function that performs bulk updates or replaces the array state (such as `updateSession` or Rehydration) must reconstruct the lookup maps. If they are merely initialized to empty objects, subsequent operations will fail to recognize pre-existing items, breaking deduplication and state integrity.
 **Action:** Always rebuild auxiliary lookup maps iteratively whenever their underlying source-of-truth arrays are replaced or bulk-updated in the store, and ensure `useStore.setState` is used within rehydration callbacks rather than directly mutating the state argument.
-## 2024-05-21 - Optimize Set additions in loops/timeouts
-**Learning:** Copying a `Set` using array spread notation (`new Set([...prev, id])`) within rapid staggered loops (like progressive element disclosure) creates intermediate arrays, causing measurable O(N^2) overhead and significant garbage collection pressure.
-**Action:** Always prefer `new Set(prev)` followed by `.add(id)` to update Sets efficiently, avoiding intermediate array allocation.
