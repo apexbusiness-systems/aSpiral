@@ -134,7 +134,7 @@ export function scheduleSessionReminder(
       tag: `session-${sessionId}`,
       data: { sessionId },
       onClick: () => {
-        window.location.href = `/sessions/${sessionId}`;
+        window.location.href = `/sessions/${encodeURIComponent(sessionId)}`;
       },
     });
     scheduledReminders.delete(sessionId);
