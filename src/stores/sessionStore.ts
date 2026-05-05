@@ -20,6 +20,10 @@ interface SessionState {
   _connectionLookup: Record<string, boolean>;
   messages: Message[];
   
+  // O(1) Lookups for deduplication
+  _entityLookup: Record<string, boolean>;
+  _connectionLookup: Record<string, boolean>;
+
   // Visualization state
   activeFriction: FrictionVisualization | null;
   isApplyingGrease: boolean;
@@ -82,6 +86,8 @@ export const useSessionStore = create<SessionState>()(
       _entityLookup: {},
       _connectionLookup: {},
       messages: [],
+      _entityLookup: {},
+      _connectionLookup: {},
       activeFriction: null,
       isApplyingGrease: false,
       greaseIsCorrect: false,
@@ -116,6 +122,8 @@ export const useSessionStore = create<SessionState>()(
           _entityLookup: {},
           _connectionLookup: {},
           messages: [],
+          _entityLookup: {},
+          _connectionLookup: {},
           error: null,
         });
 
@@ -134,7 +142,28 @@ export const useSessionStore = create<SessionState>()(
           
           logger.debug("Session updated", { sessionId: updated.id, updates });
           
-          return { currentSession: updated };
+          // If entities or connections were bulk-updated (e.g. from hydration/API), we need to rebuild the lookups
+          const newEntityLookup = { ...state._entityLookup };
+          if (updates.entities) {
+             for (const key in newEntityLookup) delete newEntityLookup[key];
+             updates.entities.forEach(e => {
+               newEntityLookup[`${e.label.toLowerCase().trim()}::${e.type}`] = true;
+             });
+          }
+
+          const newConnectionLookup = { ...state._connectionLookup };
+          if (updates.connections) {
+             for (const key in newConnectionLookup) delete newConnectionLookup[key];
+             updates.connections.forEach(c => {
+               newConnectionLookup[`${c.fromEntityId}::${c.toEntityId}::${c.type}`] = true;
+             });
+          }
+
+          return {
+            currentSession: updated,
+            _entityLookup: newEntityLookup,
+            _connectionLookup: newConnectionLookup
+          };
         });
       },
 
@@ -192,7 +221,7 @@ export const useSessionStore = create<SessionState>()(
         set((state) => {
           if (!state.currentSession) return state;
           
-          // Idempotent: check for existing entity with same label
+          // O(1) Idempotent check for existing entity
           const normalized = entity.label.toLowerCase().trim();
           const lookupKey = `${entity.type}:${normalized}`;
           
@@ -209,6 +238,10 @@ export const useSessionStore = create<SessionState>()(
               ...state.currentSession,
               entities: [...state.currentSession.entities, entity],
               updatedAt: new Date(),
+            },
+            _entityLookup: {
+              ...state._entityLookup,
+              [lookupKey]: true,
             },
           };
         });
@@ -236,6 +269,10 @@ export const useSessionStore = create<SessionState>()(
               ...state.currentSession,
               connections: [...state.currentSession.connections, connection],
               updatedAt: new Date(),
+            },
+            _connectionLookup: {
+              ...state._connectionLookup,
+              [lookupKey]: true,
             },
           };
         });
@@ -327,6 +364,8 @@ export const useSessionStore = create<SessionState>()(
           _entityLookup: {},
           _connectionLookup: {},
           messages: [],
+          _entityLookup: {},
+          _connectionLookup: {},
           isRecording: false,
           isProcessing: false,
           error: null,
