@@ -17,3 +17,9 @@
 ## 2024-05-20 - [Zustand State Synchronization for Deduplication Lookups]
 **Learning:** When optimizing Zustand stores with O(1) lookup maps (e.g., `_entityLookup` and `_connectionLookup`) alongside arrays to avoid O(N) deduplication loops, any function that performs bulk updates or replaces the array state (such as `updateSession` or Rehydration) must reconstruct the lookup maps. If they are merely initialized to empty objects, subsequent operations will fail to recognize pre-existing items, breaking deduplication and state integrity.
 **Action:** Always rebuild auxiliary lookup maps iteratively whenever their underlying source-of-truth arrays are replaced or bulk-updated in the store, and ensure `useStore.setState` is used within rehydration callbacks rather than directly mutating the state argument.
+## 2025-05-04 - Optimize Set Cloning for Progressive Disclosures
+**Learning:** Using array spread notation `new Set([...prev, id])` inside rapidly firing loops or timeouts (like progressive loading staggered timeouts) creates hidden intermediate array allocations. This causes O(N^2) overhead and significant garbage collection spikes which can drop frames in React rendering environments.
+**Action:** Always prefer initializing a new Set directly from the previous one, then adding the new element: `const next = new Set(prev); next.add(id); return next;`.
+## 2024-05-05 - [Optimize R3F mapping in loops]
+**Learning:** Returning array-mapped Three.js components directly in the render function leads to prop stabilization issues and redundant `useEffect` executions inside child components since these maps recreate the objects on each render cycle.
+**Action:** Wrap any iterative `.map()` logic returning Three.js component arrays into `useMemo`, and wrap associated inline functions passed to these components in `useCallback`. This avoids costly recreations and maintains prop reference stability inside R3F.
