@@ -39,7 +39,7 @@ export function usePushNotifications() {
       (action: { notification?: { data?: { sessionId?: string } } }) => {
         const sessionId = action.notification?.data?.sessionId;
         if (sessionId) {
-          window.location.href = `/sessions/${sessionId}`;
+          window.location.href = `/sessions/${encodeURIComponent(sessionId)}`;
         }
       }
     );
