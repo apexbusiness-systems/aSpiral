@@ -87,6 +87,24 @@ let ttsRequestCounter = 0;
 let isProcessingQueue = false;
 let activeSTTSessionId: number | null = null;
 let sttSessionCounter = 0;
+let cachedAccessToken: string | null = null;
+
+// ============================================================================
+// AUTH CACHE: Keeps a local copy of the access token to avoid getSession() overhead
+// ============================================================================
+if (typeof window !== 'undefined') {
+  // Get initial session
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    cachedAccessToken = session?.access_token ?? null;
+  }).catch(() => {
+    // Fail silently, fetchOpenAiAudio will fallback to getSession
+  });
+
+  // Subscribe to auth changes to keep the token fresh
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cachedAccessToken = session?.access_token ?? null;
+  });
+}
 
 // ============================================================================
 // REVERB BUFFER: Prevents echo/feedback loops by gating STT input after TTS ends
@@ -330,9 +348,14 @@ async function fetchOpenAiAudio(options: SpeakOptions): Promise<Response> {
     throw new Error('Supabase not configured');
   }
 
-  // Get current session for access token
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token;
+  // Use cached access token if available, fallback to getSession() if not
+  // This avoids the async overhead of getSession() for every TTS request
+  let accessToken = cachedAccessToken;
+  if (!accessToken) {
+    const { data: { session } } = await supabase.auth.getSession();
+    accessToken = session?.access_token ?? null;
+    cachedAccessToken = accessToken;
+  }
 
   abortController = new AbortController();
   const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
