@@ -89,6 +89,97 @@ let activeSTTSessionId: number | null = null;
 let sttSessionCounter = 0;
 let cachedAccessToken: string | null = null;
 
+
+// ============================================================================
+// BOUNDED TTS CACHE
+// Uses IndexedDB via a simple wrapper to store recent TTS Blobs
+// ============================================================================
+
+const TTS_CACHE_DB = 'aspiral_tts_cache';
+const TTS_CACHE_STORE = 'audio_blobs';
+const MAX_CACHE_ENTRIES = 50;
+
+async function getTTSDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(TTS_CACHE_DB, 1);
+    request.onupgradeneeded = (e: any) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(TTS_CACHE_STORE)) {
+        db.createObjectStore(TTS_CACHE_STORE, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getCachedAudio(id: string): Promise<Blob | null> {
+  try {
+    const db = await getTTSDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(TTS_CACHE_STORE, 'readonly');
+      const store = tx.objectStore(TTS_CACHE_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    logger.warn('Failed to read from TTS cache', e);
+    return null;
+  }
+}
+
+async function setCachedAudio(id: string, blob: Blob): Promise<void> {
+  try {
+    const db = await getTTSDB();
+    
+    // First enforce size
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(TTS_CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(TTS_CACHE_STORE);
+      const countReq = store.count();
+      
+      countReq.onsuccess = () => {
+        if (countReq.result >= MAX_CACHE_ENTRIES) {
+          // Simplistic eviction: delete all and start fresh, or just delete first few
+          // For true LRU, we'd need timestamps, but for bounding, wiping old keys is fine
+          const req = store.openCursor();
+          let deleted = 0;
+          req.onsuccess = (e: any) => {
+            const cursor = e.target.result;
+            if (cursor && deleted < 10) { // evict 10
+              cursor.delete();
+              deleted++;
+              cursor.continue();
+            } else {
+              resolve();
+            }
+          };
+        } else {
+          resolve();
+        }
+      };
+      countReq.onerror = () => reject(countReq.error);
+    });
+    
+    // Then add new
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(TTS_CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(TTS_CACHE_STORE);
+      const req = store.put({ id, blob, timestamp: Date.now() });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    logger.warn('Failed to write to TTS cache', e);
+  }
+}
+
+// Helper to normalize text for cache key
+function normalizeTextForCache(text: string): string {
+  return text.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 // ============================================================================
 // AUTH CACHE: Keeps a local copy of the access token to avoid getSession() overhead
 // ============================================================================
@@ -342,7 +433,7 @@ function cancelActive(reason: string, resumeListening: boolean) {
   audioDebug.log('tts_end', { reason });
 }
 
-async function fetchOpenAiAudio(options: SpeakOptions): Promise<Response> {
+async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
   const { supabaseUrl, supabaseKey, text, voice, speed } = options;
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase not configured');

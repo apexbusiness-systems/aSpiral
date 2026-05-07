@@ -18,8 +18,8 @@ export function SpiralEntities() {
     workerState
   } = useEntities();
 
-  const handleEntityClick = useCallback((entity: Entity) => {
-    console.log("Entity clicked:", entity);
+  const handleEntityClick = useCallback((_entity: Entity) => {
+    // Intentionally empty: Hook reserved for future interactive entity features
   }, []);
 
   const renderedEntities = useMemo(() => {

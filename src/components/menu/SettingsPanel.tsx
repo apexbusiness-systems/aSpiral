@@ -19,7 +19,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Volume2, Eye, Brain, RotateCcw } from "lucide-react";
+import { X, Volume2, Eye, Brain, RotateCcw, Shield, Info, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -290,7 +290,7 @@ export function SettingsPanel({
               }}
             >
               <Tabs defaultValue="voice" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsList className="flex flex-wrap w-full mb-6 gap-2">
                   <TabsTrigger 
                     value="voice" 
                     className="flex items-center gap-2 touch-manipulation"
@@ -311,6 +311,20 @@ export function SettingsPanel({
                   >
                     <Brain size={16} />
                     <span className="hidden sm:inline">AI</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="experience" 
+                    className="flex items-center gap-2 touch-manipulation"
+                  >
+                    <Moon size={16} />
+                    <span className="hidden sm:inline">Comfort</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="privacy" 
+                    className="flex items-center gap-2 touch-manipulation"
+                  >
+                    <Shield size={16} />
+                    <span className="hidden sm:inline">Trust</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -560,6 +574,75 @@ export function SettingsPanel({
                     />
                   </SettingRow>
                 </TabsContent>
+
+
+                {/* Experience / Comfort Tab */}
+                <TabsContent value="experience" className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="font-medium text-lg flex items-center gap-2">
+                      <Moon className="w-5 h-5 text-indigo-400" />
+                      Experience & Comfort
+                    </h3>
+                    
+                    <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <Label htmlFor="quiet-mode" className="text-base font-medium flex items-center gap-2">
+                            Quiet Mode
+                            {settings.quietMode && <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">Active</span>}
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            A calmer, lower-energy experience. Enables reduced motion, limits bright flashes, simplifies visual effects, and lowers resource usage while maintaining core features.
+                          </p>
+                        </div>
+                        <Switch
+                          id="quiet-mode"
+                          checked={settings.quietMode}
+                          onCheckedChange={(v) => updateSetting("quietMode", v)}
+                          className="mt-1 data-[state=checked]:bg-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Privacy & Trust Tab */}
+                <TabsContent value="privacy" className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="font-medium text-lg flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-purple-400" />
+                      Privacy & Trust
+                    </h3>
+                    
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <Label htmlFor="analytics-enabled" className="text-base">Anonymous Analytics</Label>
+                        <p className="text-sm text-muted-foreground pr-4">
+                          Help us improve aSpiral by sharing anonymous usage data. We never share your session content or audio data.
+                        </p>
+                      </div>
+                      <Switch
+                        id="analytics-enabled"
+                        checked={settings.analyticsEnabled ?? true}
+                        onCheckedChange={(checked) => {
+                          updateSetting('analyticsEnabled', checked);
+                          import('@/lib/analytics').then(m => m.setAnalyticsEnabled(checked));
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-2 p-4 bg-muted/30 rounded-lg border border-border/50 mt-6">
+                      <h4 className="font-medium text-sm flex items-center gap-2 text-blue-400">
+                        <Info className="w-4 h-4" />
+                        Data Safety Commitment
+                      </h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        aSpiral is designed to be a safe space for your thoughts. This app is <strong>not therapy or a substitute for professional mental health care.</strong> All transcriptions happen securely. Your audio is never stored. If you are experiencing a crisis, please contact emergency services.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
               </Tabs>
             </div>
 
