@@ -24,6 +24,24 @@ function sanitizeCssColor(color: string): string | null {
   return trimmed;
 }
 
+/**
+ * Validates and sanitizes CSS identifiers (ids, keys) to prevent CSS injection
+ * Allows: alphanumeric, hyphens, underscores
+ */
+function sanitizeCssIdentifier(id: string): string | null {
+  if (!id) return null;
+
+  const trimmed = id.trim();
+
+  // Strict character set allowance to prevent CSS injection.
+  // Allowed: alphanumeric, -, _
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -84,16 +102,23 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
       return null;
     }
 
+    const sanitizedId = sanitizeCssIdentifier(id);
+    if (!sanitizedId) {
+      return null;
+    }
+
     return Object.entries(THEMES)
       .map(
         ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${sanitizedId}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    const sanitized = color ? sanitizeCssColor(color) : null;
-    return sanitized ? `  --color-${key}: ${sanitized};` : null;
+    const sanitizedColor = color ? sanitizeCssColor(color) : null;
+    const sanitizedKey = sanitizeCssIdentifier(key);
+    return sanitizedColor && sanitizedKey ? `  --color-${sanitizedKey}: ${sanitizedColor};` : null;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,
@@ -105,13 +130,7 @@ ${colorConfig
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: css,
-      }}
-    />
-  );
+  return <style>{css}</style>;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
