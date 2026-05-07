@@ -92,7 +92,7 @@ let cachedAccessToken: string | null = null;
 // ============================================================================
 // AUTH CACHE: Keeps a local copy of the access token to avoid getSession() overhead
 // ============================================================================
-if (typeof window !== 'undefined') {
+if (typeof globalThis.window !== 'undefined') {
   // Get initial session
   supabase.auth.getSession().then(({ data: { session } }) => {
     cachedAccessToken = session?.access_token ?? null;
@@ -272,7 +272,7 @@ function clearAudioElement() {
 
 function clearSpeechUtterance() {
   if (speechUtterance) {
-    window.speechSynthesis?.cancel();
+    globalThis.window.speechSynthesis?.cancel();
     speechUtterance = null;
   }
 }
@@ -483,7 +483,7 @@ function setupAudioHandlers(
 
 async function playOpenAiAudio(response: Response, requestId: number, options: SpeakOptions): Promise<void> {
   // Check if MediaSource is supported
-  if (!window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
+  if (!globalThis.window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
     // Fallback to old blob method
     logger.warn('MediaSource not supported, falling back to blob method');
     const blob = await response.blob();
@@ -617,14 +617,14 @@ function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): S
 }
 
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
-  if (!window.speechSynthesis) {
+  if (!globalThis.window.speechSynthesis) {
     throw new Error('Web Speech API not supported');
   }
 
   // Ensure AudioContext is alive before speaking (critical for PWA after background)
   await ensureAudioContext();
 
-  window.speechSynthesis.cancel();
+  globalThis.window.speechSynthesis.cancel();
 
   // Use VoiceConductor for chunking and pacing
   const plan = planUtterance(options.text);
@@ -718,7 +718,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       };
 
       speechUtterance = utterance;
-      window.speechSynthesis.speak(utterance);
+      globalThis.window.speechSynthesis.speak(utterance);
     });
 
     // Adaptive pause based on utterance plan

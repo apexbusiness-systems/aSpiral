@@ -1,5 +1,5 @@
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Simulating the environment and benchmark
 describe('Supabase getSession Benchmark (Simulated)', () => {
@@ -27,9 +27,11 @@ describe('Supabase getSession Benchmark (Simulated)', () => {
     // Optimized: using a cached variable
     const cachedToken = 'fake-token';
     const startCached = performance.now();
+    let dummy = '';
     for (let i = 0; i < iterations; i++) {
-      const token = cachedToken;
+      dummy = cachedToken;
     }
+    expect(dummy).toBe('fake-token');
     const endCached = performance.now();
     const durationCached = endCached - startCached;
 
