@@ -363,11 +363,19 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Session timer - pauses when recording is paused or during breakthrough
   useEffect(() => {
+    let rafId: number;
     if (currentSession && !isRecordingPaused && currentStage !== "breakthrough") {
-      const interval = setInterval(() => {
-        setSessionElapsed((prev) => prev + 1);
-      }, 1000);
-      return () => clearInterval(interval);
+      let lastTime = performance.now();
+      const loop = () => {
+        const now = performance.now();
+        if (now - lastTime >= 1000) {
+          setSessionElapsed((prev) => prev + 1);
+          lastTime = now;
+        }
+        rafId = requestAnimationFrame(loop);
+      };
+      rafId = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(rafId);
     }
   }, [currentSession, isRecordingPaused, currentStage]);
 

@@ -22,11 +22,19 @@ export function LiveTranscript({
       return;
     }
 
-    const interval = setInterval(() => {
-      setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
-    }, 400);
+    let rafId: number;
+    let lastTime = performance.now();
+    const loop = () => {
+      const now = performance.now();
+      if (now - lastTime >= 400) {
+        setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
+        lastTime = now;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
 
-    return () => clearInterval(interval);
+    return () => cancelAnimationFrame(rafId);
   }, [isRecording]);
 
   if (!isRecording && !transcript) return null;
