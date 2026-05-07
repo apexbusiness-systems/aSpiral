@@ -25,7 +25,7 @@ describe('Supabase getSession Benchmark (Simulated)', () => {
     const durationGetSession = endGetSession - startGetSession;
 
     // Optimized: using a cached variable
-    let cachedToken = 'fake-token';
+    const cachedToken = 'fake-token';
     const startCached = performance.now();
     for (let i = 0; i < iterations; i++) {
       const token = cachedToken;
