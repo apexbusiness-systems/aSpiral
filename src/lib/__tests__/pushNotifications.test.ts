@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { it, expect, vi } from 'vitest';
 import { scheduleSessionReminder } from '../pushNotifications';
 
@@ -8,10 +9,10 @@ it('secures notification redirects', async () => {
   const target = { href: '' };
   Object.defineProperty(window, 'location', { value: target, configurable: true });
 
-  const FakeNotification = vi.fn().mockImplementation(() => ({
+  const FakeNotification = vi.fn().mockImplementation(function() { return {
     onclick: null,
     close: vi.fn(),
-  }));
+  }; });
   (FakeNotification as any).permission = 'granted';
   (window as any).Notification = FakeNotification;
 
