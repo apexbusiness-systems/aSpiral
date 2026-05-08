@@ -11,7 +11,7 @@ import type { AudioConfig } from './types';
 export class AudioManager {
   private audio: HTMLAudioElement | null = null;
   private config: AudioConfig;
-  private fadeInterval: ReturnType<typeof setInterval> | null = null;
+  private fadeInterval: number | null = null;
   private isLoaded = false;
   private loadError: Error | null = null;
 
@@ -157,19 +157,27 @@ export class AudioManager {
     const volumeStep = targetVolume / steps;
     let currentStep = 0;
 
-    this.fadeInterval = setInterval(() => {
-      if (!this.audio) {
-        this.clearFadeInterval();
-        return;
-      }
+    let lastTime = performance.now();
+    const loop = () => {
+      const now = performance.now();
+      if (now - lastTime >= stepDuration) {
+        if (!this.audio) {
+          this.clearFadeInterval();
+          return;
+        }
 
-      currentStep++;
-      this.audio.volume = Math.min(volumeStep * currentStep, targetVolume);
+        currentStep++;
+        this.audio.volume = Math.min(volumeStep * currentStep, targetVolume);
 
-      if (currentStep >= steps) {
-        this.clearFadeInterval();
+        if (currentStep >= steps) {
+          this.clearFadeInterval();
+          return;
+        }
+        lastTime = now;
       }
-    }, stepDuration);
+      this.fadeInterval = requestAnimationFrame(loop);
+    };
+    this.fadeInterval = requestAnimationFrame(loop);
   }
 
   /**
@@ -186,21 +194,29 @@ export class AudioManager {
     const volumeStep = initialVolume / steps;
     let currentStep = 0;
 
-    this.fadeInterval = setInterval(() => {
-      if (!this.audio) {
-        this.clearFadeInterval();
-        return;
-      }
+    let lastTime = performance.now();
+    const loop = () => {
+      const now = performance.now();
+      if (now - lastTime >= stepDuration) {
+        if (!this.audio) {
+          this.clearFadeInterval();
+          return;
+        }
 
-      currentStep++;
-      this.audio.volume = Math.max(initialVolume - volumeStep * currentStep, 0);
+        currentStep++;
+        this.audio.volume = Math.max(initialVolume - volumeStep * currentStep, 0);
 
-      if (currentStep >= steps) {
-        this.clearFadeInterval();
-        this.audio.pause();
-        this.audio.currentTime = 0;
+        if (currentStep >= steps) {
+          this.clearFadeInterval();
+          this.audio.pause();
+          this.audio.currentTime = 0;
+          return;
+        }
+        lastTime = now;
       }
-    }, stepDuration);
+      this.fadeInterval = requestAnimationFrame(loop);
+    };
+    this.fadeInterval = requestAnimationFrame(loop);
   }
 
   /**
@@ -208,7 +224,7 @@ export class AudioManager {
    */
   private clearFadeInterval(): void {
     if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
+      cancelAnimationFrame(this.fadeInterval);
       this.fadeInterval = null;
     }
   }

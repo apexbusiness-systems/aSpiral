@@ -200,7 +200,7 @@ export function getVariantStats(variantId: string): {
   const completed = variantEntries.filter((e) => e.completed).length;
   const fallbacks = variantEntries.filter((e) => e.wasFallback).length;
   const lastEntry = variantEntries[variantEntries.length - 1];
-  
+
   return {
     playCount: variantEntries.length,
     completionRate: completed / variantEntries.length,
@@ -235,7 +235,7 @@ export function getOverallStats(): {
   const completed = entries.filter((e) => e.completed).length;
   const fallbacks = entries.filter((e) => e.wasFallback).length;
   const uniqueVariants = new Set(entries.map((e) => e.variantId)).size;
-  
+
   const intensityValues: Record<IntensityBand, number> = {
     low: 1,
     medium: 2,

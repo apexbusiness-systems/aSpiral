@@ -16,6 +16,8 @@ interface FrictionVisualization {
 interface SessionState {
   // Current session
   currentSession: Session | null;
+  _entityLookup?: Record<string, boolean>;
+  _connectionLookup?: Record<string, boolean>;
   messages: Message[];
   
   // Visualization state
@@ -82,6 +84,8 @@ export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
       currentSession: null,
+      _entityLookup: {},
+      _connectionLookup: {},
       messages: [],
       activeFriction: null,
       isApplyingGrease: false,
@@ -134,6 +138,8 @@ export const useSessionStore = create<SessionState>()(
 
         set({
           currentSession: session,
+          _entityLookup: {},
+          _connectionLookup: {},
           messages: [],
           error: null,
           _entityLookup: new Set(),
@@ -356,6 +362,8 @@ export const useSessionStore = create<SessionState>()(
         logger.info("Store reset");
         set({
           currentSession: null,
+          _entityLookup: {},
+          _connectionLookup: {},
           messages: [],
           isRecording: false,
           isProcessing: false,

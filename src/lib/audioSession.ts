@@ -87,6 +87,115 @@ let ttsRequestCounter = 0;
 let isProcessingQueue = false;
 let activeSTTSessionId: number | null = null;
 let sttSessionCounter = 0;
+let cachedAccessToken: string | null = null;
+
+
+// ============================================================================
+// BOUNDED TTS CACHE
+// Uses IndexedDB via a simple wrapper to store recent TTS Blobs
+// ============================================================================
+
+const TTS_CACHE_DB = 'aspiral_tts_cache';
+const TTS_CACHE_STORE = 'audio_blobs';
+const MAX_CACHE_ENTRIES = 50;
+
+async function getTTSDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(TTS_CACHE_DB, 1);
+    request.onupgradeneeded = (e: any) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(TTS_CACHE_STORE)) {
+        db.createObjectStore(TTS_CACHE_STORE, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getCachedAudio(id: string): Promise<Blob | null> {
+  try {
+    const db = await getTTSDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(TTS_CACHE_STORE, 'readonly');
+      const store = tx.objectStore(TTS_CACHE_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    logger.warn('Failed to read from TTS cache', e);
+    return null;
+  }
+}
+
+async function setCachedAudio(id: string, blob: Blob): Promise<void> {
+  try {
+    const db = await getTTSDB();
+    
+    // First enforce size
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(TTS_CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(TTS_CACHE_STORE);
+      const countReq = store.count();
+      
+      countReq.onsuccess = () => {
+        if (countReq.result >= MAX_CACHE_ENTRIES) {
+          // Simplistic eviction: delete all and start fresh, or just delete first few
+          // For true LRU, we'd need timestamps, but for bounding, wiping old keys is fine
+          const req = store.openCursor();
+          let deleted = 0;
+          req.onsuccess = (e: any) => {
+            const cursor = e.target.result;
+            if (cursor && deleted < 10) { // evict 10
+              cursor.delete();
+              deleted++;
+              cursor.continue();
+            } else {
+              resolve();
+            }
+          };
+        } else {
+          resolve();
+        }
+      };
+      countReq.onerror = () => reject(countReq.error);
+    });
+    
+    // Then add new
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(TTS_CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(TTS_CACHE_STORE);
+      const req = store.put({ id, blob, timestamp: Date.now() });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    logger.warn('Failed to write to TTS cache', e);
+  }
+}
+
+// Helper to normalize text for cache key
+function normalizeTextForCache(text: string): string {
+  return text.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// ============================================================================
+// AUTH CACHE: Keeps a local copy of the access token to avoid getSession() overhead
+// ============================================================================
+if (typeof globalThis.window !== 'undefined') {
+  // Get initial session
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    cachedAccessToken = session?.access_token ?? null;
+  }).catch(() => {
+    // Fail silently, fetchOpenAiAudio will fallback to getSession
+  });
+
+  // Subscribe to auth changes to keep the token fresh
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cachedAccessToken = session?.access_token ?? null;
+  });
+}
 
 // ============================================================================
 // REVERB BUFFER: Prevents echo/feedback loops by gating STT input after TTS ends
@@ -254,7 +363,7 @@ function clearAudioElement() {
 
 function clearSpeechUtterance() {
   if (speechUtterance) {
-    window.speechSynthesis?.cancel();
+    globalThis.window.speechSynthesis?.cancel();
     speechUtterance = null;
   }
 }
@@ -324,15 +433,20 @@ function cancelActive(reason: string, resumeListening: boolean) {
   audioDebug.log('tts_end', { reason });
 }
 
-async function fetchOpenAiAudio(options: SpeakOptions): Promise<Response> {
+async function fetchOpenAiAudio(options: SpeakOptions): Promise<Blob> {
   const { supabaseUrl, supabaseKey, text, voice, speed } = options;
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase not configured');
   }
 
-  // Get current session for access token
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token;
+  // Use cached access token if available, fallback to getSession() if not
+  // This avoids the async overhead of getSession() for every TTS request
+  let accessToken = cachedAccessToken;
+  if (!accessToken) {
+    const { data: { session } } = await supabase.auth.getSession();
+    accessToken = session?.access_token ?? null;
+    cachedAccessToken = accessToken;
+  }
 
   abortController = new AbortController();
   const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
@@ -460,7 +574,7 @@ function setupAudioHandlers(
 
 async function playOpenAiAudio(response: Response, requestId: number, options: SpeakOptions): Promise<void> {
   // Check if MediaSource is supported
-  if (!window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
+  if (!globalThis.window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
     // Fallback to old blob method
     logger.warn('MediaSource not supported, falling back to blob method');
     const blob = await response.blob();
@@ -594,14 +708,14 @@ function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): S
 }
 
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
-  if (!window.speechSynthesis) {
+  if (!globalThis.window.speechSynthesis) {
     throw new Error('Web Speech API not supported');
   }
 
   // Ensure AudioContext is alive before speaking (critical for PWA after background)
   await ensureAudioContext();
 
-  window.speechSynthesis.cancel();
+  globalThis.window.speechSynthesis.cancel();
 
   // Use VoiceConductor for chunking and pacing
   const plan = planUtterance(options.text);
@@ -695,7 +809,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
       };
 
       speechUtterance = utterance;
-      window.speechSynthesis.speak(utterance);
+      globalThis.window.speechSynthesis.speak(utterance);
     });
 
     // Adaptive pause based on utterance plan
