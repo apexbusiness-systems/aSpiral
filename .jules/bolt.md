@@ -18,3 +18,7 @@
 ## 2026-04-23 - Optimized Connection and Entity Deduplication
 **Learning:** Replacing O(N) array searching (using .find()) with O(1) Set lookups in Zustand stores provides massive performance gains (20x+) for data-heavy operations. To maintain persistence compatibility, lookups should be excluded from serialization and rebuilt on hydration.
 **Action:** Always use Set/Map lookups for deduplication in state management, and use the onRehydrateStorage hook in Zustand to restore non-serializable lookups.
+
+## 2026-04-23 - Reliability and Defensive Programming in Zustand Stores
+**Learning:** High-performance optimizations must be paired with defensive programming to pass quality gates (like SonarCloud). Moving state-dependent logic (like lookup key construction) into the `set` callback ensures atomic updates and prevents analysis warnings about potentially stale or undefined state accessed via `get()`.
+**Action:** Always include null/undefined checks for all properties used in key construction and perform deduplication logic inside the `set` callback.

@@ -98,11 +98,7 @@ export function useEntities() {
         const timeoutIds = remainingEntities.map((entity, index) => {
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
             return setTimeout(() => {
-                setVisibleEntityIds(prev => {
-                    const next = new Set(prev);
-                    next.add(entity.id);
-                    return next;
-                });
+                setVisibleEntityIds(prev => new Set([...prev, entity.id]));
                 invalidate();
             }, delay);
         });

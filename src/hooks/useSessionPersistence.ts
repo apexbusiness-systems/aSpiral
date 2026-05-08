@@ -111,20 +111,13 @@ export function useSessionPersistence() {
 
   useEffect(() => {
     if (user && currentSession) {
-      let lastTime = performance.now();
-      const loop = () => {
-        const now = performance.now();
-        if (now - lastTime >= AUTO_SAVE_INTERVAL) {
-          saveSession();
-          lastTime = now;
-        }
-        autoSaveIntervalRef.current = requestAnimationFrame(loop);
-      };
-      autoSaveIntervalRef.current = requestAnimationFrame(loop);
+      autoSaveIntervalRef.current = setInterval(() => {
+        saveSession();
+      }, AUTO_SAVE_INTERVAL);
 
       return () => {
         if (autoSaveIntervalRef.current) {
-          cancelAnimationFrame(autoSaveIntervalRef.current);
+          clearInterval(autoSaveIntervalRef.current);
         }
       };
     }

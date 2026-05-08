@@ -16,8 +16,6 @@ interface FrictionVisualization {
 interface SessionState {
   // Current session
   currentSession: Session | null;
-  _entityLookup?: Record<string, boolean>;
-  _connectionLookup?: Record<string, boolean>;
   messages: Message[];
   
   // Visualization state
@@ -84,8 +82,6 @@ export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
       currentSession: null,
-      _entityLookup: {},
-      _connectionLookup: {},
       messages: [],
       activeFriction: null,
       isApplyingGrease: false,
@@ -106,11 +102,18 @@ export const useSessionStore = create<SessionState>()(
           return;
         }
 
+        const entities = currentSession.entities || [];
+        const connections = currentSession.connections || [];
+
         const entityLookup = new Set(
-          currentSession.entities.map(e => `${e.type}:${e.label.toLowerCase().trim()}`)
+          entities
+            .filter(e => e && e.type && e.label)
+            .map(e => `${e.type}:${e.label.toLowerCase().trim()}`)
         );
         const connectionLookup = new Set(
-          currentSession.connections.map(c => `${c.fromEntityId}:${c.toEntityId}:${c.type}`)
+          connections
+            .filter(c => c && c.fromEntityId && c.toEntityId && c.type)
+            .map(c => `${c.fromEntityId}:${c.toEntityId}:${c.type}`)
         );
 
         set({ _entityLookup: entityLookup, _connectionLookup: connectionLookup });
@@ -138,8 +141,6 @@ export const useSessionStore = create<SessionState>()(
 
         set({
           currentSession: session,
-          _entityLookup: {},
-          _connectionLookup: {},
           messages: [],
           error: null,
           _entityLookup: new Set(),
@@ -216,22 +217,15 @@ export const useSessionStore = create<SessionState>()(
           updatedAt: new Date(),
         };
 
-        const key = `${entity.type}:${entity.label.toLowerCase().trim()}`;
-
-        if (get()._entityLookup.has(key)) {
-          logger.debug("Entity already exists", { label: entity.label });
-          // We still need to find it if we want to return the existing one,
-          // but the state doesn't change so returning the input-based one is fine for idempotency
-          // if the caller only cares if it's there.
-          // Actually, current implementation returns the NEW entity object even if it's not added.
-          // Wait, addEntity returns the new entity object. If it already exists, it doesn't add it.
-          // Let's keep that behavior but optimized.
-          return entity;
-        }
-
         set((state) => {
-          if (!state.currentSession) return state;
-          
+          if (!state.currentSession || !entity.label || !entity.type) return state;
+
+          const key = `${entity.type}:${entity.label.toLowerCase().trim()}`;
+          if (state._entityLookup.has(key)) {
+            logger.debug("Entity already exists", { label: entity.label });
+            return state;
+          }
+
           const newLookup = new Set(state._entityLookup);
           newLookup.add(key);
 
@@ -256,14 +250,11 @@ export const useSessionStore = create<SessionState>()(
           id: generateId(),
         };
 
-        const key = `${connection.fromEntityId}:${connection.toEntityId}:${connection.type}`;
-
-        if (get()._connectionLookup.has(key)) {
-          return connection;
-        }
-
         set((state) => {
-          if (!state.currentSession) return state;
+          if (!state.currentSession || !connection.fromEntityId || !connection.toEntityId || !connection.type) return state;
+
+          const key = `${connection.fromEntityId}:${connection.toEntityId}:${connection.type}`;
+          if (state._connectionLookup.has(key)) return state;
 
           const newLookup = new Set(state._connectionLookup);
           newLookup.add(key);
@@ -362,8 +353,6 @@ export const useSessionStore = create<SessionState>()(
         logger.info("Store reset");
         set({
           currentSession: null,
-          _entityLookup: {},
-          _connectionLookup: {},
           messages: [],
           isRecording: false,
           isProcessing: false,
@@ -377,8 +366,8 @@ export const useSessionStore = create<SessionState>()(
       name: "aspiral-session",
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
-        currentSession: state.currentSession,
-        messages: state.messages,
+        currentSession: state?.currentSession,
+        messages: state?.messages || [],
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

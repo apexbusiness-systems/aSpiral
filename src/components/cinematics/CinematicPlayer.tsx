@@ -335,14 +335,11 @@ export function CinematicPlayer({
 
   // Update adaptive quality
   useEffect(() => {
-    let rafId: number;
-    const loop = () => {
+    const interval = setInterval(() => {
       adaptiveQuality.current?.update();
-      rafId = requestAnimationFrame(loop);
-    };
-    rafId = requestAnimationFrame(loop);
+    }, 16); // Update every frame (~60fps)
 
-    return () => cancelAnimationFrame(rafId);
+    return () => clearInterval(interval);
   }, []);
 
   // Handle canvas context loss
