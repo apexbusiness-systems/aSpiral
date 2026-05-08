@@ -56,6 +56,11 @@ interface SessionState {
   setConnected: (connected: boolean) => void;
   setError: (error: string | null) => void;
   
+  // Internal lookup management
+  _entityLookup: Set<string>;
+  _connectionLookup: Set<string>;
+  _rebuildLookups: () => void;
+
   reset: () => void;
 }
 
@@ -87,6 +92,25 @@ export const useSessionStore = create<SessionState>()(
       isProcessing: false,
       isConnected: false,
       error: null,
+      _entityLookup: new Set(),
+      _connectionLookup: new Set(),
+
+      _rebuildLookups: () => {
+        const { currentSession } = get();
+        if (!currentSession) {
+          set({ _entityLookup: new Set(), _connectionLookup: new Set() });
+          return;
+        }
+
+        const entityLookup = new Set(
+          currentSession.entities.map(e => `${e.type}:${e.label.toLowerCase().trim()}`)
+        );
+        const connectionLookup = new Set(
+          currentSession.connections.map(c => `${c.fromEntityId}:${c.toEntityId}:${c.type}`)
+        );
+
+        set({ _entityLookup: entityLookup, _connectionLookup: connectionLookup });
+      },
 
       createSession: (userId: string) => {
         const existing = get().currentSession;
@@ -94,6 +118,7 @@ export const useSessionStore = create<SessionState>()(
         // Idempotent: return existing active session
         if (existing && existing.userId === userId && existing.status === "active") {
           logger.info("Returning existing active session", { sessionId: existing.id });
+          get()._rebuildLookups();
           return existing;
         }
 
@@ -111,6 +136,8 @@ export const useSessionStore = create<SessionState>()(
           currentSession: session,
           messages: [],
           error: null,
+          _entityLookup: new Set(),
+          _connectionLookup: new Set(),
         });
 
         return session;
@@ -183,23 +210,29 @@ export const useSessionStore = create<SessionState>()(
           updatedAt: new Date(),
         };
 
+        const key = `${entity.type}:${entity.label.toLowerCase().trim()}`;
+
+        if (get()._entityLookup.has(key)) {
+          logger.debug("Entity already exists", { label: entity.label });
+          // We still need to find it if we want to return the existing one,
+          // but the state doesn't change so returning the input-based one is fine for idempotency
+          // if the caller only cares if it's there.
+          // Actually, current implementation returns the NEW entity object even if it's not added.
+          // Wait, addEntity returns the new entity object. If it already exists, it doesn't add it.
+          // Let's keep that behavior but optimized.
+          return entity;
+        }
+
         set((state) => {
           if (!state.currentSession) return state;
           
-          // Idempotent: check for existing entity with same label
-          const normalized = entity.label.toLowerCase().trim();
-          const existing = state.currentSession.entities.find(
-            (e) => e.label.toLowerCase().trim() === normalized && e.type === entity.type
-          );
-          
-          if (existing) {
-            logger.debug("Entity already exists", { label: entity.label });
-            return state;
-          }
+          const newLookup = new Set(state._entityLookup);
+          newLookup.add(key);
 
           logger.info("Entity added", { type: entity.type, label: entity.label });
 
           return {
+            _entityLookup: newLookup,
             currentSession: {
               ...state.currentSession,
               entities: [...state.currentSession.entities, entity],
@@ -217,20 +250,20 @@ export const useSessionStore = create<SessionState>()(
           id: generateId(),
         };
 
+        const key = `${connection.fromEntityId}:${connection.toEntityId}:${connection.type}`;
+
+        if (get()._connectionLookup.has(key)) {
+          return connection;
+        }
+
         set((state) => {
           if (!state.currentSession) return state;
 
-          // Idempotent: check for existing connection
-          const existing = state.currentSession.connections.find(
-            (c) =>
-              c.fromEntityId === connection.fromEntityId &&
-              c.toEntityId === connection.toEntityId &&
-              c.type === connection.type
-          );
-
-          if (existing) return state;
+          const newLookup = new Set(state._connectionLookup);
+          newLookup.add(key);
 
           return {
+            _connectionLookup: newLookup,
             currentSession: {
               ...state.currentSession,
               connections: [...state.currentSession.connections, connection],
@@ -327,6 +360,8 @@ export const useSessionStore = create<SessionState>()(
           isRecording: false,
           isProcessing: false,
           error: null,
+          _entityLookup: new Set(),
+          _connectionLookup: new Set(),
         });
       },
     }),
@@ -337,6 +372,11 @@ export const useSessionStore = create<SessionState>()(
         currentSession: state.currentSession,
         messages: state.messages,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state._rebuildLookups();
+        }
+      },
     }
   )
 );

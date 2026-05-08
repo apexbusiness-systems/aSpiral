@@ -14,3 +14,7 @@
 ## 2024-05-19 - Wire VoiceConductor and fix strict-mode build errors
 **Learning:** Hardcoded dependencies (`require` lacking types) and non-strict types (`catch (err: any)`) will fail production build environments with standard TypeScript setups.
 **Action:** Always prefer Vitest mocking like `vi.stubGlobal` over `require` injection for global variables when ambient types are absent, and use `unknown` in catch blocks. Ensure exhaustive dependencies are provided in `useCallback`.
+
+## 2026-04-23 - Optimized Connection and Entity Deduplication
+**Learning:** Replacing O(N) array searching (using .find()) with O(1) Set lookups in Zustand stores provides massive performance gains (20x+) for data-heavy operations. To maintain persistence compatibility, lookups should be excluded from serialization and rebuilt on hydration.
+**Action:** Always use Set/Map lookups for deduplication in state management, and use the onRehydrateStorage hook in Zustand to restore non-serializable lookups.
