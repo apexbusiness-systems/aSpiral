@@ -21,12 +21,6 @@ export interface SettingsState {
   frustrationDetection: boolean;
   verboseResponses: boolean;
   soundEffects: boolean;
-  
-  // Privacy & Trust
-  analyticsEnabled: boolean;
-  
-  // Experience
-  quietMode: boolean;
 }
 
 export const defaultSettings: SettingsState = {
@@ -49,8 +43,6 @@ export const defaultSettings: SettingsState = {
   frustrationDetection: true,
   verboseResponses: false,
   soundEffects: true,
-  analyticsEnabled: true,
-  quietMode: false,
 };
 
 export const SETTINGS_STORAGE_KEY = "aspiral_settings_v1";
@@ -75,9 +67,7 @@ const isSettingsState = (value: unknown): value is SettingsState => {
     typeof v.autoBreakthrough === "boolean" &&
     typeof v.frustrationDetection === "boolean" &&
     typeof v.verboseResponses === "boolean" &&
-    typeof v.soundEffects === "boolean" &&
-    (v.analyticsEnabled === undefined || typeof v.analyticsEnabled === "boolean") &&
-    (v.quietMode === undefined || typeof v.quietMode === "boolean")
+    typeof v.soundEffects === "boolean"
   );
 };
 

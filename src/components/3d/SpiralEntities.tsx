@@ -1,4 +1,3 @@
-import { useMemo, useCallback } from "react";
 import { AdaptiveEntity } from "./AdaptiveEntity";
 import { ConnectionLine } from "./ConnectionLine";
 import { useEntities } from "@/hooks/useEntities";
@@ -18,53 +17,45 @@ export function SpiralEntities() {
     workerState
   } = useEntities();
 
-  const handleEntityClick = useCallback((_entity: Entity) => {
-    // Intentionally empty: Hook reserved for future interactive entity features
-  }, []);
-
-  const renderedEntities = useMemo(() => {
-    return entities.map((entity) => {
-      const position = getEntityPosition(entity.id);
-      const isVisible = visibleEntityIds.has(entity.id);
-      const importance = entity.metadata?.importance || 0.5;
-
-      return (
-        <AdaptiveEntity
-          key={entity.id}
-          entity={entity}
-          position={position}
-          isVisible={isVisible}
-          onClick={handleEntityClick}
-          showLabel={importance > 0.7 ? "important" : "hover"}
-          onMeshRef={handleMeshRef(entity.id)}
-        />
-      );
-    });
-  }, [entities, visibleEntityIds, getEntityPosition, handleEntityClick, handleMeshRef]);
-
-  const renderedConnections = useMemo(() => {
-    return visibleConnections.map((connection) => {
-      const fromPos = getEntityPosition(connection.fromEntityId);
-      const toPos = getEntityPosition(connection.toEntityId);
-
-      return (
-        <ConnectionLine
-          key={connection.id}
-          connection={connection}
-          fromPosition={fromPos}
-          toPosition={toPos}
-        />
-      );
-    });
-  }, [visibleConnections, getEntityPosition]);
+  const handleEntityClick = (entity: Entity) => {
+    console.log("Entity clicked:", entity);
+  };
 
   return (
     <>
       {/* Render entities with adaptive visibility */}
-      {renderedEntities}
+      {entities.map((entity) => {
+        const position = getEntityPosition(entity.id);
+        const isVisible = visibleEntityIds.has(entity.id);
+        const importance = entity.metadata?.importance || 0.5;
+
+        return (
+          <AdaptiveEntity
+            key={entity.id}
+            entity={entity}
+            position={position}
+            isVisible={isVisible}
+            onClick={handleEntityClick}
+            showLabel={importance > 0.7 ? "important" : "hover"}
+            onMeshRef={handleMeshRef(entity.id)}
+          />
+        );
+      })}
 
       {/* Only show connections for visible entities */}
-      {renderedConnections}
+      {visibleConnections.map((connection) => {
+        const fromPos = getEntityPosition(connection.fromEntityId);
+        const toPos = getEntityPosition(connection.toEntityId);
+
+        return (
+          <ConnectionLine
+            key={connection.id}
+            connection={connection}
+            fromPosition={fromPos}
+            toPosition={toPos}
+          />
+        );
+      })}
 
       {/* Debug: Show worker state in development */}
       {import.meta.env.DEV && workerState.lastError && (

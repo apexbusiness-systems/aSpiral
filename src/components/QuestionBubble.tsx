@@ -31,25 +31,17 @@ export function QuestionBubble({
     setDisplayedText("");
     let index = 0;
 
-    let rafId: number;
-    let lastTime = performance.now();
-    const loop = () => {
-      const now = performance.now();
-      if (now - lastTime >= 30) {
-        if (index < question.length) {
-          setDisplayedText(question.slice(0, index + 1));
-          index++;
-        } else {
-          setIsTyping(false);
-          return;
-        }
-        lastTime = now;
+    const interval = setInterval(() => {
+      if (index < question.length) {
+        setDisplayedText(question.slice(0, index + 1));
+        index++;
+      } else {
+        setIsTyping(false);
+        clearInterval(interval);
       }
-      rafId = requestAnimationFrame(loop);
-    };
-    rafId = requestAnimationFrame(loop);
+    }, 30); // Speed of typewriter
 
-    return () => cancelAnimationFrame(rafId);
+    return () => clearInterval(interval);
   }, [question, isVisible]);
 
   if (!isVisible || !question) return null;

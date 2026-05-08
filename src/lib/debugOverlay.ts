@@ -59,15 +59,6 @@ export function addBreadcrumb(entry: Omit<Breadcrumb, 'timestamp'>) {
   notify();
 }
 
-/** @internal - For testing only */
-export function _resetDebugState() {
-  state = {
-    breadcrumbs: [],
-    fatalError: null,
-  };
-  listeners.clear();
-}
-
 export function setFatalErrorSnapshot(snapshot: Omit<FatalErrorSnapshot, 'timestamp'>) {
   state = {
     ...state,

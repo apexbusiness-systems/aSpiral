@@ -295,7 +295,7 @@ export class AdaptiveQuality {
   private fpsMonitor = new FPSMonitor();
   private qualitySettings: QualitySettings;
   private capabilities: DeviceCapabilities;
-  private checkInterval: number | null = null;
+  private checkInterval: ReturnType<typeof setInterval> | null = null;
   private onQualityChange?: (settings: QualitySettings) => void;
 
   constructor(onQualityChange?: (settings: QualitySettings) => void) {
@@ -310,35 +310,18 @@ export class AdaptiveQuality {
   start(): void {
     if (this.checkInterval) return;
 
-    // Check performance using requestAnimationFrame for non-blocking execution
-    if (globalThis.requestAnimationFrame === undefined) {
-      this.checkInterval = setInterval(() => {
-        this.checkPerformance();
-      }, 2000) as any as number;
-    } else {
-      let lastCheck = performance.now();
-      const loop = () => {
-        const now = performance.now();
-        if (now - lastCheck >= 2000) {
-          this.checkPerformance();
-          lastCheck = now;
-        }
-        this.checkInterval = requestAnimationFrame(loop);
-      };
-      this.checkInterval = requestAnimationFrame(loop);
-    }
+    // Check performance every 2 seconds
+    this.checkInterval = setInterval(() => {
+      this.checkPerformance();
+    }, 2000);
   }
 
   /**
    * Stop monitoring
    */
   stop(): void {
-    if (this.checkInterval !== null) {
-      if (globalThis.cancelAnimationFrame !== undefined) {
-        cancelAnimationFrame(this.checkInterval);
-      } else {
-        clearInterval(this.checkInterval);
-      }
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
   }
@@ -483,25 +466,8 @@ export function calculateParticleCount(
 /**
  * Check if device supports reduced motion
  */
-import { loadStoredSettings } from '../settings';
-
 export function prefersReducedMotion(): boolean {
-  const systemPrefers = globalThis.window === undefined 
-    ? false
-    : globalThis.window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  
-  // Try to load user settings safely (without crashing if used outside React context)
-  try {
-    const settings = loadStoredSettings();
-    if (settings && (settings.reducedMotion || settings.quietMode)) {
-      return true;
-    }
-  } catch (error) {
-    // Graceful fallback to system preference if localStorage parsing fails
-    console.debug('prefersReducedMotion: Failed to parse stored settings, falling back to system preference', error);
-  }
-  
-  return systemPrefers;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /**

@@ -167,16 +167,9 @@ async function processQueue(): Promise<void> {
 
 // Start background queue processing
 if (typeof window !== "undefined") {
-  let lastTime = performance.now();
-  const loop = () => {
-    const now = performance.now();
-    if (now - lastTime >= 30000) {
-      processQueue().catch(console.error);
-      lastTime = now;
-    }
-    requestAnimationFrame(loop);
-  };
-  requestAnimationFrame(loop);
+  setInterval(() => {
+    processQueue().catch(console.error);
+  }, 30000); // Every 30 seconds
 }
 
 /**

@@ -52,28 +52,21 @@ export function useAnalytics() {
       });
 
       // Start milestone tracking
-      let lastTime = performance.now();
-      const loop = () => {
-        const now = performance.now();
-        if (now - lastTime >= 10000) {
-          const duration = getSessionDuration();
-          
-          for (const milestone of DURATION_MILESTONES) {
-            if (duration >= milestone && !trackedMilestones.current.has(milestone)) {
-              trackedMilestones.current.add(milestone);
-              trackDurationMilestone(milestone, currentSession.id);
-            }
+      milestoneIntervalRef.current = setInterval(() => {
+        const duration = getSessionDuration();
+
+        for (const milestone of DURATION_MILESTONES) {
+          if (duration >= milestone && !trackedMilestones.current.has(milestone)) {
+            trackedMilestones.current.add(milestone);
+            trackDurationMilestone(milestone, currentSession.id);
           }
-          lastTime = now;
         }
-        milestoneIntervalRef.current = requestAnimationFrame(loop);
-      };
-      milestoneIntervalRef.current = requestAnimationFrame(loop);
+      }, 10000); // Check every 10 seconds
     }
 
     return () => {
       if (milestoneIntervalRef.current) {
-        cancelAnimationFrame(milestoneIntervalRef.current);
+        clearInterval(milestoneIntervalRef.current);
       }
     };
   }, [currentSession, user]);

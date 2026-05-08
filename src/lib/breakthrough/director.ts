@@ -55,7 +55,7 @@ export class BreakthroughDirector {
   };
   
   private abortController: AbortController | null = null;
-  private fpsCheckInterval: number | null = null;
+  private fpsCheckInterval: ReturnType<typeof setInterval> | null = null;
   private maxDurationTimeout: ReturnType<typeof setTimeout> | null = null;
   private settleTimeout: ReturnType<typeof setTimeout> | null = null;
   
@@ -341,52 +341,31 @@ export class BreakthroughDirector {
     this.onPhaseChangeCallback?.(phase);
   }
   
-  private checkFPS(): void {
-    if (this.state.phase !== 'playing') {
-      this.stopFPSMonitoring();
-      return;
-    }
-    
-    if (this.state.fpsHistory.length >= 30) {
-      const recentFps = this.state.fpsHistory.slice(-30);
-      const avgFps = recentFps.reduce((a, b) => a + b, 0) / recentFps.length;
-      
-      if (avgFps < FPS_THRESHOLD) {
-        logger.warn('FPS below threshold', { avgFps, threshold: FPS_THRESHOLD });
-        this.trackEvent('fps_dip');
-        this.triggerSafeMode();
-      }
-    }
-  }
-
   private startFPSMonitoring(qualityTier: QualityTier): void {
     // Check FPS periodically
-    if (globalThis.requestAnimationFrame === undefined) {
-      // Fallback for test environments without requestAnimationFrame
-      this.fpsCheckInterval = setInterval(() => {
-        this.checkFPS();
-      }, FPS_CHECK_DURATION) as any as number;
-    } else {
-      let lastTime = performance.now();
-      const loop = () => {
-        const now = performance.now();
-        if (now - lastTime >= FPS_CHECK_DURATION) {
-          this.checkFPS();
-          lastTime = now;
+    this.fpsCheckInterval = setInterval(() => {
+      if (this.state.phase !== 'playing') {
+        this.stopFPSMonitoring();
+        return;
+      }
+
+      // Calculate average FPS from recent history
+      if (this.state.fpsHistory.length >= 30) {
+        const recentFps = this.state.fpsHistory.slice(-30);
+        const avgFps = recentFps.reduce((a, b) => a + b, 0) / recentFps.length;
+
+        if (avgFps < FPS_THRESHOLD) {
+          logger.warn('FPS below threshold', { avgFps, threshold: FPS_THRESHOLD });
+          this.trackEvent('fps_dip');
+          this.triggerSafeMode();
         }
-        this.fpsCheckInterval = requestAnimationFrame(loop);
-      };
-      this.fpsCheckInterval = requestAnimationFrame(loop);
-    }
+      }
+    }, FPS_CHECK_DURATION);
   }
   
   private stopFPSMonitoring(): void {
-    if (this.fpsCheckInterval !== null) {
-      if (globalThis.cancelAnimationFrame !== undefined) {
-        cancelAnimationFrame(this.fpsCheckInterval);
-      } else {
-        clearInterval(this.fpsCheckInterval);
-      }
+    if (this.fpsCheckInterval) {
+      clearInterval(this.fpsCheckInterval);
       this.fpsCheckInterval = null;
     }
   }
