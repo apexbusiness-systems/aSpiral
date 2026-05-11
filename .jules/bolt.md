@@ -5,3 +5,6 @@
 ## 2024-05-09 - [O(2N) Array Iterations on Render]
 **Learning:** Checking for existence using `.some()` followed immediately by `.find()` to extract the element results in redundant O(N) array traversals (an O(2N) operation overall), which can impact frame rates when executed during a render cycle.
 **Action:** Replace `const hasItem = arr.some(predicate); const item = arr.find(predicate);` with a single `const item = arr.find(predicate);`, using truthiness checks (`if (item)`) to determine existence while extracting the item simultaneously.
+## 2024-05-11 - [Optimize String Processing `countSentences`]
+**Learning:** Chaining `.split().map().filter()` causes severe O(N) memory allocations when processing continuously updating text like voice transcripts in `useSpiralAI.ts`.
+**Action:** Replace functional array pipelines with a simple O(N) loop iterating over characters using `O(1)` space when analyzing text streams in React hooks.

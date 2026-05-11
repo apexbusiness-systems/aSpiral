@@ -163,12 +163,28 @@ interface UltraFastProgress {
 }
 
 function countSentences(text: string): number {
-  const segments = text
-    .split(/[.!?]+/)
-    .map(segment => segment.trim())
-    .filter(Boolean);
+  // Performance Optimization: Replaced O(N) .split().map().filter() which creates
+  // multiple intermediate arrays with a single-pass O(N) time, O(1) space loop.
+  let count = 0;
+  let hasContent = false;
 
-  return segments.length;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '.' || char === '!' || char === '?') {
+      if (hasContent) {
+        count++;
+        hasContent = false;
+      }
+    } else if (char.trim() !== '') {
+      hasContent = true;
+    }
+  }
+
+  if (hasContent) {
+    count++;
+  }
+
+  return count;
 }
 
 function updateUltraFastProgress(
