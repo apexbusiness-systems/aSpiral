@@ -8,3 +8,6 @@
 ## 2024-05-11 - [Optimize String Processing `countSentences`]
 **Learning:** Chaining `.split().map().filter()` causes severe O(N) memory allocations when processing continuously updating text like voice transcripts in `useSpiralAI.ts`.
 **Action:** Replace functional array pipelines with a simple O(N) loop iterating over characters using `O(1)` space when analyzing text streams in React hooks.
+## 2024-05-12 - [O(N) Optimization for Stats Filtering]
+**Learning:** Replaced chained array functions (.filter, .length) with a single-pass loop when calculating multiple derived metrics (like completed vs fallbacks). This optimization eliminates O(N) array copying operations and performs them in true O(N) time with O(1) space, crucial for rapidly-called history processing where dataset sizes can scale.
+**Action:** Always prefer a single `for` loop iteration when calculating multiple aggregates from the same array over chaining multiple `.filter().length` calls to minimize GC pressure and memory allocations.
