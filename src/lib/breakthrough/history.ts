@@ -197,8 +197,13 @@ export function getVariantStats(variantId: string): {
     };
   }
   
-  const completed = variantEntries.filter((e) => e.completed).length;
-  const fallbacks = variantEntries.filter((e) => e.wasFallback).length;
+  let completed = 0;
+  let fallbacks = 0;
+  for (let i = 0; i < variantEntries.length; i++) {
+    const e = variantEntries[i];
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+  }
   const lastEntry = variantEntries[variantEntries.length - 1];
 
   return {
@@ -232,8 +237,13 @@ export function getOverallStats(): {
     };
   }
   
-  const completed = entries.filter((e) => e.completed).length;
-  const fallbacks = entries.filter((e) => e.wasFallback).length;
+  let completed = 0;
+  let fallbacks = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+  }
   const uniqueVariants = new Set(entries.map((e) => e.variantId)).size;
 
   const intensityValues: Record<IntensityBand, number> = {
