@@ -11,3 +11,6 @@
 ## 2024-05-12 - [O(N) Optimization for Stats Filtering]
 **Learning:** Replaced chained array functions (.filter, .length) with a single-pass loop when calculating multiple derived metrics (like completed vs fallbacks). This optimization eliminates O(N) array copying operations and performs them in true O(N) time with O(1) space, crucial for rapidly-called history processing where dataset sizes can scale.
 **Action:** Always prefer a single `for` loop iteration when calculating multiple aggregates from the same array over chaining multiple `.filter().length` calls to minimize GC pressure and memory allocations.
+## 2024-05-13 - [O(N) Optimization for Stats Filtering]
+**Learning:** Replaced chained array functions (`.filter()`, `.map()`, `.reduce()`) with a single-pass loop when calculating multiple derived metrics (`sentiment`, `frictionIntensity`). This optimization eliminates O(N) array copying operations and performs them in true O(N) time with O(1) space, crucial for rapidly-called history processing where dataset sizes can scale.
+**Action:** Always prefer a single `for` loop iteration when calculating multiple aggregates from the same array over chaining multiple functional operations to minimize GC pressure and memory allocations.
