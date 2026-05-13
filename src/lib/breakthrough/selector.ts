@@ -357,25 +357,38 @@ export function buildSelectionContext(
     .slice(-FATIGUE_CONFIG.fatigueWindow)
     .map((e) => e.intensity);
   
-  // Calculate sentiment from entities
-  const entityValences = sessionEntities
-    .filter((e) => e.metadata?.valence !== undefined)
-    .map((e) => e.metadata!.valence!);
-  const sentiment =
-    entityValences.length > 0
-      ? entityValences.reduce((a, b) => a + b, 0) / entityValences.length
-      : 0;
-  
-  // Calculate friction intensity from friction entities
-  const frictionEntities = sessionEntities.filter((e) => e.type === 'friction');
-  const frictionIntensity = Math.min(1, frictionEntities.length * 0.3);
-  
-  return {
-    entities: sessionEntities.map((e) => ({
+  // Performance Optimization: Replaced chained .filter().map().reduce() with a single-pass loop
+  // This computes sentiment, friction intensity, and the mapped entities array in true O(N) time
+  // without intermediate array allocations.
+  let totalValence = 0;
+  let valenceCount = 0;
+  let frictionCount = 0;
+  const mappedEntities = new Array(sessionEntities.length);
+
+  for (let i = 0; i < sessionEntities.length; i++) {
+    const e = sessionEntities[i];
+
+    if (e.type === 'friction') {
+      frictionCount++;
+    }
+
+    if (e.metadata?.valence !== undefined) {
+      totalValence += e.metadata.valence;
+      valenceCount++;
+    }
+
+    mappedEntities[i] = {
       type: e.type,
       label: e.label,
       valence: e.metadata?.valence,
-    })),
+    };
+  }
+
+  const sentiment = valenceCount > 0 ? totalValence / valenceCount : 0;
+  const frictionIntensity = Math.min(1, frictionCount * 0.3);
+
+  return {
+    entities: mappedEntities,
     sentiment,
     frictionIntensity,
     breakthroughType: breakthroughType
