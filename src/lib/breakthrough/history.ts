@@ -239,12 +239,8 @@ export function getOverallStats(): {
   
   let completed = 0;
   let fallbacks = 0;
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i];
-    if (e.completed) completed++;
-    if (e.wasFallback) fallbacks++;
-  }
-  const uniqueVariants = new Set(entries.map((e) => e.variantId)).size;
+  let totalIntensity = 0;
+  const uniqueVariantSet = new Set<string>();
 
   const intensityValues: Record<IntensityBand, number> = {
     low: 1,
@@ -252,9 +248,19 @@ export function getOverallStats(): {
     high: 3,
     extreme: 4,
   };
+
+  // Performance Optimization: Replaced O(N) .map() and .reduce() with single-pass loop
+  // This eliminates intermediate array allocations and redundant iterations.
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+    uniqueVariantSet.add(e.variantId);
+    totalIntensity += intensityValues[e.intensity];
+  }
   
-  const avgIntensity =
-    entries.reduce((sum, e) => sum + intensityValues[e.intensity], 0) / entries.length;
+  const uniqueVariants = uniqueVariantSet.size;
+  const avgIntensity = totalIntensity / entries.length;
   
   return {
     totalPlays: entries.length,
