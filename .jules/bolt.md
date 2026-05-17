@@ -14,3 +14,6 @@
 ## 2024-05-13 - [O(N) Optimization for Stats Filtering]
 **Learning:** Replaced chained array functions (`.filter()`, `.map()`, `.reduce()`) with a single-pass loop when calculating multiple derived metrics (`sentiment`, `frictionIntensity`). This optimization eliminates O(N) array copying operations and performs them in true O(N) time with O(1) space, crucial for rapidly-called history processing where dataset sizes can scale.
 **Action:** Always prefer a single `for` loop iteration when calculating multiple aggregates from the same array over chaining multiple functional operations to minimize GC pressure and memory allocations.
+## 2025-05-17 - Performance Optimization: calculateAverageValence
+**Learning:** Chaining `.filter()` and `.reduce()` on an array creates an intermediate array and iterates through the data twice, adding O(N) overhead and unnecessary garbage collection pressure in performance-critical code like scene configuration.
+**Action:** Replaced the chained `.filter().reduce()` with a single-pass `for` loop to achieve true O(N) time with O(1) space complexity, avoiding array allocations.
