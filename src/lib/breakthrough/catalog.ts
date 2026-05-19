@@ -1704,16 +1704,26 @@ export function getCatalogStats(): {
   const byClass = {} as Record<BreakthroughClass, number>;
   const byIntensity = {} as Record<IntensityBand, number>;
   
-  for (const v of BREAKTHROUGH_VARIANTS) {
+  // Performance Optimization: Consolidated multiple array passes (.filter)
+  // into this single loop to avoid creating intermediate arrays and
+  // reduce garbage collection overhead.
+  let lowTierSafe = 0;
+  let fallbacks = 0;
+
+  for (let i = 0; i < BREAKTHROUGH_VARIANTS.length; i++) {
+    const v = BREAKTHROUGH_VARIANTS[i];
     byClass[v.class] = (byClass[v.class] || 0) + 1;
     byIntensity[v.intensity] = (byIntensity[v.intensity] || 0) + 1;
+
+    if (v.lowTierSafe) lowTierSafe++;
+    if (v.isFallback) fallbacks++;
   }
   
   return {
     total: BREAKTHROUGH_VARIANTS.length,
     byClass,
     byIntensity,
-    lowTierSafe: BREAKTHROUGH_VARIANTS.filter((v) => v.lowTierSafe).length,
-    fallbacks: BREAKTHROUGH_VARIANTS.filter((v) => v.isFallback).length,
+    lowTierSafe,
+    fallbacks,
   };
 }
