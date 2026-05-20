@@ -150,7 +150,10 @@ function emitDebugEvent(event: Omit<VoiceDebugEvent, "timestamp">) {
 export function subscribeToVoiceDebug(cb: (events: VoiceDebugEvent[]) => void) {
   debugSubscribers.add(cb);
   cb(debugBuffer);
-  return () => debugSubscribers.delete(cb);
+  return () => {
+    // Ensure React effect cleanup has void return type (not boolean).
+    debugSubscribers.delete(cb);
+  };
 }
 export const getVoiceDebugBuffer = () => debugBuffer;
 export function clearVoiceDebugBuffer() {
