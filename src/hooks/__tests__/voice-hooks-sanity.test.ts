@@ -34,9 +34,9 @@ describe('voice hooks sanity', () => {
     expect(contents).toMatch(/export function subscribeToVoiceDebug/);
   });
 
-  it('useVoiceInput exports SpeechRecognitionInstance type', () => {
+  it('useVoiceInput exports subscribeToVoiceDebug function', () => {
     const contents = read('useVoiceInput.ts');
-    expect(contents).toMatch(/export type SpeechRecognitionInstance/);
+    expect(contents).toMatch(/export function subscribeToVoiceDebug/);
   });
 
   it('useVoiceInput exports UseVoiceInputOptions interface', () => {

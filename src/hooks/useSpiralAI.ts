@@ -608,6 +608,7 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
           const streamingMessage = addMessage({
             role: "assistant",
             content: "",
+            isStreaming: true,
           });
 
           // FSM Transition: START_RESPONDING
@@ -655,9 +656,10 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             insight: metadata.insight as string | undefined,
           };
 
-          // Update the streaming message with final content
+          // Update the streaming message with final content and mark done
           useSessionStore.getState().updateMessage(streamingMessage.id, {
             content: accumulatedResponse,
+            isStreaming: false,
           });
 
           logger.info("SSE stream complete", {

@@ -114,9 +114,9 @@ const sections = [
         data: "Account information, session content",
       },
       {
-        name: "OpenAI",
-        purpose: "AI-powered breakthrough generation",
-        data: "Transcribed session text (processed per-request, not stored by us for training)",
+        name: "Groq",
+        purpose: "AI-powered chat, speech-to-text, and text-to-speech",
+        data: "Transcribed session text and audio (processed per-request, not stored by us for training)",
       },
       {
         name: "PostHog",

@@ -1,5 +1,11 @@
 project_id = "eqtwatyodujxofrdznen"
 
+[functions.speech-to-text]
+verify_jwt = false
+
+[functions.text-to-speech]
+verify_jwt = false
+
 [functions.chat]
 verify_jwt = false
 

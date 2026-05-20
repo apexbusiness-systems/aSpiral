@@ -26,7 +26,7 @@ import {
 
 const logger = createLogger('AudioSession');
 
-export type AudioBackend = 'none' | 'openai' | 'webSpeech';
+export type AudioBackend = 'none' | 'groq' | 'webSpeech';
 
 export interface AudioSessionStatus {
   isSpeaking: boolean;
@@ -332,7 +332,7 @@ function cancelActive(reason: string, resumeListening: boolean) {
   audioDebug.log('tts_end', { reason });
 }
 
-async function fetchOpenAiAudio(options: SpeakOptions): Promise<Response> {
+async function fetchGroqAudio(options: SpeakOptions): Promise<Response> {
   const { supabaseUrl, supabaseKey, text, voice, speed } = options;
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase not configured');
@@ -466,97 +466,14 @@ function setupAudioHandlers(
   }
 }
 
-async function playOpenAiAudio(response: Response, requestId: number, options: SpeakOptions): Promise<void> {
-  // Check if MediaSource is supported
-  if (!window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
-    // Fallback to old blob method
-    logger.warn('MediaSource not supported, falling back to blob method');
-    const blob = await response.blob();
-    return playOpenAiAudioFallback(blob, requestId, options);
-  }
-
-  const mediaSource = new MediaSource();
-  const audio = new Audio();
-  audio.src = URL.createObjectURL(mediaSource);
-  audioElement = audio;
-
-  let sourceBuffer: SourceBuffer | null = null;
-  let isFirstChunk = true;
-  const bufferQueue: Uint8Array[] = [];
-  let isAppending = false;
-  let streamComplete = false;
-
-  return new Promise<void>((resolve, reject) => {
-    mediaSource.addEventListener('sourceopen', async () => {
-      if (requestId !== status.requestId) return;
-
-      try {
-        sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
-        sourceBuffer.addEventListener('updateend', () => {
-          if (requestId !== status.requestId) return;
-
-          isAppending = false;
-
-          // Try to append next chunk from queue
-          if (bufferQueue.length > 0 && !sourceBuffer!.updating) {
-            const nextChunk = bufferQueue.shift()!;
-            isAppending = true;
-            sourceBuffer!.appendBuffer(nextChunk as unknown as BufferSource);
-          } else if (streamComplete && bufferQueue.length === 0 && mediaSource.readyState === 'open') {
-            // All chunks appended and stream is done — finalize
-            mediaSource.endOfStream();
-          }
-        });
-
-        // Start streaming the response
-        const reader = response.body!.getReader();
-        let done = false;
-
-        while (!done) {
-          if (requestId !== status.requestId) break;
-
-          const { value, done: readerDone } = await reader.read();
-          done = readerDone;
-
-          if (value) {
-            if (isFirstChunk) {
-              // Start playback immediately after first chunk
-              await audio.play();
-              isFirstChunk = false;
-              updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
-              useAssistantSpeakingStore.getState().startSpeaking();
-              addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai', streaming: true } });
-              options.onStart?.();
-            }
-
-            // Queue the buffer for appending
-            if (!sourceBuffer!.updating && !isAppending) {
-              isAppending = true;
-              sourceBuffer!.appendBuffer(value as unknown as BufferSource);
-            } else {
-              bufferQueue.push(value);
-            }
-          }
-        }
-
-        // Mark stream as complete — endOfStream will be called here if idle,
-        // or from the updateend handler after the last buffer is flushed
-        streamComplete = true;
-        if (sourceBuffer && !sourceBuffer.updating && bufferQueue.length === 0 && mediaSource.readyState === 'open') {
-          mediaSource.endOfStream();
-        }
-
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    setupAudioHandlers(audio, requestId, options, resolve, reject, { backend: 'openai', streaming: true, skipAutoPlay: true });
-  });
+async function playGroqAudio(response: Response, requestId: number, options: SpeakOptions): Promise<void> {
+  // WAV audio from Groq TTS — collect full blob and play via object URL
+  const blob = await response.blob();
+  return playGroqAudioFallback(blob, requestId, options);
 }
 
 // Fallback method for browsers without MediaSource support
-async function playOpenAiAudioFallback(blob: Blob, requestId: number, options: SpeakOptions): Promise<void> {
+async function playGroqAudioFallback(blob: Blob, requestId: number, options: SpeakOptions): Promise<void> {
   const audioUrl = URL.createObjectURL(blob);
   const audio = new Audio(audioUrl);
   audio.volume = options.volume ?? 1;
@@ -567,13 +484,13 @@ async function playOpenAiAudioFallback(blob: Blob, requestId: number, options: S
       if (requestId !== status.requestId) return;
       // Mark playback start for adaptive sync latency measurement
       markAudioPlaybackStart();
-      updateStatus({ isSpeaking: true, isLoading: false, backend: 'openai' });
+      updateStatus({ isSpeaking: true, isLoading: false, backend: 'groq' });
       useAssistantSpeakingStore.getState().startSpeaking();
-      addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'openai', fallback: true } });
+      addBreadcrumb({ type: 'audio', message: 'tts_play_start', data: { backend: 'groq', fallback: true } });
       options.onStart?.();
     };
 
-    setupAudioHandlers(audio, requestId, options, resolve, reject, { backend: 'openai', fallbackUrl: audioUrl });
+    setupAudioHandlers(audio, requestId, options, resolve, reject, { backend: 'groq', fallbackUrl: audioUrl });
   });
 }
 
@@ -762,25 +679,23 @@ async function processQueue() {
           let lastError = null;
 
           for (const backend of preferences) {
-            if (backend === 'openai') {
+            if (backend === 'groq') {
               try {
                 const start = Date.now();
-                const blob = await withTimeout(fetchOpenAiAudio(entry.options));
+                const response = await withTimeout(fetchGroqAudio(entry.options));
                 if (requestId !== status.requestId) {
                   entry.resolve();
                   success = true;
                   break;
                 }
-                await withTimeout(playOpenAiAudio(blob, requestId, entry.options));
-                recordBackendSuccess('openai', Date.now() - start);
+                await withTimeout(playGroqAudio(response, requestId, entry.options));
+                recordBackendSuccess('groq', Date.now() - start);
                 success = true;
                 break;
               } catch (e) {
                 lastError = e;
-                recordBackendFailure('openai');
+                recordBackendFailure('groq');
               }
-            } else if (backend === 'groq') {
-                // Not implemented yet
             }
           }
 
@@ -797,7 +712,7 @@ async function processQueue() {
         }
 
         logger.error('TTS failed, trying fallback', error as Error);
-        audioDebug.error('tts_error', { backend: entry.options.forceWebSpeech ? 'webSpeech' : 'openai', fallback: true });
+        audioDebug.error('tts_error', { backend: entry.options.forceWebSpeech ? 'webSpeech' : 'groq', fallback: true });
 
         if (!entry.options.forceWebSpeech && entry.options.fallbackToWebSpeech) {
           try {
