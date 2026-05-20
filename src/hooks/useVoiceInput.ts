@@ -31,7 +31,7 @@ import {
   beginSTTSession,
   endSTTSession,
 } from "@/lib/audioSession";
-import { getAdaptiveEndpointMs } from "@/lib/voice";
+import { getAdaptiveEndpointMs } from "../lib/voice";
 import { featureFlags } from "@/lib/featureFlags";
 import { toast } from "sonner";
 import { audioDebug } from "@/lib/audioLogger";
