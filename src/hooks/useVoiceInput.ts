@@ -31,6 +31,7 @@ import {
   beginSTTSession,
   endSTTSession,
 } from "@/lib/audioSession";
+import { getAdaptiveEndpointMs } from "@/lib/voice";
 import { featureFlags } from "@/lib/featureFlags";
 import { toast } from "sonner";
 import { audioDebug } from "@/lib/audioLogger";
@@ -487,7 +488,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         // Reset post-utterance silence countdown on every final result
         clearPostUtteranceSilenceTimer();
         postUtteranceSilenceTimer.current = setTimeout(() => {
-          logger.info(`Post-utterance silence after ${silenceTimeoutMs}ms — stopping`);
+          logger.info(`Post-utterance silence after ${dynamicSilenceMs}ms — stopping`);
           stopRecording();
         }, dynamicSilenceMs);
 
@@ -618,7 +619,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
         // ⚡ Bolt: Robust auto-restart logic for iOS Safari and accidental drops
         if (!isIntentionalStop.current && !isPausedRef.current && isStartedRef.current) {
-          audioDebug.log("stt.auto_restart", { reason: "ios_safari_or_drop" });
+          audioDebug.log("watchdog_restart", { reason: "ios_safari_or_drop" });
           const newR = createRecognitionRef.current?.({
             onStart: opts.onStart,
             onEnd: opts.onEnd,
