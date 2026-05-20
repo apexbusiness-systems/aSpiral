@@ -14,6 +14,14 @@ import {
 import { i18n } from '@/lib/i18n';
 import { getSpeechLocale } from '@/lib/i18n/speechLocale';
 import { toast } from 'sonner';
+import {
+  getReverbTailMs,
+  detectDeviceProfile,
+  getBackendPreference,
+  recordBackendSuccess,
+  recordBackendFailure,
+  planUtterance,
+} from './voice';
 
 
 const logger = createLogger('AudioSession');
@@ -108,11 +116,11 @@ function setGate(): void {
   if (gateTimeoutId) {
     clearTimeout(gateTimeoutId);
   }
-  audioDebug.log('audio_route_change', { status: 'gated_for_reverb', duration: getReverbTailMs(getDeviceType()) });
+  audioDebug.log('audio_route_change', { status: 'gated_for_reverb', duration: getReverbTailMs(detectDeviceProfile()) });
 }
 
 function clearGateAfterDelay(): void {
-  const reverbTailMs = getReverbTailMs(getDeviceType());
+  const reverbTailMs = getReverbTailMs(detectDeviceProfile());
   gateTimeoutId = setTimeout(() => {
     isGatedFlag = false;
     gateTimeoutId = null;
@@ -385,7 +393,7 @@ function resumeListeningIfNeeded(requestId: number) {
     updateStatus({ isListening: sttController.isListening() });
     resumeListeningRequestId = null;
     audioDebug.log('app_state_change', { status: 'stt_resumed_after_tts_delay' });
-  }, REVERB_BUFFER_MS);
+  }, getReverbTailMs());
 }
 
 function setupAudioHandlers(
@@ -597,6 +605,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   if (!window.speechSynthesis) {
     throw new Error('Web Speech API not supported');
   }
+  const useChunking = needsSentenceChunking();
 
   // Ensure AudioContext is alive before speaking (critical for PWA after background)
   await ensureAudioContext();
