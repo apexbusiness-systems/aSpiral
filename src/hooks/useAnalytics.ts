@@ -77,7 +77,15 @@ export function useAnalytics() {
       if (currentSession && sessionTracked.current === currentSession.id) {
         // Get latest messages from store to count questions
         const messages = useSessionStore.getState().messages;
-        const userQuestions = messages.filter(m => m.role === 'user').length;
+
+        // Performance Optimization: Replaced .filter().length with a single-pass loop
+        // to avoid O(N) array allocation overhead and improve garbage collection.
+        let userQuestions = 0;
+        for (let i = 0; i < messages.length; i++) {
+          if (messages[i].role === 'user') {
+            userQuestions++;
+          }
+        }
 
         analytics.trackSessionEnd({
           sessionId: currentSession.id,

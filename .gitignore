@@ -66,4 +66,5 @@ lint_*.json
 test-results.json
 build_output.txt
 errors.md
-temp_repo/
+temp_repo/*.tsbuildinfo
+*.tsbuildinfo
