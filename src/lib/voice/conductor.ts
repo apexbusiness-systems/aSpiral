@@ -250,7 +250,7 @@ export function getReverbTailMs(profile: DeviceProfile = detectDeviceProfile()):
 // 5. Backend Health Scorer — EMA latency + circuit breaker
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Backend = 'groq' | 'openai' | 'webSpeech';
+export type Backend = 'groq' | 'webSpeech';
 
 interface BackendStat {
   emaLatencyMs: number;
@@ -267,7 +267,6 @@ const HEALTH_EMA_ALPHA = 0.3;
 
 const stats: Record<Backend, BackendStat> = {
   groq: emptyStat(),
-  openai: emptyStat(),
   webSpeech: emptyStat(),
 };
 
@@ -305,7 +304,7 @@ export function isBackendHealthy(backend: Backend): boolean {
 
 /** Returns preferred order of backends (best first), filtered to healthy. */
 export function getBackendPreference(): Backend[] {
-  const all: Backend[] = ['groq', 'openai', 'webSpeech'];
+  const all: Backend[] = ['groq', 'webSpeech'];
   return all
     .filter(isBackendHealthy)
     .sort((a, b) => stats[a].emaLatencyMs - stats[b].emaLatencyMs);
@@ -317,7 +316,6 @@ export function getBackendStats(): Readonly<Record<Backend, Readonly<BackendStat
 
 export function resetBackendScorer(): void {
   stats.groq = emptyStat();
-  stats.openai = emptyStat();
   stats.webSpeech = emptyStat();
 }
 

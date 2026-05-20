@@ -128,7 +128,7 @@ describe('backend health scorer', () => {
 
   it('starts all backends healthy', () => {
     expect(isBackendHealthy('groq')).toBe(true);
-    expect(isBackendHealthy('openai')).toBe(true);
+    expect(isBackendHealthy('webSpeech')).toBe(true);
   });
 
   it('opens circuit after threshold failures', () => {
@@ -141,10 +141,10 @@ describe('backend health scorer', () => {
 
   it('orders preference by EMA latency', () => {
     recordBackendSuccess('groq', 200);
-    recordBackendSuccess('openai', 800);
+    recordBackendSuccess('webSpeech', 800);
     const order = getBackendPreference();
     expect(order[0]).toBe('groq');
-    expect(order.indexOf('groq')).toBeLessThan(order.indexOf('openai'));
+    expect(order.indexOf('groq')).toBeLessThan(order.indexOf('webSpeech'));
   });
 
   it('excludes tripped backends from preference', () => {
@@ -155,12 +155,12 @@ describe('backend health scorer', () => {
   });
 
   it('success resets failure count', () => {
-    recordBackendFailure('openai');
-    recordBackendFailure('openai');
-    recordBackendSuccess('openai', 300);
-    recordBackendFailure('openai');
-    recordBackendFailure('openai');
-    expect(isBackendHealthy('openai')).toBe(true);
+    recordBackendFailure('webSpeech');
+    recordBackendFailure('webSpeech');
+    recordBackendSuccess('webSpeech', 300);
+    recordBackendFailure('webSpeech');
+    recordBackendFailure('webSpeech');
+    expect(isBackendHealthy('webSpeech')).toBe(true);
   });
 });
 

@@ -61,6 +61,8 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const scrollRef = useRef<HTMLDivElement>(null);
   // CRITICAL FIX: Ref to track last spoken question to prevent TTS loops
   const lastSpokenQuestionRef = useRef<string | null>(null);
+  // Track last spoken assistant message ID to prevent TTS loops on typed chat
+  const lastSpokenMsgIdRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   const { canInstall, install: handleInstallPwa } = usePwaInstall();
@@ -252,6 +254,24 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
       lastSpokenQuestionRef.current = null;
     }
   }, [currentQuestion]);
+
+  // Speak latest assistant chat message when TTS is enabled
+  useEffect(() => {
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+    const latest = assistantMessages[assistantMessages.length - 1];
+    if (
+      latest &&
+      ttsEnabled &&
+      !isTTSSpeaking &&
+      !isTTSLoading &&
+      !latest.isStreaming &&
+      latest.content.trim() &&
+      latest.id !== lastSpokenMsgIdRef.current
+    ) {
+      lastSpokenMsgIdRef.current = latest.id;
+      speakText(latest.content);
+    }
+  }, [messages, ttsEnabled, isTTSSpeaking, isTTSLoading, speakText]);
 
   // Surface voice error state to user
   useEffect(() => {
