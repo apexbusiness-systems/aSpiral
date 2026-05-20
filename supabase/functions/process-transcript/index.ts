@@ -3,8 +3,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "llama-3.3-70b-versatile";
+const GROQ_AI_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const HARD_ENTITY_CAP = 5;
 const MAX_QUESTIONS = 3;
@@ -55,8 +56,8 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    if (!GROQ_API_KEY) {
+      throw new Error("GROQ_API_KEY not configured");
     }
 
     const body: ProcessRequest = await req.json();
@@ -166,14 +167,14 @@ async function extractEntities(transcript: string, history: string[]): Promise<A
   emotionalValence?: number;
   importance?: number;
 }>> {
-  const response = await fetch(LOVABLE_AI_URL, {
+  const response = await fetch(GROQ_AI_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${GROQ_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: GROQ_CHAT_MODEL,
       messages: [
         {
           role: "system",
@@ -196,6 +197,7 @@ NEVER return more than 5 entities.`,
         ...history.slice(-3).map(h => ({ role: "user" as const, content: h })),
         { role: "user", content: transcript },
       ],
+      response_format: { type: "json_object" },
     }),
   });
 
@@ -230,14 +232,14 @@ EXAMPLES: "What do you want instead?" / "If this wasn't grinding, what would you
 EXAMPLES: "So what's stopping you?" / "What's in the way?"`,
   };
 
-  const response = await fetch(LOVABLE_AI_URL, {
+  const response = await fetch(GROQ_AI_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${GROQ_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: GROQ_CHAT_MODEL,
       messages: [
         {
           role: "system",
@@ -251,6 +253,7 @@ OUTPUT JSON: {"question": "...", "response": "brief acknowledgment"}`,
         ...history.slice(-3).map(h => ({ role: "user" as const, content: h })),
         { role: "user", content: transcript },
       ],
+      response_format: { type: "json_object" },
     }),
   });
 

@@ -3,8 +3,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "llama-3.3-70b-versatile";
+const GROQ_AI_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 interface BreakthroughRequest {
   conversationHistory: string[];
@@ -54,8 +55,8 @@ serve(async (req) => {
   }
 
   try {
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    if (!GROQ_API_KEY) {
+      throw new Error("GROQ_API_KEY not configured");
     }
 
     const body: BreakthroughRequest = await req.json();
@@ -68,14 +69,14 @@ serve(async (req) => {
       patterns: detectedPatterns.map(p => p.name),
     });
 
-    const response = await fetch(LOVABLE_AI_URL, {
+    const response = await fetch(GROQ_AI_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: GROQ_CHAT_MODEL,
         messages: [
           {
             role: "system",
@@ -122,12 +123,13 @@ Be SPECIFIC. Be ACTIONABLE. Be MEMORABLE.`,
           })),
           ...(userContext ? [{ role: "user" as const, content: `Additional context: ${userContext}` }] : []),
         ],
+        response_format: { type: "json_object" },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[GENERATE-BREAKTHROUGH] AI error:", response.status, errorText);
+      console.error("[GENERATE-BREAKTHROUGH] Groq API error:", response.status, errorText);
 
       if (response.status === 429) {
         return createErrorResponse(429, "Rate limit exceeded. Try again shortly.");

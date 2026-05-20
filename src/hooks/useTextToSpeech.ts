@@ -49,7 +49,7 @@ export function subscribeToTTSDebug(callback: (events: TTSDebugEvent[]) => void)
 }
 
 interface UseTextToSpeechOptions {
-  voice?: string; // OpenAI voices: alloy, ash, ballot, coral, echo, sage, shimmer, verse, nova
+  voice?: string; // Groq Orpheus voices: austin, hannah, troy, or legacy OpenAI names (mapped automatically)
   speed?: number; // 0.25 to 4
   volume?: number; // 0 to 1
   forceWebSpeech?: boolean;
@@ -68,11 +68,11 @@ interface TextToSpeechState {
 
 export function useTextToSpeech(options: UseTextToSpeechOptions = {}) {
   const {
-    voice = 'nova',
+    voice = 'austin',
     speed = 1.1,
     volume = 1,
     forceWebSpeech = false,
-    fallbackToWebSpeech = true,
+    fallbackToWebSpeech = false,
     onStart,
     onEnd,
     onError,
