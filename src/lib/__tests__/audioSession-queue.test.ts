@@ -96,12 +96,12 @@ describe('endOfStream race condition handling', () => {
 // ---------------------------------------------------------------------------
 describe('skipAutoPlay flag contract', () => {
   it('streaming path should skip auto-play (play() called from sourceopen only)', () => {
-    const streamingContext = { backend: 'openai', streaming: true, skipAutoPlay: true };
+    const streamingContext = { backend: 'groq', streaming: true, skipAutoPlay: true };
     expect(streamingContext.skipAutoPlay).toBe(true);
   });
 
   it('non-streaming fallback should NOT skip auto-play', () => {
-    const fallbackContext: Record<string, unknown> = { backend: 'openai', fallbackUrl: 'blob:url' };
+    const fallbackContext: Record<string, unknown> = { backend: 'groq', fallbackUrl: 'blob:url' };
     expect(fallbackContext.skipAutoPlay).toBeUndefined();
   });
 });
