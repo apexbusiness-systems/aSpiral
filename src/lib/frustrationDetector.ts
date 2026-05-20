@@ -46,9 +46,19 @@ export function wantsToSkip(transcript: string): boolean {
 }
 
 export function detectFrustrationLevel(transcript: string): "none" | "mild" | "high" {
-  const frustrationCount = FRUSTRATION_PATTERNS.filter((p) => p.test(transcript)).length;
-  
+  // Performance Optimization: Use a for loop with early return instead of .filter().length
+  // This avoids intermediate array allocations and short-circuits expensive regex evaluations
+  // once the "high" threshold (>= 2 matches) is reached.
+  let frustrationCount = 0;
+  for (let i = 0; i < FRUSTRATION_PATTERNS.length; i++) {
+    if (FRUSTRATION_PATTERNS[i].test(transcript)) {
+      frustrationCount++;
+      if (frustrationCount >= 2) {
+        return "high";
+      }
+    }
+  }
+
   if (frustrationCount === 0) return "none";
-  if (frustrationCount === 1) return "mild";
-  return "high";
+  return "mild"; // frustrationCount is 1
 }
