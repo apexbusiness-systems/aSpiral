@@ -14,7 +14,7 @@
     "pages:build": "vite build",
     "pages:dev": "vite dev",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
   },
   "dependencies": {
