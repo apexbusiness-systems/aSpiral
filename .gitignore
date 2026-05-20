@@ -67,3 +67,4 @@ test-results.json
 build_output.txt
 errors.md
 temp_repo/*.tsbuildinfo
+*.tsbuildinfo
