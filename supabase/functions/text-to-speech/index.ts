@@ -1,20 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { z } from "https://esm.sh/zod@3.22.4";
+import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
-const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "*").split(",");
 const GROQ_TTS_URL = "https://api.groq.com/openai/v1/audio/speech";
 const TTS_TIMEOUT_MS = 12_000;
 const TTS_MAX_ATTEMPTS = 2;
-
-const corsHeaders = (origin: string) => ({
-  "Access-Control-Allow-Origin":
-    ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*")
-      ? origin || "*"
-      : ALLOWED_ORIGINS[0],
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-});
 
 // Legacy voice name → Groq Orpheus voice mapping
 const VOICE_MAP: Record<string, string> = {
@@ -67,10 +58,7 @@ async function fetchWithTimeoutAndRetry(
       }
 
       const errText = await response.text();
-      console.error(
-        `[TTS] Groq error attempt=${attempt} status=${response.status}`,
-        errText
-      );
+      console.error(`[TTS] Groq error attempt=${attempt} status=${response.status}`, errText);
 
       if (response.status >= 500 && attempt < TTS_MAX_ATTEMPTS) {
         await new Promise((r) => setTimeout(r, 250 * attempt));
@@ -91,11 +79,9 @@ async function fetchWithTimeoutAndRetry(
 }
 
 serve(async (req) => {
-  const origin = req.headers.get("origin") || "";
+  if (req.method === "OPTIONS") return handleCorsPreFlight(req);
 
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders(origin) });
-  }
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const supabaseClient = createClient(
@@ -118,7 +104,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Unauthorized: Valid Supabase JWT required" }),
         {
           status: 401,
-          headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -129,7 +115,7 @@ serve(async (req) => {
         JSON.stringify({ error: "TTS service not configured (GROQ_API_KEY missing)" }),
         {
           status: 503,
-          headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -142,20 +128,17 @@ serve(async (req) => {
         JSON.stringify({ error: "Invalid input", details: parseResult.error.format() }),
         {
           status: 400,
-          headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
     const { text, voice, speed } = parseResult.data;
-    const model =
-      Deno.env.get("GROQ_TTS_MODEL") || "canopylabs/orpheus-v1-english";
+    const model = Deno.env.get("GROQ_TTS_MODEL") || "canopylabs/orpheus-v1-english";
     const defaultVoice = Deno.env.get("GROQ_TTS_VOICE") || "austin";
     const resolvedVoice = resolveGroqVoice(voice || defaultVoice);
 
-    console.log(
-      `[TTS] Groq user=${user.id} chars=${text.length} voice=${resolvedVoice} model=${model}`
-    );
+    console.log(`[TTS] Groq user=${user.id} chars=${text.length} voice=${resolvedVoice} model=${model}`);
 
     const groqResponse = await fetchWithTimeoutAndRetry(
       {
@@ -170,19 +153,18 @@ serve(async (req) => {
 
     return new Response(groqResponse.body, {
       headers: {
-        ...corsHeaders(origin),
+        ...corsHeaders,
         "Content-Type": "audio/wav",
         "X-TTS-Provider": "groq",
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Internal server error";
+    const errorMessage = error instanceof Error ? error.message : "Internal server error";
     console.error("[TTS] Error:", errorMessage);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
-      headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
