@@ -18,8 +18,9 @@ import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "llama-3.3-70b-versatile";
+const GROQ_AI_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Production configuration
 const AI_TIMEOUT_MS = 30000; // 30 second timeout for AI gateway
@@ -166,18 +167,19 @@ async function callAIWithValidation(
 
     let response: Response;
     try {
-      response = await fetch(LOVABLE_AI_URL, {
+      response = await fetch(GROQ_AI_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${GROQ_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: GROQ_CHAT_MODEL,
           messages: [
             { role: "system", content: prompt },
             { role: "user", content: userContent },
           ],
+          response_format: { type: "json_object" },
         }),
         signal: controller.signal,
       });
@@ -420,8 +422,8 @@ serve(async (req) => {
   }
 
   try {
-    if (!LOVABLE_API_KEY) {
-      console.error("[SPIRAL-AI] LOVABLE_API_KEY not configured");
+    if (!GROQ_API_KEY) {
+      console.error("[SPIRAL-AI] GROQ_API_KEY not configured");
       complianceLogger.log("ERROR_OCCURRED", { errorCode: "CONFIG_ERROR", errorMessage: "API key not configured" });
       throw new Error("API key not configured");
     }

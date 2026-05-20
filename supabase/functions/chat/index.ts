@@ -4,7 +4,8 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "llama-3.3-70b-versatile";
 
 // =============================================================================
 // PROMPT INJECTION DEFENSE
@@ -168,9 +169,9 @@ serve(async (req) => {
       );
     }
 
-    if (!OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY is not configured");
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is not configured");
+      throw new Error("GROQ_API_KEY is not configured");
     }
 
     // Parse and validate request body
@@ -253,24 +254,24 @@ serve(async (req) => {
       ...sanitizedMessages,
     ];
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: GROQ_CHAT_MODEL,
         messages: openAIMessages,
         stream,
-        max_tokens: 1000,
+        max_completion_tokens: 1000,
         temperature: 0.8,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[CHAT] OpenAI API error:", response.status, errorText);
+      console.error("[CHAT] Groq API error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
