@@ -82,9 +82,15 @@ export function detectPatternsEarly(
   const detected: Pattern[] = [];
 
   for (const [name, config] of Object.entries(BEHAVIORAL_PATTERNS)) {
-    const matchingKeywords = config.keywords.filter(kw => 
-      allText.includes(kw.toLowerCase())
-    );
+    const matchingKeywords: string[] = [];
+
+    // Performance Optimization: Use a traditional for loop to avoid .filter() allocations
+    for (let i = 0; i < config.keywords.length; i++) {
+      const kw = config.keywords[i];
+      if (allText.includes(kw.toLowerCase())) {
+        matchingKeywords.push(kw);
+      }
+    }
     
     if (matchingKeywords.length > 0) {
       const confidence = Math.min(0.4 + (matchingKeywords.length * 0.15), 0.95);
@@ -118,13 +124,16 @@ export function shouldStopAsking(
   }
 
   // Check for "I don't know" pattern (2+ times = stuck)
-  const iDontKnowCount = conversationHistory.filter(msg =>
-    /i don't know|idk|not sure|dunno|no idea/i.test(msg)
-  ).length;
-
-  if (iDontKnowCount >= 2) {
-    logger.info("User stuck - 2+ 'I don't know' responses");
-    return { stop: true, reason: "user_stuck" };
+  // Performance Optimization: Use a loop with early return instead of .filter().length
+  let iDontKnowCount = 0;
+  for (let i = 0; i < conversationHistory.length; i++) {
+    if (/i don't know|idk|not sure|dunno|no idea/i.test(conversationHistory[i])) {
+      iDontKnowCount++;
+      if (iDontKnowCount >= 2) {
+        logger.info("User stuck - 2+ 'I don't know' responses");
+        return { stop: true, reason: "user_stuck" };
+      }
+    }
   }
 
   // Check for high-confidence pattern (requires 4+ keyword matches)
