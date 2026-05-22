@@ -17,3 +17,11 @@
 ## $(date +%Y-%m-%d) - [Optimize count with early returns]
 **Learning:** Found a common performance anti-pattern where `.filter(condition).length` was used just to check if a small threshold of matches existed, causing unnecessary regex evaluations across the whole array.
 **Action:** Replace `.filter().length` with standard `for` loops utilizing early returns when counting occurrences to meet a threshold condition. This prevents O(N) evaluation of expensive operations (like regex matches) when the condition is met early.
+
+## 2024-05-14 - [O(N) Optimization: Early returns for threshold counting]
+**Learning:** Checking for threshold occurrences using `.filter(condition).length >= N` forces iteration over the entire array, causing unnecessary evaluations (like regex testing) and intermediate array allocations.
+**Action:** Replace `.filter().length` threshold checks with a `for` loop that increments a counter and returns early when the threshold is met to achieve O(N) time with short-circuiting and O(1) space.
+
+## 2024-05-14 - [O(N) Optimization: Avoiding .filter() for single matches]
+**Learning:** Using `.filter(condition)` to check for existence or find a single element unnecessarily evaluates the entire array and allocates a new one.
+**Action:** Always prefer `.find(condition)` over `.filter(condition)` when only one matching element is needed, which halts execution upon the first match and avoids array allocations.

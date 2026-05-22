@@ -117,20 +117,25 @@ export function shouldStopAsking(
     return { stop: true, reason: "max_questions_reached" };
   }
 
-  // Check for "I don't know" pattern (2+ times = stuck)
-  const iDontKnowCount = conversationHistory.filter(msg =>
-    /i don't know|idk|not sure|dunno|no idea/i.test(msg)
-  ).length;
-
-  if (iDontKnowCount >= 2) {
-    logger.info("User stuck - 2+ 'I don't know' responses");
-    return { stop: true, reason: "user_stuck" };
+  // Performance Optimization: Use a for loop with early return instead of .filter().length
+  // This avoids intermediate array allocations and short-circuits expensive regex evaluations
+  // once the threshold (>= 2 matches) is reached.
+  let iDontKnowCount = 0;
+  for (let i = 0; i < conversationHistory.length; i++) {
+    if (/i don't know|idk|not sure|dunno|no idea/i.test(conversationHistory[i])) {
+      iDontKnowCount++;
+      if (iDontKnowCount >= 2) {
+        logger.info("User stuck - 2+ 'I don't know' responses");
+        return { stop: true, reason: "user_stuck" };
+      }
+    }
   }
 
-  // Check for high-confidence pattern (requires 4+ keyword matches)
-  const highConfidencePatterns = patterns.filter(p => p.confidence > 0.9);
-  if (highConfidencePatterns.length > 0) {
-    logger.info("High confidence pattern detected", { pattern: highConfidencePatterns[0].name });
+  // Performance Optimization: Prevent redundant array iteration and allocation
+  // Use .find() instead of .filter() when we only need the first matching item
+  const highConfidencePattern = patterns.find(p => p.confidence > 0.9);
+  if (highConfidencePattern) {
+    logger.info("High confidence pattern detected", { pattern: highConfidencePattern.name });
     return { stop: true, reason: "pattern_detected" };
   }
 
