@@ -74,16 +74,24 @@ function calculateNoveltyScore(
   variant: BaseVariant,
   history: BreakthroughHistory
 ): number {
-  const variantHistory = history.entries.filter((e) => e.variantId === variant.id);
+  let useCount = 0;
+  const uniqueSeeds = new Set<number>();
   
-  if (variantHistory.length === 0) return 1.0; // Never used, maximum novelty
+  // Performance Optimization: Replaced chained .filter().map() with a single-pass loop
+  for (let i = 0; i < history.entries.length; i++) {
+    const e = history.entries[i];
+    if (e.variantId === variant.id) {
+      useCount++;
+      uniqueSeeds.add(e.seed % 100);
+    }
+  }
+
+  if (useCount === 0) return 1.0; // Never used, maximum novelty
   
   // More uses = less novelty
-  const useCount = variantHistory.length;
   const novelty = Math.max(0.1, 1 - useCount * 0.1);
   
   // Check seed diversity
-  const uniqueSeeds = new Set(variantHistory.map((e) => e.seed % 100));
   const seedDiversityBonus = uniqueSeeds.size < 10 ? 0.2 : 0;
   
   return Math.min(1, novelty + seedDiversityBonus);

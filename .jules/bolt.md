@@ -17,3 +17,6 @@
 ## $(date +%Y-%m-%d) - [Optimize count with early returns]
 **Learning:** Found a common performance anti-pattern where `.filter(condition).length` was used just to check if a small threshold of matches existed, causing unnecessary regex evaluations across the whole array.
 **Action:** Replace `.filter().length` with standard `for` loops utilizing early returns when counting occurrences to meet a threshold condition. This prevents O(N) evaluation of expensive operations (like regex matches) when the condition is met early.
+## 2026-05-23 - [O(N) Optimization for Stats Filtering in History]
+**Learning:** Replaced chained array functions (`.filter()`, `.map()`, `.reduce()`) with single-pass loops when calculating derived metrics like `completionRate`, `fallbackRate`, and `uniqueVariants`. This optimization eliminates O(N) array copying operations, preventing intermediate memory allocations which helps with garbage collection pressure on frequently accessed data points.
+**Action:** Always prefer a single `for` loop iteration when calculating multiple aggregates from the same array over chaining multiple functional operations.
