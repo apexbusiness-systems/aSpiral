@@ -59,28 +59,56 @@ export function validateCoherence(
   
   const mentioned: Entity[] = [];
   const notMentioned: Entity[] = [];
+  const kept: string[] = [];
+  const removed: string[] = [];
   
-  entities.forEach(entity => {
+  // Performance Optimization: Replaced .forEach() and nested .some() with standard for loops
+  // and early breaks. We also directly construct the kept/removed label arrays to avoid .map() calls.
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     const labelWords = entity.label.toLowerCase().split(/\s+/);
     
+    let hasMatch = false;
     // Check if any word from label appears in transcript
-    const hasMatch = labelWords.some(word => {
+    for (let j = 0; j < labelWords.length; j++) {
+      const word = labelWords[j];
+
       // Direct match
-      if (words.has(word)) return true;
+      if (words.has(word)) {
+        hasMatch = true;
+        break;
+      }
       
       // Fuzzy match (word appears as substring)
-      if (transcriptLower.includes(word) && word.length > 3) return true;
+      if (word.length > 3 && transcriptLower.includes(word)) {
+        hasMatch = true;
+        break;
+      }
       
-      const matches = SEMANTIC_MATCHES[word] || [];
-      return matches.some(m => transcriptLower.includes(m));
-    });
+      const matches = SEMANTIC_MATCHES[word];
+      if (matches) {
+        let semanticMatch = false;
+        for (let k = 0; k < matches.length; k++) {
+          if (transcriptLower.includes(matches[k])) {
+            semanticMatch = true;
+            break;
+          }
+        }
+        if (semanticMatch) {
+          hasMatch = true;
+          break;
+        }
+      }
+    }
     
     if (hasMatch) {
       mentioned.push(entity);
+      kept.push(entity.label);
     } else {
       notMentioned.push(entity);
+      removed.push(entity.label);
     }
-  });
+  }
   
   const coherenceScore = entities.length > 0 
     ? mentioned.length / entities.length 
@@ -100,8 +128,8 @@ export function validateCoherence(
     mentionedCount: mentioned.length,
     totalCount: entities.length,
     refinedEntities,
-    removed: notMentioned.map(e => e.label),
-    kept: mentioned.map(e => e.label),
+    removed,
+    kept,
   };
 }
 
