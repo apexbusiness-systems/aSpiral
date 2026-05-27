@@ -46,10 +46,33 @@ import {
   type ProcessingSubState,
 } from "@/lib/spiralMachine";
 import type { EntityType, EntityMetadata, Entity } from "@/lib/types";
+import type { SpiralError } from "@/types/errors";
 
 const logger = createLogger("useSpiralAI");
 
 const SPIRAL_AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/spiral-ai`;
+
+const AI_REQUEST_TIMEOUT_MS = 30_000;
+const RETRY_BASE_MS = 500;
+const MAX_RETRIES = 2;
+const CIRCUIT_WINDOW_MS = 60_000;
+const CIRCUIT_THRESHOLD = 3;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function isCorsLikeError(err: unknown): boolean {
+  if (!(err instanceof TypeError)) return false;
+  const message = err.message.toLowerCase();
+  return message.includes("cors") || message.includes("networkerror") || message.includes("failed to fetch");
+}
+
+export function computeCircuitBreakerState(timestamps: number[], now: number): { active: boolean; next: number[] } {
+  const next = [...timestamps.filter((ts) => now - ts <= CIRCUIT_WINDOW_MS), now];
+  return { active: next.length >= CIRCUIT_THRESHOLD, next };
+}
+
 
 // Minimum stage required before breakthrough can trigger
 const BREAKTHROUGH_MIN_STAGE: ConversationStage = "blocker";
@@ -264,6 +287,8 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const [showBreakthroughCard, setShowBreakthroughCard] = useState(false);
   const [ultraFastMode, setUltraFastMode] = useState(false);
   const [cinematicComplete, setCinematicComplete] = useState(false);
+  const [error, setError] = useState<SpiralError | null>(null);
+  const [degradedMessage, setDegradedMessage] = useState<string | null>(null);
   
   // =========================================================================
   // REFS (Mutable State)
@@ -275,6 +300,9 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
   const patternsRef = useRef<Pattern[]>([]);
   const lastFlushRef = useRef<{ text: string; ts: number } | null>(null);
   const synthesisInProgressRef = useRef(false);
+  const failureTimestampsRef = useRef<number[]>([]);
+  const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ultraFastProgressRef = useRef<UltraFastProgress>({
     sentenceCount: 0,
     frictionEntityCount: 0,
@@ -349,6 +377,9 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     if (canTriggerCinematic(machineContext)) {
       sendEvent({ type: "TRIGGER_CINEMATIC" });
       setCinematicComplete(false);
+    setError(null);
+    setDegradedMessage(null);
+    failureTimestampsRef.current = [];
       logger.info("Cinematic triggered via FSM, waiting for completion");
     } else {
       logger.warn("Cannot trigger cinematic from current state", { state: machineContext.state });
@@ -549,7 +580,13 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         // Get stage-specific prompt hints
         const stageConfig = getStageQuestion(fastTrackRef.current.stage);
         
-        const response = await fetch(SPIRAL_AI_URL, {
+        let response: Response | null = null;
+        let lastErr: unknown = null;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => abortController.abort(), AI_REQUEST_TIMEOUT_MS);
+          try {
+            response = await fetch(SPIRAL_AI_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -570,11 +607,36 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
             forceBreakthrough: fastTrackRef.current.readyForBreakthrough,
             stagePrompt: stageConfig.systemPrompt,
           }),
-        });
+            signal: abortController.signal,
+          });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            if (response.status >= 500 && attempt < MAX_RETRIES) {
+              await delay(RETRY_BASE_MS * (2 ** attempt));
+              continue;
+            }
+            if (response.status >= 400 && response.status < 500) {
+              throw new Error(`HTTP_${response.status}`);
+            }
+            throw new Error(`HTTP_${response.status}`);
+          }
+          break;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          lastErr = err;
+          const maybeStatus = response?.status ?? 0;
+          const retryable = maybeStatus >= 500 || err instanceof TypeError || (err instanceof Error && err.name === "AbortError");
+          if (retryable && attempt < MAX_RETRIES) {
+            await delay(RETRY_BASE_MS * (2 ** attempt));
+            continue;
+          }
+          throw err;
         }
+        }
+
+        if (!response) throw (lastErr instanceof Error ? lastErr : new Error("No response"));
 
         // Track server-side breakthrough rejection for client-server correlation
         const breakthroughRejected = response.headers.get("X-Breakthrough-Rejected");
@@ -993,16 +1055,32 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
         }
 
         return data;
-      } catch (error) {
-        logger.error("Failed to process transcript", error as Error);
-        
-        // FSM Transition: ERROR
-        sendEvent({ 
-          type: "ERROR", 
-          payload: { message: (error as Error).message || "Unknown error" } 
+      } catch (err) {
+        const responseStatus = err instanceof Error && err.message.startsWith("HTTP_") ? Number(err.message.split("_")[1]) : undefined;
+        const spiralError: SpiralError = isCorsLikeError(err)
+          ? { code: "CORS_ERROR", message: "Connection issue — please try again in a moment", retryable: true }
+          : { code: "STT_FETCH_FAILED", message: "Failed to process transcript", retryable: !responseStatus || responseStatus >= 500 };
+
+        if (spiralError.code === "CORS_ERROR") {
+          console.warn("[useSpiralAI] CORS error detected — check edge function CORS config");
+        }
+
+        console.error("[useSpiralAI] Failed to process transcript:", {
+          status: responseStatus,
+          error: err,
+          transcript: transcript?.slice(0, 50),
         });
-        
-        options.onError?.(error as Error);
+
+        setError(spiralError);
+        const now = Date.now();
+        const circuit = computeCircuitBreakerState(failureTimestampsRef.current, now);
+        failureTimestampsRef.current = circuit.next;
+        if (circuit.active) {
+          setDegradedMessage("Connection issue — please try again in a moment");
+        }
+
+        sendEvent({ type: "ERROR", payload: { message: spiralError.message } });
+        options.onError?.(err as Error);
         return null;
       }
     },
@@ -1069,6 +1147,9 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
       frictionEntityCount: 0,
     };
     setCinematicComplete(false);
+    setError(null);
+    setDegradedMessage(null);
+    failureTimestampsRef.current = [];
   }, [sendEvent]);
 
   // Accumulate transcript and auto-send periodically
@@ -1162,6 +1243,27 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     sendEvent({ type: "DISMISS_ERROR" });
   }, [sendEvent]);
 
+  useEffect(() => {
+    if (machineContext.state === "PROCESSING" || machineContext.state === "DELIBERATING" || machineContext.state === "RESPONDING") {
+      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = setTimeout(() => {
+        const timeoutError: SpiralError = { code: "STT_TIMEOUT", message: "Connection issue — please try again in a moment", retryable: true };
+        setError(timeoutError);
+        sendEvent({ type: "ERROR", payload: { message: timeoutError.message } });
+      }, AI_REQUEST_TIMEOUT_MS);
+    } else if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
+    }
+  }, [machineContext.state, sendEvent]);
+
+  useEffect(() => {
+    if (machineContext.state === "ERROR") {
+      if (errorResetTimeoutRef.current) clearTimeout(errorResetTimeoutRef.current);
+      errorResetTimeoutRef.current = setTimeout(() => sendEvent({ type: "DISMISS_ERROR" }), 3000);
+    }
+  }, [machineContext.state, sendEvent]);
+
   // =========================================================================
   // BACKWARD COMPATIBLE RETURN API
   // =========================================================================
@@ -1186,6 +1288,8 @@ export function useSpiralAI(options: UseSpiralAIOptions = {}) {
     
     // Error state (enhanced)
     machineError,
+    error,
+    degradedMessage,
     dismissError,
     
     // Actions
