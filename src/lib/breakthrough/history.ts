@@ -237,24 +237,28 @@ export function getOverallStats(): {
     };
   }
   
-  let completed = 0;
-  let fallbacks = 0;
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i];
-    if (e.completed) completed++;
-    if (e.wasFallback) fallbacks++;
-  }
-  const uniqueVariants = new Set(entries.map((e) => e.variantId)).size;
-
   const intensityValues: Record<IntensityBand, number> = {
     low: 1,
     medium: 2,
     high: 3,
     extreme: 4,
   };
+
+  let completed = 0;
+  let fallbacks = 0;
+  let totalIntensity = 0;
+  const uniqueVariantSet = new Set<string>();
+
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+    totalIntensity += intensityValues[e.intensity];
+    uniqueVariantSet.add(e.variantId);
+  }
   
-  const avgIntensity =
-    entries.reduce((sum, e) => sum + intensityValues[e.intensity], 0) / entries.length;
+  const uniqueVariants = uniqueVariantSet.size;
+  const avgIntensity = totalIntensity / entries.length;
   
   return {
     totalPlays: entries.length,
