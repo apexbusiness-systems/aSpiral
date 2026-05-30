@@ -102,10 +102,20 @@ function getBackgroundGradient(
 }
 
 function calculateAverageValence(entities: Entity[]): number {
-  const withValence = entities.filter((e) => e.metadata?.valence !== undefined);
-  if (withValence.length === 0) return 0;
-  const sum = withValence.reduce((acc, e) => acc + (e.metadata?.valence || 0), 0);
-  return sum / withValence.length;
+  let count = 0;
+  let sum = 0;
+
+  // Performance Optimization: Replaced .filter().reduce() with a single-pass loop
+  for (let i = 0; i < entities.length; i++) {
+    const valence = entities[i].metadata?.valence;
+    if (valence !== undefined) {
+      sum += valence;
+      count++;
+    }
+  }
+
+  if (count === 0) return 0;
+  return sum / count;
 }
 
 /**
