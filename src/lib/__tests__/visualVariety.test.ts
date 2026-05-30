@@ -6,6 +6,10 @@ import {
   getEntityVisualConfig,
   getConnectionColor
 } from '../visualVariety';
+
+vi.mock('@/lib/secureMathRandom', () => ({
+  secureMathRandom: () => 0.5
+}));
 import type { Entity } from '../types';
 
 describe('Visual Variety Engine', () => {
@@ -64,14 +68,6 @@ describe('Visual Variety Engine', () => {
   });
 
   describe('calculateEntityPosition', () => {
-    beforeEach(() => {
-      vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
     it('positions entity at center with zero jitter when valence is 0', () => {
       const pos = calculateEntityPosition('center', 0, 0, 10);
       // base center is [0,0,0]

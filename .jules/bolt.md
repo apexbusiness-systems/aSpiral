@@ -4,3 +4,4 @@
 ## 2024-05-25 - Avoid Intermediate Arrays When Calculating Aggregate Metrics
 **Learning:** Extracting unique counts or aggregate sums via chained `.filter()`, `.map()`, and `new Set()` combinations causes unnecessary O(N) memory allocations and iteration overhead.
 **Action:** Consolidate these operations into a single-pass standard `for` loop that tallies aggregates and adds to a non-cloned local `Set` simultaneously.
+## 2024-05-30 - Avoid Iterating Array Twice in Reducer \n**Learning:** Chaining `.filter()` and `.reduce()` iterates over the array twice causing unnecessary performance overhead, especially in methods that are called often. Replacing it with a standard `for` loop reduces iteration logic to a single pass.\n**Action:** Use a single-pass standard `for` loop to compute averages/sums when iterating over an array instead of chained array methods.
