@@ -8,19 +8,27 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+    },
+  },
+}));
+
 import { speak } from '@/lib/audioSession';
-import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 // Mock performance.now for consistent timing
 const mockPerformanceNow = vi.fn();
-Object.defineProperty(window, 'performance', {
+Object.defineProperty(globalThis, 'performance', {
   value: { now: mockPerformanceNow },
   writable: true,
 });
 
 // Mock fetch for TTS API calls
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 // Mock Audio API
 const mockAudioPlay = vi.fn().mockResolvedValue(undefined);
@@ -46,7 +54,7 @@ class MockAudio {
   }
 }
 
-global.Audio = MockAudio as any;
+globalThis.Audio = MockAudio as any;
 
 // Mock MediaSource API
 const mockAppendBuffer = vi.fn();
@@ -83,19 +91,16 @@ class MockMediaSource {
   }
 }
 
-global.MediaSource = MockMediaSource as any;
-global.MediaSource.isTypeSupported = vi.fn().mockReturnValue(true);
+globalThis.MediaSource = MockMediaSource as any;
+globalThis.MediaSource.isTypeSupported = vi.fn().mockReturnValue(true);
 
 // Mock URL.createObjectURL
-global.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
-global.URL.revokeObjectURL = vi.fn();
+globalThis.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
+globalThis.URL.revokeObjectURL = vi.fn();
 
 describe('Voice Pipeline Performance Validation', () => {
-  let startTime = 0;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    startTime = 0;
     mockPerformanceNow.mockReturnValue(0);
 
     // Mock successful TTS response
@@ -134,7 +139,7 @@ describe('Voice Pipeline Performance Validation', () => {
       await speak({
         text,
         voice: 'alloy',
-        speed: 1.0,
+        speed: 1,
         fallbackToWebSpeech: false,
         supabaseUrl: 'mock-url',
         supabaseKey: 'mock-key',
@@ -156,7 +161,7 @@ describe('Voice Pipeline Performance Validation', () => {
       await speak({
         text,
         voice: 'alloy',
-        speed: 1.0,
+        speed: 1,
         fallbackToWebSpeech: false,
         supabaseUrl: 'mock-url',
         supabaseKey: 'mock-key'
@@ -170,7 +175,7 @@ describe('Voice Pipeline Performance Validation', () => {
 
     it('should fallback gracefully for unsupported browsers', async () => {
       // Mock MediaSource not supported
-      vi.mocked(global.MediaSource.isTypeSupported).mockReturnValueOnce(false);
+      vi.mocked(globalThis.MediaSource.isTypeSupported).mockReturnValueOnce(false);
 
       const text = 'Fallback test';
       const startTime = performance.now();
@@ -178,7 +183,7 @@ describe('Voice Pipeline Performance Validation', () => {
       await speak({
         text,
         voice: 'alloy',
-        speed: 1.0,
+        speed: 1,
         fallbackToWebSpeech: false,
         supabaseUrl: 'mock-url',
         supabaseKey: 'mock-key'
@@ -220,7 +225,7 @@ describe('Voice Pipeline Performance Validation', () => {
 
       // Re-import to trigger detection
       vi.resetModules();
-      const { useVoiceInput: testHook } = await import('@/hooks/useVoiceInput');
+      await import('@/hooks/useVoiceInput');
 
       // iOS Safari should be detected
       expect(navigator.userAgent.includes('Safari')).toBe(true);
@@ -241,14 +246,14 @@ describe('Voice Pipeline Performance Validation', () => {
       await speak({
         text,
         voice: 'alloy',
-        speed: 1.0,
+        speed: 1,
         fallbackToWebSpeech: false,
         supabaseUrl: 'mock-url',
         supabaseKey: 'mock-key'
       });
 
       // Verify cleanup was called
-      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('mock-url');
+      expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('mock-url');
     });
 
     it('should handle multiple concurrent requests', async () => {
@@ -258,7 +263,7 @@ describe('Voice Pipeline Performance Validation', () => {
         speak({
           text,
           voice: 'alloy',
-          speed: 1.0,
+          speed: 1,
           fallbackToWebSpeech: false,
           supabaseUrl: 'mock-url',
           supabaseKey: 'mock-key'
@@ -281,7 +286,7 @@ describe('Voice Pipeline Performance Validation', () => {
       await expect(speak({
         text,
         voice: 'alloy',
-        speed: 1.0,
+        speed: 1,
         fallbackToWebSpeech: true, // Enable fallback
         supabaseUrl: 'mock-url',
         supabaseKey: 'mock-key'
@@ -293,7 +298,7 @@ describe('Voice Pipeline Performance Validation', () => {
       await expect(speak({
         text: '',
         voice: 'alloy',
-        speed: 1.0,
+        speed: 1,
         fallbackToWebSpeech: false,
         supabaseUrl: 'mock-url',
         supabaseKey: 'mock-key'
