@@ -11,7 +11,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync } = require('node:child_process');
 
 // Configuration
 const CONFIG = {
@@ -109,29 +108,10 @@ class GhostUIAuditor {
   }
 
   /**
-   * Get all files that match our patterns
+   * Get all files that match our patterns without invoking PATH-resolved binaries.
    */
   getFilesToScan() {
-    if (this.isRipgrepAvailable()) {
-      const rgCommand = 'rg -l --type tsx --type jsx --type vue --type svelte .';
-      const output = execSync(rgCommand, { encoding: 'utf8', cwd: process.cwd() });
-      return output.trim().split('\n').filter(Boolean);
-    }
-
     return this.findFilesRecursively(process.cwd(), CONFIG.filePatterns);
-  }
-
-  /**
-   * Check whether ripgrep can be used for fast project scans.
-   */
-  isRipgrepAvailable() {
-    try {
-      execSync('rg --version', { encoding: 'utf8', stdio: 'ignore' });
-      return true;
-    } catch (error) {
-      console.warn(`⚠️  ripgrep unavailable; using recursive scan fallback: ${error.message}`);
-      return false;
-    }
   }
 
   /**
