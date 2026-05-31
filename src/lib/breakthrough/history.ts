@@ -186,9 +186,26 @@ export function getVariantStats(variantId: string): {
   lastPlayed: number | null;
 } {
   const history = getBreakthroughHistory();
-  const variantEntries = history.entries.filter((e) => e.variantId === variantId);
   
-  if (variantEntries.length === 0) {
+  let playCount = 0;
+  let completed = 0;
+  let fallbacks = 0;
+  let lastPlayed: number | null = null;
+
+  // Performance Optimization: Calculate derived metrics in a single pass
+  // instead of allocating an intermediate filtered array.
+  for (let i = 0; i < history.entries.length; i++) {
+    const e = history.entries[i];
+    if (e.variantId === variantId) {
+      playCount++;
+      if (e.completed) completed++;
+      if (e.wasFallback) fallbacks++;
+      // Entries are in chronological order, so the last match is the most recent
+      lastPlayed = e.timestamp;
+    }
+  }
+
+  if (playCount === 0) {
     return {
       playCount: 0,
       completionRate: 0,
@@ -196,21 +213,12 @@ export function getVariantStats(variantId: string): {
       lastPlayed: null,
     };
   }
-  
-  let completed = 0;
-  let fallbacks = 0;
-  for (let i = 0; i < variantEntries.length; i++) {
-    const e = variantEntries[i];
-    if (e.completed) completed++;
-    if (e.wasFallback) fallbacks++;
-  }
-  const lastEntry = variantEntries[variantEntries.length - 1];
 
   return {
-    playCount: variantEntries.length,
-    completionRate: completed / variantEntries.length,
-    fallbackRate: fallbacks / variantEntries.length,
-    lastPlayed: lastEntry?.timestamp || null,
+    playCount,
+    completionRate: completed / playCount,
+    fallbackRate: fallbacks / playCount,
+    lastPlayed,
   };
 }
 
@@ -239,12 +247,8 @@ export function getOverallStats(): {
   
   let completed = 0;
   let fallbacks = 0;
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i];
-    if (e.completed) completed++;
-    if (e.wasFallback) fallbacks++;
-  }
-  const uniqueVariants = new Set(entries.map((e) => e.variantId)).size;
+  let sumIntensity = 0;
+  const uniqueVariantIds = new Set<string>();
 
   const intensityValues: Record<IntensityBand, number> = {
     low: 1,
@@ -253,15 +257,22 @@ export function getOverallStats(): {
     extreme: 4,
   };
   
-  const avgIntensity =
-    entries.reduce((sum, e) => sum + intensityValues[e.intensity], 0) / entries.length;
+  // Performance Optimization: Replaced chained .map(), new Set(), and .reduce()
+  // with a single-pass loop to eliminate intermediate arrays and O(N) traversals.
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.completed) completed++;
+    if (e.wasFallback) fallbacks++;
+    uniqueVariantIds.add(e.variantId);
+    sumIntensity += intensityValues[e.intensity];
+  }
   
   return {
     totalPlays: entries.length,
     completionRate: completed / entries.length,
     fallbackRate: fallbacks / entries.length,
-    uniqueVariants,
-    averageIntensity: avgIntensity,
+    uniqueVariants: uniqueVariantIds.size,
+    averageIntensity: sumIntensity / entries.length,
   };
 }
 
