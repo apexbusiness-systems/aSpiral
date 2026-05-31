@@ -105,16 +105,23 @@ export const useSessionStore = create<SessionState>()(
         const entities = currentSession.entities || [];
         const connections = currentSession.connections || [];
 
-        const entityLookup = new Set(
-          entities
-            .filter(e => e && e.type && e.label)
-            .map(e => `${e.type}:${e.label.toLowerCase().trim()}`)
-        );
-        const connectionLookup = new Set(
-          connections
-            .filter(c => c && c.fromEntityId && c.toEntityId && c.type)
-            .map(c => `${c.fromEntityId}:${c.toEntityId}:${c.type}`)
-        );
+        // Performance Optimization: Replaced chained .filter().map() with single-pass loops
+        // to avoid intermediate array allocations when building Sets.
+        const entityLookup = new Set<string>();
+        for (let i = 0; i < entities.length; i++) {
+          const e = entities[i];
+          if (e && e.type && e.label) {
+            entityLookup.add(`${e.type}:${e.label.toLowerCase().trim()}`);
+          }
+        }
+
+        const connectionLookup = new Set<string>();
+        for (let i = 0; i < connections.length; i++) {
+          const c = connections[i];
+          if (c && c.fromEntityId && c.toEntityId && c.type) {
+            connectionLookup.add(`${c.fromEntityId}:${c.toEntityId}:${c.type}`);
+          }
+        }
 
         set({ _entityLookup: entityLookup, _connectionLookup: connectionLookup });
       },

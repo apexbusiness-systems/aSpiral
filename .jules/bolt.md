@@ -5,3 +5,6 @@
 **Learning:** Extracting unique counts or aggregate sums via chained `.filter()`, `.map()`, and `new Set()` combinations causes unnecessary O(N) memory allocations and iteration overhead.
 **Action:** Consolidate these operations into a single-pass standard `for` loop that tallies aggregates and adds to a non-cloned local `Set` simultaneously.
 ## 2024-05-30 - Avoid Iterating Array Twice in Reducer \n**Learning:** Chaining `.filter()` and `.reduce()` iterates over the array twice causing unnecessary performance overhead, especially in methods that are called often. Replacing it with a standard `for` loop reduces iteration logic to a single pass.\n**Action:** Use a single-pass standard `for` loop to compute averages/sums when iterating over an array instead of chained array methods.
+## 2024-05-31 - Avoid Array Allocation Overhead during Set Lookup Rebuilds
+**Learning:** Rebuilding large `Set` lookups inside Zustand store rehydration/actions using chained `.filter().map()` causes intermediate array allocations, adding GC pressure.
+**Action:** When reconstructing `Set` lookups from persisted arrays, instantiate an empty `Set` and populate it manually inside a single-pass `for` loop to achieve O(N) time and O(1) auxiliary space beyond the `Set` itself.
