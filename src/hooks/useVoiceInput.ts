@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { audioDebug } from "@/lib/audioLogger";
 import { addBreadcrumb } from "@/lib/debugOverlay";
 import { supabase } from "@/integrations/supabase/client";
+import type { SpiralError } from "@/types/errors";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -171,6 +172,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const [isPaused, setIsPaused] = useState(false);
   const [voiceState, setVoiceState] = useState<"Idle" | "Listening" | "Reconnecting" | "Error">("Idle");
   const [transcript, setTranscript] = useState("");
+  const [sttError, setSttError] = useState<SpiralError | null>(null);
+  const [sttResult, setSttResult] = useState<{ transcript: string | null; error: SpiralError | null }>({ transcript: null, error: null });
 
   // Derived state — no interim results with MediaRecorder; both point to same value
   const finalTranscript = transcript;
@@ -295,29 +298,65 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
       try {
         const { data: authData } = await supabase.auth.getSession();
-        const accessToken =
-          authData.session?.access_token ??
-          (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string);
+        const accessToken = authData.session?.access_token ?? (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string);
+        const url = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/speech-to-text`;
 
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/speech-to-text`,
-          {
-            method: "POST",
-            headers: {
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: formData,
+        let response: Response | null = null;
+        for (let attempt = 0; attempt <= 2; attempt++) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          try {
+            response = await fetch(url, {
+              method: "POST",
+              headers: {
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: formData,
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok && response.status >= 500 && attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
+              continue;
+            }
+            break;
+          } catch (err) {
+            clearTimeout(timeoutId);
+            if (err instanceof Error && err.name === "AbortError") {
+              const timeoutError: SpiralError = { code: "STT_TIMEOUT", message: "Speech request timed out", retryable: true };
+              setSttError(timeoutError);
+              setSttResult({ transcript: null, error: timeoutError });
+              return;
+            }
+            if (attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
+              continue;
+            }
+            throw err;
           }
-        );
+        }
+
+        if (!response) {
+          const fetchError: SpiralError = { code: "STT_FETCH_FAILED", message: "No response from speech service", retryable: true };
+          setSttError(fetchError);
+          setSttResult({ transcript: null, error: fetchError });
+          return;
+        }
 
         if (!response.ok) {
           const errText = await response.text();
-          logger.error("STT edge function error", new Error(`${response.status}: ${errText}`));
+          console.error('[useVoiceInput] STT fetch failed:', { status: response.status, url });
+          const code: SpiralError['code'] = response.status >= 500 ? "STT_FETCH_FAILED" : "STT_PARSE_ERROR";
+          const failureError: SpiralError = { code, message: `STT failed with status ${response.status}: ${errText}`, retryable: response.status >= 500 };
+          setSttError(failureError);
+          setSttResult({ transcript: null, error: failureError });
           emitDebugEvent({ type: "stt.error", data: { status: response.status, body: errText } });
         } else {
           const json = (await response.json()) as { text?: string };
           const text = (json.text ?? "").trim();
+          setSttError(null);
+          setSttResult({ transcript: text || null, error: null });
           if (text) {
             setTranscript(text);
             optionsRef.current.onTranscript?.(text);
@@ -326,7 +365,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           }
         }
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const isCorsError = /cors|networkerror|failed to fetch/i.test(message);
+        const failureError: SpiralError = {
+          code: isCorsError ? "CORS_ERROR" : "STT_FETCH_FAILED",
+          message,
+          retryable: true,
+        };
         logger.error("STT fetch failed", err instanceof Error ? err : new Error(String(err)));
+        setSttError(failureError);
+        setSttResult({ transcript: null, error: failureError });
         emitDebugEvent({ type: "stt.error", data: { error: String(err) } });
       } finally {
         endSTTSession(sessionId, "onstop_complete");
@@ -398,6 +446,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       setRecording(true);
       setIsPaused(false);
       setTranscript("");
+      setSttError(null);
+      setSttResult({ transcript: null, error: null });
 
       emitDebugEvent({ type: "stt.start", data: { mimeType, action: "start" } });
       emitDebugEvent({ type: "listener.attach", data: { action: "start" } });
@@ -518,6 +568,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     isPaused,
     voiceState,
     transcript,
+    error: sttError,
+    sttResult,
     finalTranscript,
     interimTranscript,
     startRecording,

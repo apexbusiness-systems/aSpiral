@@ -18,6 +18,13 @@ import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("[spiral-ai] Missing required env vars");
+}
+
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "llama-3.3-70b-versatile";
 const GROQ_AI_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -414,12 +421,11 @@ serve(async (req) => {
   const writer = createComplianceWriter();
   complianceLogger.attachWriter(writer);
   
+  const preflight = handleCorsPreFlight(req);
+  if (preflight) return preflight;
+
   // Build origin-aware CORS headers for this request
   const corsHeaders = getCorsHeaders(req);
-
-  if (req.method === "OPTIONS") {
-    return handleCorsPreFlight(req);
-  }
 
   try {
     if (!GROQ_API_KEY) {
@@ -844,6 +850,7 @@ Respond ONLY with the JSON object. No other text.`;
   } catch (error) {
     const processingTime = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : "Unknown";
+    console.error("[spiral-ai] Unhandled error:", error);
     console.error("[SPIRAL-AI] Error:", { requestId, error: errorMessage, processingMs: processingTime });
 
     // Finalize run as ERROR (never throws)
@@ -908,7 +915,8 @@ Respond ONLY with the JSON object. No other text.`;
     complianceLogger.log("ERROR_OCCURRED", { errorCode: "INTERNAL_ERROR", errorMessage: errorMessage });
     return new Response(
       JSON.stringify({
-        error: ENABLE_DETAILED_ERRORS && error instanceof Error ? error.message : "An unexpected error occurred",
+        error: "Internal server error",
+        code: "SPIRAL_AI_UNHANDLED",
         requestId,
         entities: [],
         connections: [],

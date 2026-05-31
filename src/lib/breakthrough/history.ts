@@ -245,6 +245,13 @@ export function getOverallStats(): {
     };
   }
   
+  const intensityValues: Record<IntensityBand, number> = {
+    low: 1,
+    medium: 2,
+    high: 3,
+    extreme: 4,
+  };
+
   let completed = 0;
   let fallbacks = 0;
   let sumIntensity = 0;
