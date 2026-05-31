@@ -9,9 +9,9 @@
  * Usage: npm run audit:ghost
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
 
 // Configuration
 const CONFIG = {
@@ -43,7 +43,7 @@ const CONFIG = {
       /<textarea(?![^>]*onClick)(?![^>]*onChange)/g,
     ],
     
-    // TODO/FIXME comments indicating incomplete implementation
+    // Incomplete-task comments indicating unfinished implementation
     incompleteMarkers: [
       /\/\/\s*(TODO|FIXME|HACK|XXX|NOT_IMPLEMENTED)/gi,
       /\/\*\s*(TODO|FIXME|HACK|XXX|NOT_IMPLEMENTED)/gi,
@@ -112,16 +112,25 @@ class GhostUIAuditor {
    * Get all files that match our patterns
    */
   getFilesToScan() {
-    const files = [];
-    
-    // Use ripgrep if available, otherwise fall back to find
-    try {
-      const rgCommand = `rg -l --type tsx --type jsx --type vue --type svelte .`;
+    if (this.isRipgrepAvailable()) {
+      const rgCommand = 'rg -l --type tsx --type jsx --type vue --type svelte .';
       const output = execSync(rgCommand, { encoding: 'utf8', cwd: process.cwd() });
       return output.trim().split('\n').filter(Boolean);
+    }
+
+    return this.findFilesRecursively(process.cwd(), CONFIG.filePatterns);
+  }
+
+  /**
+   * Check whether ripgrep can be used for fast project scans.
+   */
+  isRipgrepAvailable() {
+    try {
+      execSync('rg --version', { encoding: 'utf8', stdio: 'ignore' });
+      return true;
     } catch (error) {
-      // Fallback to recursive file search
-      return this.findFilesRecursively(process.cwd(), CONFIG.filePatterns);
+      console.warn(`⚠️  ripgrep unavailable; using recursive scan fallback: ${error.message}`);
+      return false;
     }
   }
 
@@ -153,7 +162,7 @@ class GhostUIAuditor {
         }
       }
     } catch (error) {
-      // Ignore permission errors and continue
+      console.warn(`⚠️  Skipping unreadable directory ${dir}: ${error.message}`);
     }
     
     return files;
@@ -163,7 +172,7 @@ class GhostUIAuditor {
    * Check if file path matches any pattern
    */
   matchesPattern(filePath, patterns) {
-    return patterns.some(pattern => new RegExp(pattern.replace(/\*\*/g, '.*')).test(filePath));
+    return patterns.some(pattern => new RegExp(pattern.replaceAll('**', '.*')).test(filePath));
   }
 
   /**
@@ -189,7 +198,7 @@ class GhostUIAuditor {
       this.checkPlaceholderText(filePath, lines);
       
     } catch (error) {
-      // Ignore file read errors
+      console.warn(`⚠️  Skipping unreadable file ${filePath}: ${error.message}`);
     }
   }
 

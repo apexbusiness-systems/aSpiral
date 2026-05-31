@@ -1,15 +1,19 @@
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
-interface LockedActionProps {
-  children: React.ReactNode;
+type LockedActionBaseProps = Readonly<{
+  children: ReactNode;
   reason: string;
   cta?: string;
   onCtaClick?: () => void;
+}>;
+
+type LockedActionProps = LockedActionBaseProps & Readonly<{
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg" | "icon";
-}
+}>;
 
 /**
  * Standardized locked action component
@@ -30,7 +34,7 @@ export function LockedAction({
   onCtaClick,
   variant = "default",
   size = "default",
-}: LockedActionProps) {
+}: Readonly<LockedActionProps>) {
   const handleClick = () => {
     const message = cta ? `${reason} ${cta}` : reason;
     
@@ -66,7 +70,7 @@ export function LockedActionAlert({
   reason,
   cta,
   onCtaClick,
-}: LockedActionProps) {
+}: LockedActionBaseProps) {
   return (
     <div className="flex items-center gap-3 p-3 bg-muted/30 border border-border/50 rounded-lg">
       <AlertCircle className="h-5 w-5 text-muted-foreground" />
