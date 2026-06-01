@@ -8,3 +8,6 @@
 ## 2024-05-31 - Avoid Array Allocation Overhead during Set Lookup Rebuilds
 **Learning:** Rebuilding large `Set` lookups inside Zustand store rehydration/actions using chained `.filter().map()` causes intermediate array allocations, adding GC pressure.
 **Action:** When reconstructing `Set` lookups from persisted arrays, instantiate an empty `Set` and populate it manually inside a single-pass `for` loop to achieve O(N) time and O(1) auxiliary space beyond the `Set` itself.
+## 2024-06-01 - [Performance Optimization] Prevent intermediate array allocation using `.some()`
+**Learning:** When checking for the existence of a specific property value within an array of objects, using `.map(e => e.prop).includes(val)` forces the creation of an intermediate array containing all properties, which increases memory allocation and garbage collection overhead.
+**Action:** Replace `.map().includes()` with `.some(e => e.prop === val)`. This prevents unnecessary allocations and allows iteration to terminate early as soon as a match is found.
