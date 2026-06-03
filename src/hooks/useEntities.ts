@@ -88,24 +88,31 @@ export function useEntities() {
         const userTier = profile?.tier || "free";
         const visibleLimit = getVisibleLimit(userTier);
 
-        // Initial batch
-        const initial = new Set(sorted.slice(0, visibleLimit).map(e => e.id));
+        // Performance Optimization: Replaced .slice().map() with standard for loops
+        // to prevent intermediate array allocations when computing visible limits.
+        const initial = new Set<string>();
+        const limit = Math.min(visibleLimit, sorted.length);
+        for (let i = 0; i < limit; i++) {
+            initial.add(sorted[i].id);
+        }
         setVisibleEntityIds(initial);
         invalidate();
 
         // Schedule staggered rest
-        const remainingEntities = sorted.slice(visibleLimit);
-        const timeoutIds = remainingEntities.map((entity, index) => {
+        const timeoutIds: ReturnType<typeof setTimeout>[] = [];
+        for (let i = visibleLimit; i < sorted.length; i++) {
+            const entity = sorted[i];
+            const index = i - visibleLimit;
             const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
-            return setTimeout(() => {
+            timeoutIds.push(setTimeout(() => {
                 setVisibleEntityIds(prev => {
                     const next = new Set(prev);
                     next.add(entity.id);
                     return next;
                 });
                 invalidate();
-            }, delay);
-        });
+            }, delay));
+        }
 
         // Cleanup timeouts on unmount or dependency change
         return () => {
@@ -124,10 +131,16 @@ export function useEntities() {
 
     // Memoize filtered connections for performance
     const visibleConnections = useMemo(() => {
-        return connections.filter(conn =>
-            visibleEntityIds.has(conn.fromEntityId) &&
-            visibleEntityIds.has(conn.toEntityId)
-        );
+        // Performance Optimization: Use a standard for loop instead of .filter()
+        // to prevent allocating an intermediate array and lambda closure.
+        const filtered = [];
+        for (let i = 0; i < connections.length; i++) {
+            const conn = connections[i];
+            if (visibleEntityIds.has(conn.fromEntityId) && visibleEntityIds.has(conn.toEntityId)) {
+                filtered.push(conn);
+            }
+        }
+        return filtered;
     }, [connections, visibleEntityIds]);
 
     return useMemo(() => ({
