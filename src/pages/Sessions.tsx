@@ -89,9 +89,12 @@ const Sessions = () => {
     });
 
     // Track which sessions have breakthroughs
-    const breakthroughSessions = new Set(
-      (breakthroughResult.data || []).map((b: any) => b.session_id)
-    );
+    // Performance Optimization: Replaced mapped array with single-pass for loop
+    const breakthroughSessions = new Set<string>();
+    const breakthroughs = breakthroughResult.data || [];
+    for (let i = 0; i < breakthroughs.length; i++) {
+      breakthroughSessions.add(breakthroughs[i].session_id);
+    }
 
     const enriched: SessionListItem[] = rawSessions.map(s => ({
       ...s,
