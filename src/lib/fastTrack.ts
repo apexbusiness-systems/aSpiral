@@ -82,9 +82,15 @@ export function detectPatternsEarly(
   const detected: Pattern[] = [];
 
   for (const [name, config] of Object.entries(BEHAVIORAL_PATTERNS)) {
-    const matchingKeywords = config.keywords.filter(kw => 
-      allText.includes(kw.toLowerCase())
-    );
+    // Performance Optimization: Replaced .filter() with a standard for loop
+    // to avoid unnecessary closure allocations and intermediate arrays.
+    const matchingKeywords: string[] = [];
+    for (let i = 0; i < config.keywords.length; i++) {
+      const kw = config.keywords[i];
+      if (allText.includes(kw.toLowerCase())) {
+        matchingKeywords.push(kw);
+      }
+    }
     
     if (matchingKeywords.length > 0) {
       const confidence = Math.min(0.4 + (matchingKeywords.length * 0.15), 0.95);
@@ -161,15 +167,35 @@ export function shouldStopAsking(
  * Simple word overlap similarity
  */
 function calculateSimilarity(a: string, b: string): number {
-  const wordsA = new Set(a.split(/\s+/).filter(w => w.length > 3));
-  const wordsB = new Set(b.split(/\s+/).filter(w => w.length > 3));
+  // Performance Optimization: Refactored word extraction into a reusable helper
+  // that builds Sets in a single pass over string characters. This eliminates
+  // chained `.split(/\s+/).filter()` operations and avoids intermediate array allocations.
+  const getWords = (str: string) => {
+    const words = new Set<string>();
+    let currentWord = "";
+    for (let i = 0; i <= str.length; i++) {
+      const code = i < str.length ? str.charCodeAt(i) : 32;
+      if (code === 32 || code === 9 || code === 10 || code === 13) {
+        if (currentWord.length > 3) {
+          words.add(currentWord);
+        }
+        currentWord = "";
+      } else {
+        currentWord += str[i];
+      }
+    }
+    return words;
+  };
+
+  const wordsA = getWords(a);
+  const wordsB = getWords(b);
   
   if (wordsA.size === 0 || wordsB.size === 0) return 0;
   
   let overlap = 0;
-  wordsA.forEach(word => {
+  for (const word of wordsA) {
     if (wordsB.has(word)) overlap++;
-  });
+  }
   
   return overlap / Math.max(wordsA.size, wordsB.size);
 }

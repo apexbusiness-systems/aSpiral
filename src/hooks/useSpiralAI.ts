@@ -215,7 +215,14 @@ function updateUltraFastProgress(
   transcript: string,
   entities: EntityResult[]
 ): UltraFastProgress {
-  const frictionFromBatch = entities.filter(entity => entity.type === "friction").length;
+  // Performance Optimization: Replaced .filter().length with a standard for loop
+  // to avoid intermediate array allocations and reduce GC overhead.
+  let frictionFromBatch = 0;
+  for (let i = 0; i < entities.length; i++) {
+    if (entities[i].type === "friction") {
+      frictionFromBatch++;
+    }
+  }
 
   return {
     sentenceCount: previous.sentenceCount + countSentences(transcript),

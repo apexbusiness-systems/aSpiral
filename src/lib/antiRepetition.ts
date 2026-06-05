@@ -44,14 +44,30 @@ export class AntiRepetitionEngine {
    * Extract question structure pattern
    */
   private extractStructure(question: string): string {
-    return question
+    const q = question
       .toLowerCase()
       .replace(/\b(you|your|that|this|it|the|a|an)\b/g, "X")
-      .replace(/[^a-z\s]/g, "")
-      .split(" ")
-      .filter((w) => w.length > 2)
-      .slice(0, 5)
-      .join("-");
+      .replace(/[^a-z\s]/g, "");
+
+    // Performance Optimization: Use single-pass word extraction
+    // instead of .split().filter().slice().join() to avoid multiple allocations
+    const words: string[] = [];
+    let currentWord = "";
+
+    for (let i = 0; i <= q.length; i++) {
+      const char = i < q.length ? q[i] : " ";
+      if (char === " ") {
+        if (currentWord.length > 2) {
+          words.push(currentWord);
+          if (words.length === 5) break;
+        }
+        currentWord = "";
+      } else {
+        currentWord += char;
+      }
+    }
+
+    return words.join("-");
   }
 
   /**

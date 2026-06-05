@@ -8,3 +8,6 @@
 ## 2024-05-31 - Avoid Array Allocation Overhead during Set Lookup Rebuilds
 **Learning:** Rebuilding large `Set` lookups inside Zustand store rehydration/actions using chained `.filter().map()` causes intermediate array allocations, adding GC pressure.
 **Action:** When reconstructing `Set` lookups from persisted arrays, instantiate an empty `Set` and populate it manually inside a single-pass `for` loop to achieve O(N) time and O(1) auxiliary space beyond the `Set` itself.
+## 2024-06-05 - Avoid Regex Testing per Character in Single-Pass Loops
+**Learning:** When refactoring chained `.split(/\s+/).filter()` operations into single-pass character iteration loops, using regular expressions (e.g., `/\s/.test(char)`) inside the loop on every single character is often slower in the V8 engine than using the native C++-backed string methods.
+**Action:** Use `String.prototype.charCodeAt()` and compare against the integer ASCII values of whitespace characters (e.g., 32 for space, 9 for tab, 10 for newline, 13 for carriage return). This achieves a measurable execution speedup and avoids intermediate array allocations simultaneously.
