@@ -257,8 +257,15 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
   // Speak latest assistant chat message when TTS is enabled
   useEffect(() => {
-    const assistantMessages = messages.filter((m) => m.role === 'assistant');
-    const latest = assistantMessages[assistantMessages.length - 1];
+    // Performance Optimization: Replaced O(N) .filter() array allocation with a reverse search
+    let latest = undefined;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        latest = messages[i];
+        break;
+      }
+    }
+
     if (
       latest &&
       ttsEnabled &&

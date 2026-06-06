@@ -8,3 +8,6 @@
 ## 2024-05-31 - Avoid Array Allocation Overhead during Set Lookup Rebuilds
 **Learning:** Rebuilding large `Set` lookups inside Zustand store rehydration/actions using chained `.filter().map()` causes intermediate array allocations, adding GC pressure.
 **Action:** When reconstructing `Set` lookups from persisted arrays, instantiate an empty `Set` and populate it manually inside a single-pass `for` loop to achieve O(N) time and O(1) auxiliary space beyond the `Set` itself.
+## 2026-06-06 - Array Search Optimization
+**Learning:** In frequently rendering components (like streaming chat interfaces), using `.filter(...)[array.length - 1]` or `.filter(...).pop()` to find the last matching item creates a significant performance bottleneck by allocating new arrays on every render cycle.
+**Action:** Replace `.filter().pop()` patterns with a reverse `for` loop to achieve O(1) space complexity and O(K) time complexity, finding the most recent matching element without creating intermediate garbage collection overhead.
