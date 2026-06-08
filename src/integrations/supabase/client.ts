@@ -178,7 +178,7 @@ function initializeSupabaseClient(): SupabaseClient<Database> {
         // FIX: Use localStorage (not sessionStorage) to persist auth sessions
         // across tab closes, PWA backgrounding, and page reloads on mobile.
         // sessionStorage was causing users to be logged out constantly on iOS/Android.
-        storage: window.localStorage,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         persistSession: true,
         autoRefreshToken: true,
         storageKey: 'aspiral-auth-token', // Namespaced to avoid conflicts

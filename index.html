@@ -48,8 +48,8 @@
         xhr.send(null);
         if (xhr.status === 200) {
           // Execute the config.js content in the current scope
-          eval(xhr.responseText); // NOSONAR: Fallback loading of local config.js // sets window.ENV
-          if (!window || !window.ENV) {
+          (new Function(xhr.responseText))(); // NOSONAR: Fallback loading of local config.js
+          if (typeof window === 'undefined' || !window.ENV) {
             console.error('[config] /config.js loaded but window.ENV is missing');
           } else {
             console.debug('[config] Runtime environment loaded from /config.js');
@@ -58,7 +58,11 @@
         // 404 is expected — silently fall through to build-time vars
       } catch (e) {
         // Synchronous XHR blocked by CORS or other error — ignore, use build-time vars
-        console.debug('[config] Could not load /config.js, using build-time env vars');
+        if (e instanceof Error) {
+            console.debug('[config] Could not load /config.js, using build-time env vars', e.message);
+        } else {
+            console.debug('[config] Could not load /config.js, using build-time env vars');
+        }
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>
