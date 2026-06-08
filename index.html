@@ -48,8 +48,8 @@
         xhr.send(null);
         if (xhr.status === 200) {
           // Execute the config.js content in the current scope
-          (new Function(xhr.responseText))(); // NOSONAR: Fallback loading of local config.js
-          if (typeof window === 'undefined' || !window.ENV) {
+          window.eval(xhr.responseText); // NOSONAR: Fallback loading of local config.js
+          if (!window.ENV) {
             console.error('[config] /config.js loaded but window.ENV is missing');
           } else {
             console.debug('[config] Runtime environment loaded from /config.js');
