@@ -71,69 +71,68 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleError = (error: any, isLoginAttempt: boolean) => {
+    const errorMessage = error.message.toLowerCase();
+
+    // Check specific auth errors
+    if (isLoginAttempt && errorMessage.includes('invalid login credentials')) {
+      toast({
+        title: t('auth.invalidCredentials'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isLoginAttempt && errorMessage.includes('user already registered')) {
+      toast({
+        title: t('auth.alreadyRegistered'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check network errors
+    if (error.message.startsWith('NETWORK_ERROR:')) {
+      toast({
+        title: t('errors.network'),
+        description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Default fallback error
+    toast({
+      title: t('errors.auth'),
+      description: error.message,
+      variant: 'destructive',
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setErrors({ email: '', password: '', displayName: '' });
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
 
     try {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          const errorMessage = error.message.toLowerCase();
-          if (errorMessage.includes('invalid login credentials')) {
-            toast({
-              title: t('auth.invalidCredentials'),
-              variant: 'destructive',
-            });
-          } else if (error.message.startsWith('NETWORK_ERROR:')) {
-            toast({
-              title: t('errors.network'),
-              description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: t('errors.auth'),
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
+          handleError(error, true);
         } else {
           analytics.trackFeatureUsed({ feature: 'email_signup', metadata: { action: 'login' } });
-          toast({
-            title: t('auth.loginSuccess'),
-          });
+          toast({ title: t('auth.loginSuccess') });
         }
       } else {
         const { error } = await signUp(email, password, displayName || undefined);
         if (error) {
-          const errorMessage = error.message.toLowerCase();
-          if (errorMessage.includes('user already registered')) {
-            toast({
-              title: t('auth.alreadyRegistered'),
-              variant: 'destructive',
-            });
-          } else if (error.message.startsWith('NETWORK_ERROR:')) {
-            toast({
-              title: t('errors.network'),
-              description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: t('errors.auth'),
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
+          handleError(error, false);
         } else {
           analytics.trackFeatureUsed({ feature: 'email_signup', metadata: { action: 'signup' } });
-          toast({
-            title: t('auth.checkEmail'),
-          });
+          toast({ title: t('auth.checkEmail') });
         }
       }
     } finally {
@@ -147,19 +146,7 @@ const Auth = () => {
     try {
       const { error } = await signInWithGoogle();
       if (error) {
-        if (error.message.startsWith('NETWORK_ERROR:')) {
-          toast({
-            title: t('errors.network'),
-            description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: t('errors.auth'),
-            description: error.message,
-            variant: 'destructive',
-          });
-        }
+        handleError(error, true);
       }
     } finally {
       setLoading(false);
