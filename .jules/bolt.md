@@ -8,3 +8,6 @@
 ## 2024-05-31 - Avoid Array Allocation Overhead during Set Lookup Rebuilds
 **Learning:** Rebuilding large `Set` lookups inside Zustand store rehydration/actions using chained `.filter().map()` causes intermediate array allocations, adding GC pressure.
 **Action:** When reconstructing `Set` lookups from persisted arrays, instantiate an empty `Set` and populate it manually inside a single-pass `for` loop to achieve O(N) time and O(1) auxiliary space beyond the `Set` itself.
+## 2024-05-19 - Replace Array Copying with Reverse Loop for End-of-Array Lookup
+**Learning:** In React components that trigger frequently based on dependency arrays (like `useEffect` listening to an array of messages), using `.filter().pop()` or `.filter()[array.length - 1]` to find the last occurrence of an element creates unnecessary garbage collection overhead by allocating a new array on every render.
+**Action:** Replace `array.filter(condition).pop()` with a reverse `for` loop starting from `array.length - 1`. This reduces the operation's space complexity to O(1) and time complexity to O(K) where K is the number of elements checked before the first match, preventing unnecessary memory allocations during re-renders.
