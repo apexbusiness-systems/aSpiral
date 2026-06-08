@@ -3,8 +3,11 @@
  * placeholder credential at startup. Prevents users from seeing a broken auth page.
  */
 export function useSupabaseConfigError(): boolean {
-  if (typeof window === 'undefined') return false;
-  return !!(window as Window & { __SUPABASE_MISCONFIGURED__?: boolean }).__SUPABASE_MISCONFIGURED__;
+  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+    const w = globalThis.window as Window & { __SUPABASE_MISCONFIGURED__?: boolean };
+    return !!w.__SUPABASE_MISCONFIGURED__;
+  }
+  return false;
 }
 
 export function SupabaseConfigError() {
