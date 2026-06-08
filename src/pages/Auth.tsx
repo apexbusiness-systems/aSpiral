@@ -88,6 +88,12 @@ const Auth = () => {
               title: t('auth.invalidCredentials'),
               variant: 'destructive',
             });
+          } else if (error.message.startsWith('NETWORK_ERROR:')) {
+            toast({
+              title: t('errors.network'),
+              description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
+              variant: 'destructive',
+            });
           } else {
             toast({
               title: t('errors.auth'),
@@ -108,6 +114,12 @@ const Auth = () => {
           if (errorMessage.includes('user already registered')) {
             toast({
               title: t('auth.alreadyRegistered'),
+              variant: 'destructive',
+            });
+          } else if (error.message.startsWith('NETWORK_ERROR:')) {
+            toast({
+              title: t('errors.network'),
+              description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
               variant: 'destructive',
             });
           } else {
@@ -135,11 +147,19 @@ const Auth = () => {
     try {
       const { error } = await signInWithGoogle();
       if (error) {
-        toast({
-          title: t('errors.auth'),
-          description: error.message,
-          variant: 'destructive',
-        });
+        if (error.message.startsWith('NETWORK_ERROR:')) {
+          toast({
+            title: t('errors.network'),
+            description: 'Unable to connect to the authentication server. Please check your internet connection and try again.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: t('errors.auth'),
+            description: error.message,
+            variant: 'destructive',
+          });
+        }
       }
     } finally {
       setLoading(false);

@@ -20,7 +20,7 @@ Verify the following secrets are set in the Supabase Dashboard → Settings → 
 Add: https://aspiral.icu
 
 ### Deploy Edge Functions (run after code changes):
-  supabase functions deploy spiral-ai --project-ref egtwatyodujxofrdznen
-  supabase functions deploy speech-to-text --project-ref egtwatyodujxofrdznen
-  supabase functions deploy api-entities --project-ref egtwatyodujxofrdznen
-  supabase functions deploy api-export --project-ref egtwatyodujxofrdznen
+  supabase functions deploy spiral-ai --project-ref eqtwatyodujxofrdznen
+  supabase functions deploy speech-to-text --project-ref eqtwatyodujxofrdznen
+  supabase functions deploy api-entities --project-ref eqtwatyodujxofrdznen
+  supabase functions deploy api-export --project-ref eqtwatyodujxofrdznen
