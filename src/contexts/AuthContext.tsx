@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // FIX: HashRouter requires hash-based redirect URL (/#/app not /app).
       // Without the hash, post-email-verification redirect lands on Landing page.
-      const redirectUrl = `${window.location.origin}/#/app`;
+      const redirectUrl = typeof globalThis !== 'undefined' && 'window' in globalThis ? `${globalThis.window.location.origin}/#/app` : '/#/app';
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         provider: 'google',
         options: {
           // FIX: HashRouter requires hash-based redirect URL (/#/app not /app).
-          redirectTo: `${window.location.origin}/#/app`,
+          redirectTo: typeof globalThis !== 'undefined' && 'window' in globalThis ? `${globalThis.window.location.origin}/#/app` : '/#/app',
         },
       });
 

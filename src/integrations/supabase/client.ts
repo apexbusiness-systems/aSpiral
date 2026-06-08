@@ -153,8 +153,9 @@ function initializeSupabaseClient(): SupabaseClient<Database> {
     console.error('  See SUPABASE_SETUP.md for setup instructions.');
     console.error('═══════════════════════════════════════════════════════════════');
     // Set a global flag that the app UI can check to show a config error screen
-    if (typeof window !== 'undefined') {
-      (window as Window & { __SUPABASE_MISCONFIGURED__?: boolean }).__SUPABASE_MISCONFIGURED__ = true;
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      const w = globalThis.window as Window & { __SUPABASE_MISCONFIGURED__?: boolean };
+      w.__SUPABASE_MISCONFIGURED__ = true;
     }
     return createMockClient();
   }
@@ -163,8 +164,9 @@ function initializeSupabaseClient(): SupabaseClient<Database> {
   const isBadKey = KNOWN_BAD_KEYS.some(bad => SUPABASE_PUBLISHABLE_KEY?.includes(bad));
   if (isBadKey) {
     console.error('  VITE_SUPABASE_PUBLISHABLE_KEY is a placeholder — not a real anon key');
-    if (typeof window !== 'undefined') {
-      (window as Window & { __SUPABASE_MISCONFIGURED__?: boolean }).__SUPABASE_MISCONFIGURED__ = true;
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      const w = globalThis.window as Window & { __SUPABASE_MISCONFIGURED__?: boolean };
+      w.__SUPABASE_MISCONFIGURED__ = true;
     }
     return createMockClient();
   }
