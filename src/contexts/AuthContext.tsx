@@ -4,13 +4,16 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { UserTier } from '@/lib/entityLimits';
 
+import type { Database } from '@/integrations/supabase/types';
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+
 interface Profile {
   id: string;
-  display_name: string | null;
-  avatar_url: string | null;
+  display_name: ProfileRow['display_name'];
+  avatar_url: ProfileRow['avatar_url'];
   tier: UserTier;
-  created_at: string;
-  updated_at: string;
+  created_at: ProfileRow['created_at'];
+  updated_at: ProfileRow['updated_at'];
 }
 
 interface AuthContextType {
@@ -45,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       // Using 'as any' because the profiles table might not be in the generated types yet
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -117,7 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/app`;
+      // FIX: HashRouter requires hash-based redirect URL (/#/app not /app).
+      // Without the hash, post-email-verification redirect lands on Landing page.
+      const redirectUrl = `${window.location.origin}/#/app`;
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -133,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) return { error };
       return { error: null };
     } catch (err) {
-      return { error: err as Error };
+      return { error: normalizeAuthError(err) };
     }
   };
 
@@ -147,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) return { error };
       return { error: null };
     } catch (err) {
-      return { error: err as Error };
+      return { error: normalizeAuthError(err) };
     }
   };
 
@@ -156,14 +161,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/app`,
+          // FIX: HashRouter requires hash-based redirect URL (/#/app not /app).
+          redirectTo: `${window.location.origin}/#/app`,
         },
       });
 
       if (error) return { error };
       return { error: null };
     } catch (err) {
-      return { error: err as Error };
+      return { error: normalizeAuthError(err) };
     }
   };
 
@@ -179,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // Using 'as any' because the profiles table might not be in the generated types yet
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', user.id);
@@ -192,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { error: null };
     } catch (err) {
-      return { error: err as Error };
+      return { error: normalizeAuthError(err) };
     }
   };
 

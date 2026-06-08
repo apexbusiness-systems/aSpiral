@@ -1,0 +1,20 @@
+fix: restore authentication + harden PWA session persistence
+
+## Root Cause
+Supabase project 'egtwatyodujxofrdznen' referenced in .env.production does not exist.
+One-character typo ('g' vs 'q') compounded by the project never being provisioned.
+All auth calls were failing with net::ERR_NAME_NOT_RESOLVED.
+
+## Fixes Applied
+- T01: Correct VITE_SUPABASE_URL typo in .env.production (eg→eq)
+- T02: Add startup validation + SupabaseConfigError screen for missing credentials
+- T03: sessionStorage → localStorage for PWA session persistence
+- T04: Fix OAuth redirect URLs for HashRouter (/#/app not /app)
+- T05: Surface network errors as user-visible toast (was silently failing)
+- T06: Fix window.ENV race condition (synchronous XHR for config.js)
+- T07: Remove unnecessary (supabase as any) casts — use generated types
+- T08: Update docs to prevent future typo recurrence
+
+## Owner Action Required After Merge
+See PREREQUISITES section in this PR description — must provision Supabase project
+and update .env.production + Cloudflare Pages env vars before users can authenticate.

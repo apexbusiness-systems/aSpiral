@@ -20,12 +20,20 @@ const getGlobalEnv = () => {
   return undefined;
 };
 
+// NOTE: window.ENV is populated synchronously by /config.js (loaded in index.html
+// before this module initializes). This is safe because the synchronous XHR approach
+// in index.html ensures window.ENV is available at module initialization time.
 const globalEnv = getGlobalEnv();
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || globalEnv?.SUPABASE_URL;
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ||
+  globalEnv?.SUPABASE_URL ||
+  undefined;
 
 const SUPABASE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || globalEnv?.SUPABASE_PUBLISHABLE_KEY;
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  globalEnv?.SUPABASE_PUBLISHABLE_KEY ||
+  undefined;
 
 /**
  * Creates a mock Supabase client that logs errors on usage.
@@ -131,13 +139,47 @@ function initializeSupabaseClient(): SupabaseClient<Database> {
     return createMockClient();
   }
 
+
+  // Guard against known-bad placeholder values that indicate provisioning hasn't occurred
+  const KNOWN_BAD_REFS = ['egtwatyodujxofrdznen', 'your-project-id', 'YOUR_ACTUAL_PROJECT'];
+  const isBadUrl = KNOWN_BAD_REFS.some(bad => SUPABASE_URL.includes(bad));
+  if (isBadUrl) {
+    console.error('═══════════════════════════════════════════════════════════════');
+    console.error('  SUPABASE INITIALIZATION FAILED — PLACEHOLDER URL DETECTED');
+    console.error('═══════════════════════════════════════════════════════════════');
+    console.error(`  VITE_SUPABASE_URL contains a known placeholder: ${SUPABASE_URL}`);
+    console.error('  The Supabase project has not been provisioned yet, or the');
+    console.error('  credentials have not been updated after provisioning.');
+    console.error('  See SUPABASE_SETUP.md for setup instructions.');
+    console.error('═══════════════════════════════════════════════════════════════');
+    // Set a global flag that the app UI can check to show a config error screen
+    if (typeof window !== 'undefined') {
+      (window as Window & { __SUPABASE_MISCONFIGURED__?: boolean }).__SUPABASE_MISCONFIGURED__ = true;
+    }
+    return createMockClient();
+  }
+
+  const KNOWN_BAD_KEYS = ['REPLACE_WITH_REAL_ANON_KEY', 'your-anon-key-here'];
+  const isBadKey = KNOWN_BAD_KEYS.some(bad => SUPABASE_PUBLISHABLE_KEY?.includes(bad));
+  if (isBadKey) {
+    console.error('  VITE_SUPABASE_PUBLISHABLE_KEY is a placeholder — not a real anon key');
+    if (typeof window !== 'undefined') {
+      (window as Window & { __SUPABASE_MISCONFIGURED__?: boolean }).__SUPABASE_MISCONFIGURED__ = true;
+    }
+    return createMockClient();
+  }
+
   // Create the real client
   try {
     return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        storage: window.sessionStorage,
+        // FIX: Use localStorage (not sessionStorage) to persist auth sessions
+        // across tab closes, PWA backgrounding, and page reloads on mobile.
+        // sessionStorage was causing users to be logged out constantly on iOS/Android.
+        storage: window.localStorage,
         persistSession: true,
         autoRefreshToken: true,
+        storageKey: 'aspiral-auth-token', // Namespaced to avoid conflicts
       },
     });
   } catch (error) {

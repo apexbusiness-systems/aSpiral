@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { useSupabaseConfigError, SupabaseConfigError } from '@/components/SupabaseConfigError';
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -167,6 +169,12 @@ const App = () => {
     events.forEach((event) => window.addEventListener(event, handler, { passive: true }));
     return cleanup;
   }, []);
+
+
+  const isSupabaseMisconfigured = useSupabaseConfigError();
+  if (isSupabaseMisconfigured) {
+    return <SupabaseConfigError />;
+  }
 
   return (
     <I18nextProvider i18n={i18n}>
