@@ -159,10 +159,17 @@ export function recordBreakthrough(
  */
 export function getRecentVariantIds(count: number = 10): string[] {
   const history = getBreakthroughHistory();
-  return history.entries
-    .slice(-count)
-    .map((e) => e.variantId)
-    .reverse();
+  const entries = history.entries;
+  const result: string[] = [];
+
+  // Performance Optimization: Replaced chained .slice().map().reverse() with a single-pass
+  // reverse loop to avoid intermediate array allocations.
+  const limit = Math.max(0, entries.length - count);
+  for (let i = entries.length - 1; i >= limit; i--) {
+    result.push(entries[i].variantId);
+  }
+
+  return result;
 }
 
 /**
@@ -170,10 +177,17 @@ export function getRecentVariantIds(count: number = 10): string[] {
  */
 export function getRecentIntensities(count: number = 5): IntensityBand[] {
   const history = getBreakthroughHistory();
-  return history.entries
-    .slice(-count)
-    .map((e) => e.intensity)
-    .reverse();
+  const entries = history.entries;
+  const result: IntensityBand[] = [];
+
+  // Performance Optimization: Replaced chained .slice().map().reverse() with a single-pass
+  // reverse loop to avoid intermediate array allocations.
+  const limit = Math.max(0, entries.length - count);
+  for (let i = entries.length - 1; i >= limit; i--) {
+    result.push(entries[i].intensity);
+  }
+
+  return result;
 }
 
 /**
@@ -186,9 +200,26 @@ export function getVariantStats(variantId: string): {
   lastPlayed: number | null;
 } {
   const history = getBreakthroughHistory();
-  const variantEntries = history.entries.filter((e) => e.variantId === variantId);
   
-  if (variantEntries.length === 0) {
+  // Performance Optimization: Replaced .filter() followed by iteration with a single-pass
+  // loop to compute metrics without allocating an intermediate array.
+  let playCount = 0;
+  let completed = 0;
+  let fallbacks = 0;
+  let lastPlayed: number | null = null;
+
+  const entries = history.entries;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.variantId === variantId) {
+      playCount++;
+      if (e.completed) completed++;
+      if (e.wasFallback) fallbacks++;
+      lastPlayed = e.timestamp; // Since entries are appended, the last match is the most recent
+    }
+  }
+
+  if (playCount === 0) {
     return {
       playCount: 0,
       completionRate: 0,
@@ -197,20 +228,11 @@ export function getVariantStats(variantId: string): {
     };
   }
   
-  let completed = 0;
-  let fallbacks = 0;
-  for (let i = 0; i < variantEntries.length; i++) {
-    const e = variantEntries[i];
-    if (e.completed) completed++;
-    if (e.wasFallback) fallbacks++;
-  }
-  const lastEntry = variantEntries[variantEntries.length - 1];
-
   return {
-    playCount: variantEntries.length,
-    completionRate: completed / variantEntries.length,
-    fallbackRate: fallbacks / variantEntries.length,
-    lastPlayed: lastEntry?.timestamp || null,
+    playCount,
+    completionRate: completed / playCount,
+    fallbackRate: fallbacks / playCount,
+    lastPlayed,
   };
 }
 
