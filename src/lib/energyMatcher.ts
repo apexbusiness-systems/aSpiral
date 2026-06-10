@@ -22,9 +22,28 @@ export function matchEnergy(userInput: string): EnergyProfile {
   const isFormal = /however|therefore|regarding|concerning|perhaps/i.test(input);
 
   // Average word length (longer = more formal)
-  const words = input.split(/\s+/).filter((w) => w.length > 0);
-  const avgWordLength =
-    words.reduce((sum, w) => sum + w.length, 0) / (words.length || 1);
+  // Performance Optimization: Replaced O(N) .split().filter().reduce() which creates
+  // intermediate arrays with a single-pass O(N) string iteration using charCodeAt().
+  // This reduces memory overhead from O(N) to O(1) and speeds up execution.
+  let wordCount = 0;
+  let totalLength = 0;
+  let inWord = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const code = input.charCodeAt(i);
+    // Fast check for whitespace characters (space, tab, newline, carriage return)
+    if (code === 32 || code === 9 || code === 10 || code === 13) {
+      inWord = false;
+    } else {
+      if (!inWord) {
+        wordCount++;
+        inWord = true;
+      }
+      totalLength++;
+    }
+  }
+
+  const avgWordLength = wordCount > 0 ? totalLength / wordCount : 0;
 
   // Determine profile
   let tone: EnergyProfile["tone"];
