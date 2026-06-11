@@ -89,15 +89,22 @@ export function useEntities() {
         const visibleLimit = getVisibleLimit(userTier);
 
         // Initial batch
-        const initial = new Set(sorted.slice(0, visibleLimit).map(e => e.id));
+        // Performance Optimization: Replace .slice().map() with standard for loop
+        const initial = new Set<string>();
+        const limit = Math.min(sorted.length, visibleLimit);
+        for (let i = 0; i < limit; i++) {
+            initial.add(sorted[i].id);
+        }
         setVisibleEntityIds(initial);
         invalidate();
 
         // Schedule staggered rest
-        const remainingEntities = sorted.slice(visibleLimit);
-        const timeoutIds = remainingEntities.map((entity, index) => {
-            const delay = getStaggerDelay(index + visibleLimit, visibleLimit);
-            return setTimeout(() => {
+        const timeoutIds: ReturnType<typeof setTimeout>[] = [];
+        for (let i = visibleLimit; i < sorted.length; i++) {
+            const entity = sorted[i];
+            const delay = getStaggerDelay(i, visibleLimit);
+
+            const timeoutId = setTimeout(() => {
                 setVisibleEntityIds(prev => {
                     const next = new Set(prev);
                     next.add(entity.id);
@@ -105,7 +112,8 @@ export function useEntities() {
                 });
                 invalidate();
             }, delay);
-        });
+            timeoutIds.push(timeoutId);
+        }
 
         // Cleanup timeouts on unmount or dependency change
         return () => {
