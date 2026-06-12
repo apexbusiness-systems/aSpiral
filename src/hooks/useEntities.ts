@@ -89,7 +89,13 @@ export function useEntities() {
         const visibleLimit = getVisibleLimit(userTier);
 
         // Initial batch
-        const initial = new Set(sorted.slice(0, visibleLimit).map(e => e.id));
+        // Performance Optimization: Replaced chained .slice().map() with a single-pass loop
+        // to avoid intermediate array memory allocations and GC pressure.
+        const initial = new Set<string>();
+        const initialLimit = Math.min(sorted.length, visibleLimit);
+        for (let i = 0; i < initialLimit; i++) {
+            initial.add(sorted[i].id);
+        }
         setVisibleEntityIds(initial);
         invalidate();
 
