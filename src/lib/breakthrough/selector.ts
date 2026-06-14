@@ -132,11 +132,12 @@ function calculateContextAffinity(
   }
   
   // Check entity type matching
-  const entityTypes = context.entities.map((e) => e.type);
-  if (entityTypes.includes('friction') && variant.class === 'release') {
+  // Performance Optimization: Replaced intermediate array creation (.map().includes())
+  // with early-exiting .some() to reduce allocations and improve execution speed.
+  if (variant.class === 'release' && context.entities.some(e => e.type === 'friction')) {
     affinity += 0.1;
   }
-  if (entityTypes.includes('value') && variant.class === 'clarity') {
+  if (variant.class === 'clarity' && context.entities.some(e => e.type === 'value')) {
     affinity += 0.1;
   }
   
