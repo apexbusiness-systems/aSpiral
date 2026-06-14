@@ -32,6 +32,7 @@ const SUPABASE_URL =
 
 const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
   globalEnv?.SUPABASE_PUBLISHABLE_KEY ||
   undefined;
 
