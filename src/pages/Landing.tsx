@@ -225,12 +225,12 @@ const Landing = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto max-w-6xl px-6 py-1 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img 
-              src={aspiralLogo} 
-              alt="aSpiral" 
-              className="h-[2.78rem] drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_12px_hsl(var(--primary)/0.8)] transition-all duration-300" 
+            <img
+              src={aspiralLogo}
+              alt="aSpiral"
+              className="h-14 drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_12px_hsl(var(--primary)/0.8)] transition-all duration-300"
             />
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
