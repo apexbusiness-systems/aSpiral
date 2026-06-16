@@ -32,39 +32,8 @@
 
   <body>
     <div id="root"></div>
-    <!-- Runtime environment configuration (synchronous — must load before app module) -->
-    <!-- config.js sets window.ENV with Supabase credentials as a build-time fallback. -->
-    <!-- If config.js is absent (404), the browser silently continues to build-time vars. -->
-    <!-- See public/config.example.js for the expected format. -->
-    <script>
-      // Synchronous inline try/catch: attempt to load config.js if it exists.
-      // We can't use a static <script src="/config.js"> here because a 404
-      // would block page rendering. Instead, XHR synchronously (dev-safe approach).
-      // In production, VITE_SUPABASE_URL is baked in at build time — this block
-      // is only a fallback for environments where build-time vars are unavailable.
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/config.js', false); // synchronous
-        xhr.send(null);
-        if (xhr.status === 200) {
-          // Execute the config.js content in the current scope
-          window.eval(xhr.responseText); // NOSONAR: Fallback loading of local config.js
-          if (!window.ENV) {
-            console.error('[config] /config.js loaded but window.ENV is missing');
-          } else {
-            console.debug('[config] Runtime environment loaded from /config.js');
-          }
-        }
-        // 404 is expected — silently fall through to build-time vars
-      } catch (e) {
-        // Synchronous XHR blocked by CORS or other error — ignore, use build-time vars
-        if (e instanceof Error) {
-            console.debug('[config] Could not load /config.js, using build-time env vars', e.message);
-        } else {
-            console.debug('[config] Could not load /config.js, using build-time env vars');
-        }
-      }
-    </script>
+    <!-- Environment is baked in at build time by Vite (import.meta.env.VITE_*). -->
+    <!-- No runtime config loading is needed or performed. -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

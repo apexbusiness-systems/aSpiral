@@ -304,24 +304,30 @@ export type Database = {
           id: string
           metadata: Json | null
           status: string
+          title: string | null
           updated_at: string
           user_id: string
+          workspace_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           metadata?: Json | null
           status?: string
+          title?: string | null
           updated_at?: string
           user_id: string
+          workspace_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           metadata?: Json | null
           status?: string
+          title?: string | null
           updated_at?: string
           user_id?: string
+          workspace_id?: string | null
         }
         Relationships: []
       }
