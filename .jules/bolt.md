@@ -17,3 +17,6 @@
 ## 2026-06-14 - Optimize context affinity matching in Breakthrough selector
 **Learning:** Found an opportunity to replace intermediate array allocations (e.g. `.map().includes()`) with early returning loops/methods like `.some()`. This saves time and memory. Additionally, in boolean expressions, placing simple comparisons before expensive iterations will trigger short-circuit evaluation, skipping the iteration completely when possible.
 **Action:** Always prefer `.some()` over `.map().includes()` or `.filter().length > 0` when checking for existence. Leverage short-circuit evaluation by putting cheap operations first in logical AND statements.
+## 2024-06-16 - Avoid Intermediate Arrays When Initializing Sets from Mapped Objects
+**Learning:** Initializing Sets directly from mapped arrays (e.g., `new Set(arr.map(x => x.id))`) causes unnecessary intermediate array allocations, reducing performance and increasing GC overhead.
+**Action:** Replace `new Set(arr.map(x => x.id))` with a standard `for` loop that manually extracts the properties and adds them to the Set. If an array equivalent is also needed, build it concurrently in the same loop rather than using `Array.from()`.
