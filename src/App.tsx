@@ -15,7 +15,7 @@ import { SentinelProvider } from "@/components/SentinelProvider";
 import { DebugOverlay } from "@/components/DebugOverlay";
 import { toast } from "sonner";
 import { SplashScreen } from '@capacitor/splash-screen';
-import PremiumSplash from "@/components/PremiumSplash";
+import PremiumSplash, { SPLASH_MINIMUM_MS } from "@/components/PremiumSplash";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { unlockAudioFromGesture } from "@/lib/audioSession";
 import { createLogger } from "@/lib/logger";
@@ -130,8 +130,8 @@ const App = () => {
         // Web environment - ignore
       }
 
-      // 2. Keep React Splash visible for branding
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 2. Keep React Splash visible briefly without delaying Core Web Vitals.
+      await new Promise(resolve => setTimeout(resolve, SPLASH_MINIMUM_MS));
 
       // 3. Exit animation
       setShowSplash(false);

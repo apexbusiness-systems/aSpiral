@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import aspiralLogo from "@/assets/aspiral-logo.png";
 
 interface PremiumSplashProps {
   isVisible: boolean;
 }
+
+export const SPLASH_MINIMUM_MS = 650;
+const SPLASH_EXIT_MS = 250;
 
 export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
   // Use local state to handle the exit animation delay
@@ -11,7 +15,7 @@ export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
 
   useEffect(() => {
     if (!isVisible) {
-      const timer = setTimeout(() => setShouldRender(false), 1000); // Wait for fade out
+      const timer = setTimeout(() => setShouldRender(false), SPLASH_EXIT_MS); // Wait for fade out
       return () => clearTimeout(timer);
     }
   }, [isVisible]);
@@ -23,7 +27,7 @@ export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
       {isVisible && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+          exit={{ opacity: 0, transition: { duration: SPLASH_EXIT_MS / 1000, ease: "easeInOut" } }}
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#4a1a6b] overflow-hidden"
         >
           {/* Aurora Background Effect */}
@@ -37,14 +41,18 @@ export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
               className="relative w-32 h-32 md:w-40 md:h-40"
             >
                {/* Glowing Orb Behind */}
                <div className="absolute inset-0 rounded-full bg-purple-500 blur-2xl opacity-40 animate-pulse" />
                <img
-                 src="/src/assets/aspiral-logo.png"
+                 src={aspiralLogo}
                  alt="aSpiral Logo"
+                 width={413}
+                 height={179}
+                 fetchPriority="high"
+                 decoding="async"
                  className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                  onError={(e) => {
                     // Fallback if image fails
@@ -59,7 +67,7 @@ export default function PremiumSplash({ isVisible }: PremiumSplashProps) {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
+              transition={{ delay: 0.25 }}
               className="mt-8 flex gap-2"
             >
               {[0, 1, 2].map((i) => (
