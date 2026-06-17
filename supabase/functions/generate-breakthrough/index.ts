@@ -45,6 +45,12 @@ serve(async (req) => {
 
   if (req.method === "OPTIONS") return handleCorsPreFlight(req);
 
+  // AUTH GATE — added by audit/fix-all-issues
+  const { requireUser } = await import('../_shared/requireUser.ts');
+  const userOrResp = await requireUser(req, corsHeaders);
+  if (userOrResp instanceof Response) return userOrResp;
+  const user = userOrResp;
+
   const corsHeaders = getCorsHeaders(req);
 
   function createErrorResponse(status: number, message: string): Response {
