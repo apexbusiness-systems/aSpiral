@@ -198,7 +198,7 @@ export async function initNativePushNotifications(): Promise<string | null> {
       
       return new Promise((resolve) => {
         PushNotifications.addListener('registration', (token: PushNotificationToken) => {
-          console.log('Push registration success, token:', token.value);
+          console.log('Push registration success');  // token omitted — PII
           resolve(token.value);
         });
 
