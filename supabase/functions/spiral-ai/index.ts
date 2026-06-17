@@ -427,6 +427,12 @@ serve(async (req) => {
   // Build origin-aware CORS headers for this request
   const corsHeaders = getCorsHeaders(req);
 
+  // AUTH GATE: verify JWT to prevent rate-limit spoofing via client-supplied userId
+  const { requireUser } = await import("../_shared/requireUser.ts");
+  const userOrResp = await requireUser(req, corsHeaders);
+  if (userOrResp instanceof Response) return userOrResp;
+  const jwtUser = userOrResp;
+
   try {
     if (!GROQ_API_KEY) {
       console.error("[SPIRAL-AI] GROQ_API_KEY not configured");
@@ -473,12 +479,14 @@ serve(async (req) => {
       forceBreakthrough,
       stream: streamRequested,
     } = inputValidation.data as ValidatedInput;
+    // Override body-supplied userId with JWT-verified identity
+    const verifiedUserId = jwtUser.id;
     
     // =======================================================================
     // COMPUTE STRONG HASHES (SHA-256) FOR IDENTIFIERS
     // =======================================================================
     const sessionHash = await hashSHA256(sessionId);
-    const userHash = userId ? await hashSHA256(userId) : undefined;
+    const userHash = userId ? await hashSHA256(verifiedUserId) : undefined;
     
     // Set context on compliance logger
     complianceLogger.setContext({
@@ -524,7 +532,7 @@ serve(async (req) => {
     // =======================================================================
     // LAYER 0.9: ANOMALY DETECTION
     // =======================================================================
-    const anomalyResult = detectAnomaly(userId, injectionResult.fingerprint, transcript.length);
+    const anomalyResult = detectAnomaly(verifiedUserId, injectionResult.fingerprint, transcript.length);
     
     if (anomalyResult.isAnomaly) {
       console.warn(`[SPIRAL-AI] 🔍 Anomaly detected: ${anomalyResult.reason}`, { userId });
@@ -538,7 +546,7 @@ serve(async (req) => {
     // =======================================================================
     // LAYER 1: RATE LIMITING - Multi-tier with abuse detection
     // =======================================================================
-    const rateLimitResult = checkRateLimit(userId, userTier, transcript.length);
+    const rateLimitResult = checkRateLimit(verifiedUserId, userTier, transcript.length);
     
     complianceLogger.log("RATE_LIMIT_CHECK", {
       rateLimitStatus: rateLimitResult.allowed ? "ALLOWED" : "LIMITED",
