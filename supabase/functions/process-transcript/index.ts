@@ -59,6 +59,12 @@ serve(async (req) => {
     if (!GROQ_API_KEY) {
       throw new Error("GROQ_API_KEY not configured");
     }
+  // AUTH GATE — added by audit/fix-all-issues
+  const { requireUser } = await import('../_shared/requireUser.ts');
+  const userOrResp = await requireUser(req, corsHeaders);
+  if (userOrResp instanceof Response) return userOrResp;
+  const user = userOrResp;
+
 
     const body: ProcessRequest = await req.json();
     const { transcript, conversationHistory = [], questionsAsked = 0, ultraFast = false } = body;
