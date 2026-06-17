@@ -80,8 +80,7 @@ const Breakthroughs = () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      const db = supabase as any;
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('breakthroughs')
         .select('id, friction, grease, insight, achieved_at, session_id')
         .eq('user_id', user.id)
@@ -89,7 +88,7 @@ const Breakthroughs = () => {
 
       if (error) throw error;
 
-      const enrichedData = (data || []).map((b: any) => ({
+      const enrichedData = (data || []).map((b) => ({
         ...b,
         _achievedAtTime: new Date(b.achieved_at).getTime(),
         _searchString: `${b.friction} ${b.grease} ${b.insight}`.toLowerCase()
@@ -105,8 +104,7 @@ const Breakthroughs = () => {
   const loadStreak = useCallback(async () => {
     if (!user) return;
     try {
-      const db = supabase as any;
-      const { data } = await db
+      const { data } = await supabase
         .from('profiles')
         .select('streak_days')
         .eq('id', user.id)
