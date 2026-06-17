@@ -127,6 +127,16 @@ Deno.serve(async (req) => {
 
   const corsHeaders = getCorsHeaders(req);
 
+  // Internal gate — public callers receive minimal safe response only
+  const internalKey = req.headers.get("X-Internal-Key");
+  const expectedKey = Deno.env.get("HEALTH_INTERNAL_KEY");
+  if (!expectedKey || internalKey !== expectedKey) {
+    return new Response(
+      JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     console.log('[Health] Running diagnostics...');
     
