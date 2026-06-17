@@ -591,3 +591,42 @@ workflows:
         notify:
           success: true   # send artifact link on successful build
           failure: false  # don't spam testers with CI failures
+
+  aspiral_android_play_internal:
+    name: "aSpiral Android — Play Store Internal"
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      android_signing:
+        - aspiral_android_keystore
+      groups:
+        - aspiral_android_credentials
+      vars:
+        PACKAGE_NAME: "com.apex.aspiral"
+      node: 20.11.0
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: "main"
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Build web assets
+        script: npm run build
+      - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Build Android release AAB
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
