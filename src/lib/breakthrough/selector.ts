@@ -279,7 +279,11 @@ export function selectVariant(context: SelectionContext): {
       : topVariants;
 
   // Weighted random selection from the filtered top pool.
-  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+  // Performance Optimization: Replaced .reduce() with a single-pass loop
+  let totalTopScore = 0;
+  for (let i = 0; i < candidateTopVariants.length; i++) {
+    totalTopScore += scores.get(candidateTopVariants[i].id) || 0;
+  }
   let random = secureMathRandom() * totalTopScore;
 
   let selectedVariant = candidateTopVariants[0] || topVariants[0];

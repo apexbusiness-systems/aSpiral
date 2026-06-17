@@ -17,3 +17,6 @@
 ## 2026-06-14 - Optimize context affinity matching in Breakthrough selector
 **Learning:** Found an opportunity to replace intermediate array allocations (e.g. `.map().includes()`) with early returning loops/methods like `.some()`. This saves time and memory. Additionally, in boolean expressions, placing simple comparisons before expensive iterations will trigger short-circuit evaluation, skipping the iteration completely when possible.
 **Action:** Always prefer `.some()` over `.map().includes()` or `.filter().length > 0` when checking for existence. Leverage short-circuit evaluation by putting cheap operations first in logical AND statements.
+## 2024-06-17 - [Micro-optimization rejection]
+**Learning:** Replacing highly readable, idiomatic array methods (.split().filter().reduce()) with manual character code parsing loops for simple string operations is considered a micro-optimization that sacrifices readability. Even though it prevents intermediate array allocations, the cost in code complexity outweighs the theoretical performance gain unless the code runs on a hot path with massive strings.
+**Action:** Avoid replacing standard array chain methods with complex character iteration loops for short strings or non-critical paths. Prioritize readability unless there's a proven bottleneck.
