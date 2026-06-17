@@ -7,6 +7,12 @@ import type { UserTier } from '@/lib/entityLimits';
 import type { Database } from '@/integrations/supabase/types';
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
+function normalizeAuthError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  try { return new Error(JSON.stringify(err)); } catch { return new Error('Unknown auth error'); }
+}
+
 interface Profile {
   id: string;
   display_name: ProfileRow['display_name'];

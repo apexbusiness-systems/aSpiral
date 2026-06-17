@@ -29,11 +29,9 @@ async function handleSessionInsights(supabase: any, origin: string, sessionId: s
     });
   }
 
-  const [breakthroughs, entities, frictionPoints, messages] = await Promise.all([
+  const [breakthroughs, entities] = await Promise.all([
     supabase.from('breakthroughs').select('*').eq('session_id', sessionId),
-    supabase.from('entities').select('type, energy').eq('session_id', sessionId),
-    supabase.from('friction_points').select('resolved').eq('session_id', sessionId),
-    supabase.from('messages').select('*', { count: 'exact', head: true }).eq('session_id', sessionId),
+    supabase.from('session_entities').select('type, metadata').eq('session_id', sessionId),
   ]);
 
   const insights = {
@@ -41,9 +39,9 @@ async function handleSessionInsights(supabase: any, origin: string, sessionId: s
     summary: {
       total_breakthroughs: breakthroughs.data?.length || 0,
       total_entities: entities.data?.length || 0,
-      total_friction_points: frictionPoints.data?.length || 0,
-      resolved_friction_points: frictionPoints.data?.filter((f: any) => f.resolved).length || 0,
-      total_messages: messages.count || 0,
+      total_friction_points: 0,
+      resolved_friction_points: 0,
+      total_messages: 0,
     },
     breakthroughs: breakthroughs.data || [],
     entity_types: entities.data?.reduce((acc: Record<string, number>, e: any) => {
@@ -51,7 +49,8 @@ async function handleSessionInsights(supabase: any, origin: string, sessionId: s
       return acc;
     }, {}) || {},
     energy_distribution: entities.data?.reduce((acc: Record<string, number>, e: any) => {
-      acc[e.energy] = (acc[e.energy] || 0) + 1;
+      const energy = (e.metadata as Record<string, unknown> | null)?.energy as string | undefined;
+      if (energy) acc[energy] = (acc[energy] || 0) + 1;
       return acc;
     }, {}) || {},
   };

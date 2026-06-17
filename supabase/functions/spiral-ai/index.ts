@@ -17,12 +17,23 @@ import { loadAspiralMindcore } from "./aspiralMindcoreLoader.ts";
 // =============================================================================
 
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateAuth } from "../_shared/auth.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("[spiral-ai] Missing required env vars");
+}
+
+async function getServerSideTier(supabase: ReturnType<typeof createClient>, userId: string): Promise<string> {
+  try {
+    const { data } = await supabase.from("profiles").select("tier").eq("id", userId).maybeSingle();
+    return (data as { tier?: string } | null)?.tier ?? "free";
+  } catch {
+    return "free";
+  }
 }
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
@@ -435,7 +446,20 @@ serve(async (req) => {
     }
 
     // =======================================================================
-    // LAYER 0: REQUEST PARSING & HEADER VALIDATION
+    // LAYER 0: AUTHENTICATION - Verify identity server-side; never trust client tier
+    // =======================================================================
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    const authedUserId = await validateAuth(req, supabase);
+    if (!authedUserId) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const serverTier = await getServerSideTier(supabase, authedUserId);
+
+    // =======================================================================
+    // LAYER 0.1: REQUEST PARSING & HEADER VALIDATION
     // =======================================================================
     const headerValidation = validateHeaders(req);
     if (!headerValidation.valid) {
@@ -462,17 +486,19 @@ serve(async (req) => {
       return handleValidationError(inputValidation.errors || []);
     }
 
-    const { 
-      transcript, 
-      sessionContext, 
+    const {
+      transcript,
+      sessionContext,
       stagePrompt,
       ultraFast,
-      userTier,
-      userId,
       sessionId,
       forceBreakthrough,
       stream: streamRequested,
     } = inputValidation.data as ValidatedInput;
+
+    // Use server-verified identity and tier — ignore any client-provided values
+    const userId = authedUserId;
+    const userTier = serverTier;
     
     // =======================================================================
     // COMPUTE STRONG HASHES (SHA-256) FOR IDENTIFIERS

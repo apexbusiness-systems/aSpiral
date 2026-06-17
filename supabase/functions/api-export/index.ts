@@ -72,29 +72,27 @@ serve(async (req) => {
       });
     }
 
-    // Fetch all session data
-    const [entities, connections, frictionPoints, breakthroughs, messages] = await Promise.all([
-      supabase.from('entities').select('*').eq('session_id', sessionId).order('created_at'),
-      supabase.from('connections').select('*').eq('session_id', sessionId).order('created_at'),
-      supabase.from('friction_points').select('*').eq('session_id', sessionId).order('created_at'),
+    // Fetch all session data using canonical tables
+    const [entities, connections, breakthroughs] = await Promise.all([
+      supabase.from('session_entities').select('*').eq('session_id', sessionId).order('created_at'),
+      supabase.from('session_connections').select('*').eq('session_id', sessionId).order('created_at'),
       supabase.from('breakthroughs').select('*').eq('session_id', sessionId).order('created_at'),
-      supabase.from('messages').select('*').eq('session_id', sessionId).order('message_order'),
     ]);
 
     const exportData = {
       session,
       entities: entities.data || [],
       connections: connections.data || [],
-      friction_points: frictionPoints.data || [],
+      friction_points: [],
       breakthroughs: breakthroughs.data || [],
-      messages: messages.data || [],
+      messages: [],
       exported_at: new Date().toISOString(),
     };
 
     if (format === 'csv') {
-      // Create CSV with entities data (most useful for analysis)
+      // Create CSV with session_entities data (canonical table)
       const csvData = toCSV(exportData.entities, [
-        'id', 'entity_id', 'label', 'type', 'energy', 'position_x', 'position_y', 'position_z', 'created_at'
+        'id', 'label', 'type', 'metadata', 'session_id', 'created_at', 'updated_at'
       ]);
 
       return new Response(csvData, {
