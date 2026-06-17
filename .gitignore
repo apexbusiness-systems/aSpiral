@@ -68,3 +68,7 @@ build_output.txt
 errors.md
 temp_repo/*.tsbuildinfo
 *.tsbuildinfo
+
+# Environment files with real secrets — never commit
+.env.production
+.env.production.*
