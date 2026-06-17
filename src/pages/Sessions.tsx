@@ -73,13 +73,12 @@ const Sessions = () => {
       return;
     }
 
-    const db = supabase as any;
     const sessionIds = rawSessions.map(s => s.id);
 
     // Load entity counts and breakthrough flags in parallel
     const [entityResult, breakthroughResult] = await Promise.all([
-      db.from('session_entities').select('session_id').in('session_id', sessionIds),
-      db.from('breakthroughs').select('session_id').in('session_id', sessionIds),
+      supabase.from('session_entities').select('session_id').in('session_id', sessionIds),
+      supabase.from('breakthroughs').select('session_id').in('session_id', sessionIds),
     ]);
 
     // Count entities per session
@@ -95,7 +94,7 @@ const Sessions = () => {
 
     const enriched: SessionListItem[] = rawSessions.map(s => ({
       ...s,
-      entityCount: entityCounts[s.id] || (s.metadata as any)?.entityCount || 0,
+      entityCount: entityCounts[s.id] || (s.metadata as Record<string, unknown>)?.entityCount as number | undefined || 0,
       hasBreakthrough: breakthroughSessions.has(s.id) || s.status === 'breakthrough',
     }));
 
@@ -106,8 +105,7 @@ const Sessions = () => {
   const loadStreak = useCallback(async () => {
     if (!user) return;
     try {
-      const db = supabase as any;
-      const { data } = await db
+        const { data } = await supabase
         .from('profiles')
         .select('streak_days')
         .eq('id', user.id)
