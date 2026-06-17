@@ -11,11 +11,15 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  esbuild: {
+    // Only drop logs/debug, KEEP errors and warnings for mobile debugging
+    pure: mode === "production" ? ["console.log", "console.debug", "console.info"] : [],
+    drop: mode === "production" ? ["debugger"] : [],
+  },
   build: {
     // Source maps for error tracking in production
     sourcemap: mode === "production" ? "hidden" : true,
-    // vite 8 default minifier is oxc (no esbuild needed)
-    minify: mode === "production" ? "oxc" : false,
+    minify: mode === "production" ? "esbuild" : false,
     // Target modern browsers for smaller bundles
     target: "es2020",
     rollupOptions: {
