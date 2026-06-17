@@ -50,7 +50,7 @@ serve(async (req) => {
 
     if (req.method === 'GET') {
       const { data, error } = await supabase
-        .from('entities')
+        .from('session_entities')
         .select('*')
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
@@ -66,16 +66,18 @@ serve(async (req) => {
       const body = await req.json();
 
       const { data, error } = await supabase
-        .from('entities')
+        .from('session_entities')
         .insert({
           session_id: sessionId,
-          entity_id: body.entity_id || crypto.randomUUID(),
           label: body.label,
           type: body.type || 'concept',
-          energy: body.energy || 'neutral',
-          position_x: body.position_x || 0,
-          position_y: body.position_y || 0,
-          position_z: body.position_z || 0,
+          metadata: {
+            entity_id: body.entity_id || crypto.randomUUID(),
+            energy: body.energy || 'neutral',
+            position_x: body.position_x ?? 0,
+            position_y: body.position_y ?? 0,
+            position_z: body.position_z ?? 0,
+          },
         })
         .select()
         .single();

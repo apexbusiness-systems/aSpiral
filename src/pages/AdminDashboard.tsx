@@ -164,24 +164,19 @@ const AdminDashboard = () => {
       }
 
       // Get other stats - use Promise.allSettled for partial rendering
-      const [breakthroughsRes, entitiesRes, messagesRes] = await Promise.allSettled([
+      const [breakthroughsRes, entitiesRes] = await Promise.allSettled([
         db.from('breakthroughs').select('id, created_at, session_id').in('session_id', sessionIdsArray),
-        db.from('entities').select('id, type, created_at, session_id').in('session_id', sessionIdsArray),
-        db.from('messages').select('id, session_id').in('session_id', sessionIdsArray),
+        db.from('session_entities').select('id, type, created_at, session_id').in('session_id', sessionIdsArray),
       ]);
 
       // Extract data, treating errors as empty arrays (partial rendering)
-      // Since the db query already used .in('session_id', sessionIdsArray),
-      // we don't need redundant client-side filtering.
       const userBreakthroughs = breakthroughsRes.status === 'fulfilled'
         ? breakthroughsRes.value.data || []
         : [];
       const userEntities = entitiesRes.status === 'fulfilled'
         ? entitiesRes.value.data || []
         : [];
-      const userMessages = messagesRes.status === 'fulfilled'
-        ? messagesRes.value.data || []
-        : [];
+      const userMessages: DatabaseRow[] = [];
 
       // Calculate usage stats - zeros are valid for first-run
       setUsageStats({
@@ -238,10 +233,10 @@ const AdminDashboard = () => {
       setError(null);
 
       // Check if any partial failures occurred (non-blocking warning)
-      const partialFailures = [breakthroughsRes, entitiesRes, messagesRes]
+      const partialFailures = [breakthroughsRes, entitiesRes]
         .filter(r => r.status === 'rejected');
 
-      if (partialFailures.length > 0 && partialFailures.length < 3) {
+      if (partialFailures.length > 0 && partialFailures.length < 2) {
         // Some data loaded, some failed - show non-blocking warning
         console.warn('Dashboard partial load failures:', partialFailures);
         toast({

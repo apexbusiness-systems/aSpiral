@@ -190,3 +190,13 @@ export function shouldShowErrorBanner(error: unknown): boolean {
 export function getErrorMessage(error: unknown): string {
   return normalizeError(error).message;
 }
+
+/**
+ * Normalize any caught error into a standard Error object for auth operations.
+ * Preserves human-readable message for invalid-credentials, already-registered,
+ * and network-failure UX while discarding internal details.
+ */
+export function normalizeAuthError(err: unknown): Error {
+  const normalized = normalizeError(err);
+  return new Error(normalized.message);
+}

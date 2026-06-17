@@ -185,7 +185,9 @@ DO $$ BEGIN
 END $$;
 
 -- 7. COMPLIANCE TABLES (service-role only, no user RLS)
-CREATE TABLE public.compliance_request_runs (
+-- IF NOT EXISTS guards make this migration idempotent: safe to run after
+-- 20260206000000_compliance_audit_logs.sql which creates these tables first.
+CREATE TABLE IF NOT EXISTS public.compliance_request_runs (
   request_id TEXT PRIMARY KEY,
   jurisdiction TEXT NOT NULL DEFAULT 'US',
   status TEXT NOT NULL DEFAULT 'STARTED',
@@ -206,7 +208,7 @@ ALTER TABLE public.compliance_request_runs ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS, no user policies needed
 
-CREATE TABLE public.compliance_audit_events (
+CREATE TABLE IF NOT EXISTS public.compliance_audit_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id TEXT NOT NULL,
   event_id TEXT NOT NULL,
@@ -224,11 +226,11 @@ CREATE TABLE public.compliance_audit_events (
 ALTER TABLE public.compliance_audit_events ENABLE ROW LEVEL SECURITY;
 
 -- Indexes for performance
-CREATE INDEX idx_sessions_user_id ON public.sessions(user_id);
-CREATE INDEX idx_sessions_status ON public.sessions(status);
-CREATE INDEX idx_session_entities_session_id ON public.session_entities(session_id);
-CREATE INDEX idx_session_connections_session_id ON public.session_connections(session_id);
-CREATE INDEX idx_breakthroughs_user_id ON public.breakthroughs(user_id);
-CREATE INDEX idx_breakthroughs_session_id ON public.breakthroughs(session_id);
-CREATE INDEX idx_compliance_runs_status ON public.compliance_request_runs(status);
-CREATE INDEX idx_compliance_events_request_id ON public.compliance_audit_events(request_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON public.sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON public.sessions(status);
+CREATE INDEX IF NOT EXISTS idx_session_entities_session_id ON public.session_entities(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_connections_session_id ON public.session_connections(session_id);
+CREATE INDEX IF NOT EXISTS idx_breakthroughs_user_id ON public.breakthroughs(user_id);
+CREATE INDEX IF NOT EXISTS idx_breakthroughs_session_id ON public.breakthroughs(session_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_runs_status ON public.compliance_request_runs(status);
+CREATE INDEX IF NOT EXISTS idx_compliance_events_request_id ON public.compliance_audit_events(request_id);

@@ -1,17 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { corsHeaders as defaultCorsHeaders } from "../_shared/cors.ts";
 import { validateAuth } from "../_shared/auth.ts";
 
 const uuidSchema = z.string().uuid();
 
-// Configuration for secure CORS
-const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "*").split(",");
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
+
+const STATIC_CORS_ORIGINS = [
+  'https://aspiral.icu',
+  'https://www.aspiral.icu',
+  'https://aspiral.pages.dev',
+  'https://a-spiral.vercel.app',
+  'capacitor://localhost',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://localhost:3000',
+];
+
+const ALL_ALLOWED = [...STATIC_CORS_ORIGINS, ...ALLOWED_ORIGINS];
 
 const getCorsHeaders = (origin: string) => ({
-  ...defaultCorsHeaders,
-  'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*") ? origin : ALLOWED_ORIGINS[0],
+  'Access-Control-Allow-Origin': ALL_ALLOWED.includes(origin) ? origin : ALL_ALLOWED[0],
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-request-id',
+  'Access-Control-Max-Age': '86400',
+  'Vary': 'Origin',
 });
 
 async function handleSessionInsights(supabase: any, origin: string, sessionId: string, userId: string): Promise<Response> {
@@ -29,11 +43,9 @@ async function handleSessionInsights(supabase: any, origin: string, sessionId: s
     });
   }
 
-  const [breakthroughs, entities, frictionPoints, messages] = await Promise.all([
+  const [breakthroughs, entities] = await Promise.all([
     supabase.from('breakthroughs').select('*').eq('session_id', sessionId),
-    supabase.from('entities').select('type, energy').eq('session_id', sessionId),
-    supabase.from('friction_points').select('resolved').eq('session_id', sessionId),
-    supabase.from('messages').select('*', { count: 'exact', head: true }).eq('session_id', sessionId),
+    supabase.from('session_entities').select('type, metadata').eq('session_id', sessionId),
   ]);
 
   const insights = {
@@ -41,9 +53,9 @@ async function handleSessionInsights(supabase: any, origin: string, sessionId: s
     summary: {
       total_breakthroughs: breakthroughs.data?.length || 0,
       total_entities: entities.data?.length || 0,
-      total_friction_points: frictionPoints.data?.length || 0,
-      resolved_friction_points: frictionPoints.data?.filter((f: any) => f.resolved).length || 0,
-      total_messages: messages.count || 0,
+      total_friction_points: 0,
+      resolved_friction_points: 0,
+      total_messages: 0,
     },
     breakthroughs: breakthroughs.data || [],
     entity_types: entities.data?.reduce((acc: Record<string, number>, e: any) => {
@@ -51,7 +63,8 @@ async function handleSessionInsights(supabase: any, origin: string, sessionId: s
       return acc;
     }, {}) || {},
     energy_distribution: entities.data?.reduce((acc: Record<string, number>, e: any) => {
-      acc[e.energy] = (acc[e.energy] || 0) + 1;
+      const energy = e.metadata?.energy ?? 'neutral';
+      acc[energy] = (acc[energy] || 0) + 1;
       return acc;
     }, {}) || {},
   };
@@ -103,7 +116,7 @@ serve(async (req) => {
   const origin = req.headers.get("origin") || "";
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(origin) });
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }
 
   try {

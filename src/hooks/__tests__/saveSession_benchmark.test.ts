@@ -24,25 +24,25 @@ async function saveSessionSequential(session, messages) {
 
   // Save entities
   if (session.entities.length > 0) {
-    const { error: entityError } = await db.from('entities').upsert(session.entities);
+    const { error: entityError } = await db.from('session_entities').upsert(session.entities);
     if (entityError) throw entityError;
   }
 
   // Save connections
   if (session.connections.length > 0) {
-    const { error: connectionError } = await db.from('connections').upsert(session.connections);
+    const { error: connectionError } = await db.from('session_connections').upsert(session.connections);
     if (connectionError) throw connectionError;
   }
 
   // Save friction points
   if (session.frictionPoints.length > 0) {
-    const { error: frictionError } = await db.from('friction_points').upsert(session.frictionPoints);
+    const { error: frictionError } = await db.from('session_entities').upsert(session.frictionPoints);
     if (frictionError) throw frictionError;
   }
 
   // Save messages
   if (messages.length > 0) {
-    const { error: messageError } = await db.from('messages').upsert(messages);
+    const { error: messageError } = await db.from('breakthroughs').upsert(messages);
     if (messageError) throw messageError;
   }
 }
@@ -56,7 +56,7 @@ async function saveSessionOptimized(session, messages) {
 
   // 2. Save entities (Sequential - to preserve FK integrity)
   if (session.entities.length > 0) {
-    const { error: entityError } = await db.from('entities').upsert(session.entities);
+    const { error: entityError } = await db.from('session_entities').upsert(session.entities);
     if (entityError) throw entityError;
   }
 
@@ -64,15 +64,15 @@ async function saveSessionOptimized(session, messages) {
   const upsertTasks = [];
 
   if (session.connections.length > 0) {
-    upsertTasks.push(db.from('connections').upsert(session.connections));
+    upsertTasks.push(db.from('session_connections').upsert(session.connections));
   }
 
   if (session.frictionPoints.length > 0) {
-    upsertTasks.push(db.from('friction_points').upsert(session.frictionPoints));
+    upsertTasks.push(db.from('session_entities').upsert(session.frictionPoints));
   }
 
   if (messages.length > 0) {
-    upsertTasks.push(db.from('messages').upsert(messages));
+    upsertTasks.push(db.from('breakthroughs').upsert(messages));
   }
 
   if (upsertTasks.length > 0) {

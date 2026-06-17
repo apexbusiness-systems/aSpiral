@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { UserTier } from '@/lib/entityLimits';
 
 import type { Database } from '@/integrations/supabase/types';
+import { normalizeAuthError } from '@/lib/normalizeError';
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 interface Profile {
