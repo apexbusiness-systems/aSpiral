@@ -17,3 +17,6 @@
 ## 2026-06-14 - Optimize context affinity matching in Breakthrough selector
 **Learning:** Found an opportunity to replace intermediate array allocations (e.g. `.map().includes()`) with early returning loops/methods like `.some()`. This saves time and memory. Additionally, in boolean expressions, placing simple comparisons before expensive iterations will trigger short-circuit evaluation, skipping the iteration completely when possible.
 **Action:** Always prefer `.some()` over `.map().includes()` or `.filter().length > 0` when checking for existence. Leverage short-circuit evaluation by putting cheap operations first in logical AND statements.
+## 2024-05-19 - [Avoid new Set(array.map) anti-pattern]
+**Learning:** Creating intermediate arrays mapped from existing arrays just to initialize a `Set` (e.g., `new Set(sessions.map(s => s.id))`) causes unnecessary memory allocation and triggers frequent garbage collection spikes, especially on hot paths or large collections.
+**Action:** When extracting a specific property to form a Set, initialize an empty `Set` and populate it manually inside a single-pass `for` loop, eliminating intermediate arrays and significantly improving performance.
