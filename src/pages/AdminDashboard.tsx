@@ -108,7 +108,7 @@ const AdminDashboard = () => {
   const [usageStats, setUsageStats] = useState<UsageStats>(EMPTY_USAGE_STATS);
   const [entityTypes, setEntityTypes] = useState<{ name: string; value: number }[]>([]);
 
-  const loadStats = useCallback(async (isRetry = false) => {
+  const loadStats = useCallback(async (isRetry = false): Promise<void> => {
     if (isRetry) {
       setIsRetrying(true);
     } else {
@@ -148,8 +148,8 @@ const AdminDashboard = () => {
       // and garbage collection overhead from new Set(sessions.map(...)).
       const sessionIds = new Set<string>();
       if (sessions) {
-        for (let i = 0; i < sessions.length; i++) {
-          sessionIds.add(sessions[i].id);
+        for (const session of sessions) {
+          sessionIds.add(session.id);
         }
       }
       const sessionIdsArray = Array.from(sessionIds);
