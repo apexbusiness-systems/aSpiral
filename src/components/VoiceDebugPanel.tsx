@@ -201,24 +201,33 @@ export function VoiceDebugPanel() {
                   No events yet. Start recording or trigger TTS to see events.
                 </div>
               ) : (
-                events.slice().reverse().map((event, i) => (
-                  <div
-                    key={`${event.timestamp}-${i}`}
-                    className="flex gap-2 text-[10px] leading-tight"
-                  >
-                    <span className="text-gray-600 shrink-0">
-                      {formatTime(event.timestamp)}
-                    </span>
-                    <span className={`${getEventColor(event.type)} shrink-0`}>
-                      {event.type}
-                    </span>
-                    {event.data && (
-                      <span className="text-gray-400 truncate">
-                        {JSON.stringify(event.data)}
-                      </span>
-                    )}
-                  </div>
-                ))
+                (() => {
+                  // Performance Optimization: Replaced events.slice().reverse().map(...)
+                  // with a single-pass reverse loop to avoid intermediate array allocations.
+                  const elements = [];
+                  for (let i = events.length - 1; i >= 0; i--) {
+                    const event = events[i];
+                    elements.push(
+                      <div
+                        key={`${event.timestamp}-${i}`}
+                        className="flex gap-2 text-[10px] leading-tight"
+                      >
+                        <span className="text-gray-600 shrink-0">
+                          {formatTime(event.timestamp)}
+                        </span>
+                        <span className={`${getEventColor(event.type)} shrink-0`}>
+                          {event.type}
+                        </span>
+                        {event.data && (
+                          <span className="text-gray-400 truncate">
+                            {JSON.stringify(event.data)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return elements;
+                })()
               )}
             </div>
 

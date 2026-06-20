@@ -17,3 +17,6 @@
 ## 2026-06-14 - Optimize context affinity matching in Breakthrough selector
 **Learning:** Found an opportunity to replace intermediate array allocations (e.g. `.map().includes()`) with early returning loops/methods like `.some()`. This saves time and memory. Additionally, in boolean expressions, placing simple comparisons before expensive iterations will trigger short-circuit evaluation, skipping the iteration completely when possible.
 **Action:** Always prefer `.some()` over `.map().includes()` or `.filter().length > 0` when checking for existence. Leverage short-circuit evaluation by putting cheap operations first in logical AND statements.
+## 2024-06-20 - Avoid Intermediate Arrays in Reverse Rendering
+**Learning:** Chaining array methods like `.slice().reverse().map(...)` in React render functions creates intermediate arrays and causes unnecessary memory allocations and garbage collection pressure, especially for rapidly updating components like debug panels.
+**Action:** Use a single-pass reverse `for` loop starting from `array.length - 1` to build the array of React elements directly. This eliminates O(N) memory allocations per render and improves performance.
