@@ -351,8 +351,14 @@ export class BreakthroughDirector {
 
       // Calculate average FPS from recent history
       if (this.state.fpsHistory.length >= 30) {
-        const recentFps = this.state.fpsHistory.slice(-30);
-        const avgFps = recentFps.reduce((a, b) => a + b, 0) / recentFps.length;
+        // Performance Optimization: Replaced chained .slice(-30).reduce() with a single-pass
+        // backward loop to eliminate intermediate array allocations in this frequently running interval.
+        let sum = 0;
+        const len = this.state.fpsHistory.length;
+        for (let i = len - 1; i >= len - 30; i--) {
+          sum += this.state.fpsHistory[i];
+        }
+        const avgFps = sum / 30;
 
         if (avgFps < FPS_THRESHOLD) {
           logger.warn('FPS below threshold', { avgFps, threshold: FPS_THRESHOLD });
@@ -474,13 +480,21 @@ export class BreakthroughDirector {
       ? performance.now() - this.state.startTime
       : undefined;
     
-    const avgFps = this.state.fpsHistory.length > 0
-      ? this.state.fpsHistory.reduce((a, b) => a + b, 0) / this.state.fpsHistory.length
-      : undefined;
+    // Performance Optimization: Calculate aggregate metrics via single-pass loop instead of chained methods
+    let avgFps: number | undefined;
+    let minFps: number | undefined;
     
-    const minFps = this.state.fpsHistory.length > 0
-      ? Math.min(...this.state.fpsHistory)
-      : undefined;
+    if (this.state.fpsHistory.length > 0) {
+      let sum = 0;
+      let min = Infinity;
+      for (let i = 0; i < this.state.fpsHistory.length; i++) {
+        const fps = this.state.fpsHistory[i];
+        sum += fps;
+        if (fps < min) min = fps;
+      }
+      avgFps = sum / this.state.fpsHistory.length;
+      minFps = min;
+    }
     
     const event: BreakthroughAnalyticsEvent = {
       eventType,
