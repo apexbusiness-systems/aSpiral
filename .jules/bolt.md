@@ -17,6 +17,7 @@
 ## 2026-06-14 - Optimize context affinity matching in Breakthrough selector
 **Learning:** Found an opportunity to replace intermediate array allocations (e.g. `.map().includes()`) with early returning loops/methods like `.some()`. This saves time and memory. Additionally, in boolean expressions, placing simple comparisons before expensive iterations will trigger short-circuit evaluation, skipping the iteration completely when possible.
 **Action:** Always prefer `.some()` over `.map().includes()` or `.filter().length > 0` when checking for existence. Leverage short-circuit evaluation by putting cheap operations first in logical AND statements.
-## 2024-05-19 - Avoid Spread Operations in Array Aggregations
-**Learning:** Using the spread operator with `Math.min(...array)` or `Math.max(...array)` on dynamically growing arrays, especially in high-frequency contexts like render loops or FPS monitoring, allocates an intermediate array and risks exceeding the "Maximum call stack size" if the array becomes too large.
-**Action:** Replace `Math.min(...array)` with a single-pass `for` loop that iterates through the array to find the minimum value. If other aggregate metrics (like averages) are needed, calculate them concurrently in the same loop to avoid multiple iterations.
+
+## 2024-05-23 - Strict Dependency Installation Rule
+**Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
+**Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
