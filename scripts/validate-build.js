@@ -5,7 +5,7 @@
  * Comprehensive validation of build integrity and common issues
  */
 
-import { execSync, execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -180,7 +180,7 @@ console.log('='.repeat(60));
 console.log('BUILD VALIDATION RESULTS');
 console.log('='.repeat(60));
 
-for (const [key, check] of Object.entries(checks)) {
+for (const check of Object.values(checks)) {
   const status = check.passed ? '✅ PASS' : '❌ FAIL';
   console.log(`${status} ${check.message}`);
 }

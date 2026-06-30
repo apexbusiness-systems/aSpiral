@@ -81,8 +81,8 @@ export function useAnalytics() {
         // Performance Optimization: Replaced .filter().length with a single-pass loop
         // to avoid O(N) array allocation overhead and improve garbage collection.
         let userQuestions = 0;
-        for (let i = 0; i < messages.length; i++) {
-          if (messages[i].role === 'user') {
+        for (const message of messages) {
+          if (message.role === 'user') {
             userQuestions++;
           }
         }

@@ -108,17 +108,15 @@ export const useSessionStore = create<SessionState>()(
         // Performance Optimization: Replaced chained .filter().map() with single-pass loops
         // to avoid intermediate array allocations when building Sets.
         const entityLookup = new Set<string>();
-        for (let i = 0; i < entities.length; i++) {
-          const e = entities[i];
-          if (e && e.type && e.label) {
+        for (const e of entities) {
+          if (e?.type && e?.label) {
             entityLookup.add(`${e.type}:${e.label.toLowerCase().trim()}`);
           }
         }
 
         const connectionLookup = new Set<string>();
-        for (let i = 0; i < connections.length; i++) {
-          const c = connections[i];
-          if (c && c.fromEntityId && c.toEntityId && c.type) {
+        for (const c of connections) {
+          if (c?.fromEntityId && c?.toEntityId && c?.type) {
             connectionLookup.add(`${c.fromEntityId}:${c.toEntityId}:${c.type}`);
           }
         }

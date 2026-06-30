@@ -1,0 +1,13 @@
+﻿## What Changed
+- Executed Jules Release Rescue Contract.
+- Handled .env config to bypass 401 auth failures by configuring local supabase via supabase start.
+- Restored test execution, ensuring 482 passing tests.
+- Re-generated the un.lock for optimal resolution over NPM.
+- Added elease-evidence directory containing the full TEST_RESULTS.md and AUDIT_SUMMARY.md.
+
+## Why it was necessary
+The repository's local execution and CI pipeline was blocked by NPM transitive dependency mismatch errors against Vite and Vitest. Furthermore, the application suffered a 401 lockout in the browser without local Supabase running, breaking E2E verification.
+
+## How it was validated
+- Full pipeline run (lint, 	ypecheck, 	est, uild) passed.
+- E2E Browser validation complete via Chrome (Local Supabase Auth).

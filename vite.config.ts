@@ -32,14 +32,14 @@ export default defineConfig(({ mode }) => ({
           if (
             id.includes("react-dom") ||
             id.includes("react-router") ||
-            /node_modules\/react(\/|\\)/.test(id) ||
+            /node_modules\/react[/\\]/.test(id) ||
             id.includes("scheduler")
           ) return "vendor-react";
 
           // 3D rendering stack (largest dependency family)
           if (
             id.includes("@react-three") ||
-            /node_modules\/three(\/|\\)/.test(id) ||
+            /node_modules\/three[/\\]/.test(id) ||
             id.includes("troika-three-text") ||
             id.includes("postprocessing")
           ) return "vendor-three";

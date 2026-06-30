@@ -52,7 +52,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   const { user } = useAuth();
   const [input, setInput] = useState("");
   const [is3DExpanded, setIs3DExpanded] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : true
+    typeof globalThis.window !== "undefined" ? globalThis.window.matchMedia("(min-width: 1024px)").matches : true
   );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -400,13 +400,13 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   }, [currentSession, isRecordingPaused, currentStage]);
 
   // Derive session state for menu
-  const sessionState = !currentSession
-    ? "idle"
-    : currentStage === "breakthrough" || showBreakthroughCard
+  const sessionState = currentSession
+    ? currentStage === "breakthrough" || showBreakthroughCard
       ? "breakthrough"
       : isRecordingPaused
         ? "paused"
-        : "active";
+        : "active"
+    : "idle";
 
   // Menu handlers - now tied to recording pause
   const handlePause = useCallback(() => {

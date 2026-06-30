@@ -191,7 +191,7 @@ export function CinematicPlayer({
           gpuTier: capabilities.gpuTier,
           gpuRenderer: capabilities.gpuRenderer,
           qualityMultiplier: qualitySettings.particleMultiplier,
-          wasAdaptiveReduced: qualitySettings.particleMultiplier < 1.0,
+          wasAdaptiveReduced: qualitySettings.particleMultiplier < 1,
         });
       }
     }
@@ -396,7 +396,7 @@ export function CinematicPlayer({
           <ChromaticAberration
             offset={
               new THREE.Vector2(0.002, 0.002).multiplyScalar(
-                chromaticAberrationEffect.intensity || 1.0
+                chromaticAberrationEffect.intensity || 1
               )
             }
             blendFunction={BlendFunction.NORMAL}
