@@ -2,6 +2,10 @@
 
 Voice-first AI coaching that visualizes your thoughts and guides you to breakthrough clarity.
 
+> [!IMPORTANT]
+> **Baseline Release v1.0.6 (June 2026)**
+> This build represents the frozen baseline, featuring SonarQube Grade A quality, dynamic edge-function CORS support, and a hardened production validation pipeline.
+
 ## Project Overview
 
 aSpiral is a PWA built with Vite, React 18, TypeScript, and R3F/Three.js. It features a cinematic rendering pipeline for visualizing mental models.
