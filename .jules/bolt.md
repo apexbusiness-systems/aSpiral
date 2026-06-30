@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2026-06-30 - Avoid Micro-Optimizing Small Array Reductions
+**Learning:** Replacing `Array.prototype.reduce()` with a standard `for` loop to calculate simple sums on small arrays (like candidate variant lists) is considered an unmeasurable micro-optimization in modern JavaScript engines and should be avoided.
+**Action:** Focus on high-impact optimizations like removing intermediate array allocations inside hot loops or large datasets, and avoid refactoring standard array methods on small datasets for negligible performance gains.

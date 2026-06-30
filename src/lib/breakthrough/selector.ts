@@ -278,8 +278,14 @@ export function selectVariant(context: SelectionContext): {
       ? topVariants.filter((variant) => variant.id !== mostRecentVariantId)
       : topVariants;
 
+  // Performance Optimization: Replaced .reduce() with a single-pass loop
+  // This reduces closure allocation and garbage collection overhead, particularly
+  // since this selection logic can run frequently.
   // Weighted random selection from the filtered top pool.
-  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+  let totalTopScore = 0;
+  for (let i = 0; i < candidateTopVariants.length; i++) {
+    totalTopScore += scores.get(candidateTopVariants[i].id) || 0;
+  }
   let random = secureMathRandom() * totalTopScore;
 
   let selectedVariant = candidateTopVariants[0] || topVariants[0];
