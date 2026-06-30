@@ -35,11 +35,11 @@ export function useEntities() {
         positions.forEach((pos, id) => {
             // Update position ref
             let vec = positionRefs.current.get(id);
-            if (!vec) {
+            if (vec) {
+                vec.set(pos[0], pos[1], pos[2]);
+            } else {
                 vec = new THREE.Vector3(pos[0], pos[1], pos[2]);
                 positionRefs.current.set(id, vec);
-            } else {
-                vec.set(pos[0], pos[1], pos[2]);
             }
 
             // Directly update mesh position for 60FPS if available

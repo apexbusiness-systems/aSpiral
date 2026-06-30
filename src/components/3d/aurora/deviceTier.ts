@@ -92,7 +92,7 @@ function classifyTierFromScore(score: number): DeviceTier {
 export function detectDeviceTier(): DeviceTier {
     if (cachedTier) return cachedTier
 
-    if (typeof navigator === 'undefined') {
+    if (globalThis.navigator === undefined) {
         cachedTier = 'medium'
         return cachedTier
     }
@@ -139,7 +139,7 @@ export function getOptimalParticleCount(explicitCount?: number): number {
  * Respects prefers-reduced-motion media query.
  */
 export function prefersReducedMotion(): boolean {
-    if (typeof globalThis.window === 'undefined') return false
+    if (globalThis.window === undefined) return false
     return globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 

@@ -2,7 +2,7 @@
 import { vi } from 'vitest';
 
 // Polyfill webcrypto for Node/JSDOM environments
-if (typeof globalThis.crypto === 'undefined' || !globalThis.crypto.subtle) {
+if (!globalThis.crypto?.subtle) {
   vi.stubGlobal('crypto', require('node:crypto').webcrypto);
 }
 

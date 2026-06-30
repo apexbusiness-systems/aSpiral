@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 
@@ -19,6 +20,7 @@ const isIosDevice = () => {
 const PwaInstallPrompt = () => {
   const { canInstall, install, isInstalled } = usePwaInstall();
   const [dismissed, setDismissed] = useState(false);
+  const location = useLocation();
 
   const isiOS = useMemo(() => isIosDevice(), []);
 
@@ -40,9 +42,17 @@ const PwaInstallPrompt = () => {
     await install();
   };
 
+  const isAppRoute = location.pathname.startsWith('/app');
+  
+  // Position it according to the requested annotation (bottom-right of the 3D stage on /app route)
+  // On other routes, just bottom-right
+  const positionClass = isAppRoute 
+    ? "sm:right-4 lg:right-[calc(33.333%+1rem)]" 
+    : "sm:right-4";
+
   if (isiOS && !canInstall) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-white/15 bg-black/80 p-4 text-white shadow-lg backdrop-blur">
+      <div className={`fixed bottom-4 left-4 right-4 sm:left-auto ${positionClass} sm:w-[340px] z-50 rounded-xl border border-white/15 bg-black/80 p-4 text-white shadow-lg backdrop-blur transition-all duration-500`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">Install aSpiral</p>
@@ -63,13 +73,13 @@ const PwaInstallPrompt = () => {
   if (!canInstall) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-white/15 bg-black/80 p-4 text-white shadow-lg backdrop-blur">
+    <div className={`fixed bottom-4 left-4 right-4 sm:left-auto ${positionClass} sm:w-[340px] z-50 rounded-xl border border-white/15 bg-black/80 p-4 text-white shadow-lg backdrop-blur transition-all duration-500`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold">Install aSpiral</p>
           <p className="text-xs text-white/70">Get quick access from your home screen.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button variant="secondary" size="sm" onClick={handleDismiss}>
             Not now
           </Button>

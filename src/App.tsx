@@ -89,16 +89,16 @@ function PwaManager() {
     };
 
     // 4. Initial check for standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
+    const isStandalone = globalThis.window.matchMedia('(display-mode: standalone)').matches ||
+      (globalThis.navigator as any).standalone === true;
     setInstalled(isStandalone);
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
+    globalThis.window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    globalThis.window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
+      globalThis.window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      globalThis.window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, [setDeferredPrompt, setInstalled]);
 
@@ -109,8 +109,8 @@ function StandaloneModeRedirect() {
   const location = useLocation();
   const { user, loading } = useAuth();
 
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true;
+  const isStandalone = globalThis.window.matchMedia('(display-mode: standalone)').matches ||
+    (globalThis.navigator as any).standalone === true;
 
   if (isStandalone && !loading && user && location.pathname === '/') {
     return <Navigate to="/app" replace />;
@@ -162,11 +162,11 @@ const App = () => {
     };
 
     const cleanup = () => {
-      events.forEach((event) => window.removeEventListener(event, handler));
+      events.forEach((event) => globalThis.window.removeEventListener(event, handler));
     };
 
     // Keep listener alive - PWA can re-suspend AudioContext after backgrounding
-    events.forEach((event) => window.addEventListener(event, handler, { passive: true }));
+    events.forEach((event) => globalThis.window.addEventListener(event, handler, { passive: true }));
     return cleanup;
   }, []);
 

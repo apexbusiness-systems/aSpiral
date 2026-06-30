@@ -7,8 +7,7 @@ import { useRef, type DependencyList } from "react";
 export function areArraysShallowEqual(a: DependencyList, b: DependencyList): boolean {
   if (a.length !== b.length) return false;
 
-  for (let i = 0; i < a.length; i++) {
-    const aItem = a[i];
+  return a.every((aItem, i) => {
     const bItem = b[i];
 
     // For arrays (entities/connections), check length and item identity
@@ -16,22 +15,12 @@ export function areArraysShallowEqual(a: DependencyList, b: DependencyList): boo
       if (aItem.length !== bItem.length) return false;
 
       // Shallow comparison: same items in same order = equal
-      let allMatch = true;
-      for (let j = 0; j < aItem.length; j++) {
-        if (aItem[j] !== bItem[j]) {
-          allMatch = false;
-          break;
-        }
-      }
-      if (allMatch) continue;
-      return false;
+      return aItem.every((val, j) => val === bItem[j]);
     }
 
     // For non-arrays, use reference equality
-    if (aItem !== bItem) return false;
-  }
-
-  return true;
+    return aItem === bItem;
+  });
 }
 
 /**
