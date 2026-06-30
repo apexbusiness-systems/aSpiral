@@ -5,6 +5,15 @@ All notable changes to the aSpiral project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-06-30
+
+### Added
+- **Edge Functions CORS**: Implemented dynamic CORS origins to support Vercel and Cloudflare Pages deployments without hardcoding domains.
+
+### Changed
+- **SonarQube Grade A**: Refactored multiple core files (`useAnalytics.ts`, `useEntities.ts`, `sessionStore.ts`, etc.) to fully eradicate Code Smells, Cognitive Complexity issues, and redundant assignments, officially achieving Grade A Maintainability.
+- **Baseline Release**: Froze the application baseline build and synchronized repository documentation for onboarding and future scalability.
+
 ## [1.0.5] - 2026-03-26
 
 ### Added
