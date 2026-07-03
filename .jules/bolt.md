@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-05-18 - Replace slice().map() with Forward Loop
+**Learning:** Chaining `.slice(-count).map(...)` creates multiple intermediate arrays, causing unnecessary garbage collection overhead when retrieving recent elements. Reversing the loop order flips the intended chronological sequence, leading to logic bugs.
+**Action:** When extracting a mapped subset from the end of an array while maintaining chronological order, use a single-pass forward `for` loop starting from `Math.max(0, array.length - count)` up to `array.length`.
