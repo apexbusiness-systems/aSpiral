@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-07-04 - Optimize array length checking for early exit loops
+**Learning:** Checking the length of an array filtered via `.filter(condition).length >= threshold` inside a threshold check function iterates the entire array and allocates new intermediate array overhead unnecessarily.
+**Action:** Replace `.filter(condition).length` with a standard `for` loop, incrementing a count on condition, and use `break` to short-circuit as soon as the expected threshold is met.
