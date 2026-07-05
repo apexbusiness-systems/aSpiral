@@ -21,3 +21,11 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2026-07-05 - Optimize Set and Array concurrent initialization
+**Learning:** Creating a Set and an Array sequentially from a mapped array (`new Set(arr.map())` followed by `Array.from(set)`) creates multiple intermediate array allocations, increasing memory overhead and garbage collection pressure.
+**Action:** Use a single-pass standard `for` loop to populate both the Set and the Array concurrently, eliminating the need for intermediate array allocations.
+
+## 2026-07-05 - Optimize Maps to Array conversion
+**Learning:** Converting Maps to Array by using chained array methods like `Array.from(map.entries()).map().sort()` or `Array.from(map.entries()).sort().slice().map()` incurs significant intermediate array allocations and GC pressure. `Array.from()` itself creates a full array copy of the Map iterator.
+**Action:** Use a `for...of` loop iterating directly over `map.entries()` and pushing custom-mapped objects into a new array. When sorting, slice and map the elements simultaneously in a standard `for` loop to avoid sequential iterations.
