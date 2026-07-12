@@ -144,8 +144,18 @@ const AdminDashboard = () => {
         }
       }
 
-      const sessionIds = new Set(sessions?.map((s) => s.id) || []);
-      const sessionIdsArray = Array.from(sessionIds);
+      // Performance Optimization: Populate Set and Array concurrently in a single-pass loop
+      // to avoid intermediate array allocations and GC pressure.
+      const sessionIds = new Set<string>();
+      const sessionIdsArray: string[] = [];
+      const sessionList = sessions || [];
+      for (let i = 0; i < sessionList.length; i++) {
+        const id = sessionList[i].id;
+        if (!sessionIds.has(id)) {
+          sessionIds.add(id);
+          sessionIdsArray.push(id);
+        }
+      }
 
       // If no sessions, skip sub-queries as there will be no user-specific data
       if (sessionIdsArray.length === 0) {
