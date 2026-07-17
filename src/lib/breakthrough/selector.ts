@@ -152,11 +152,21 @@ function calculateFatigueAdjustment(
   variant: BaseVariant,
   context: SelectionContext
 ): number {
-  const recentIntense = context.recentIntensities.filter(
-    (i) => i === 'high' || i === 'extreme'
-  );
+  // Performance Optimization: Use a single-pass for loop with early termination
+  // instead of .filter().length to avoid intermediate array allocation.
+  let intenseCount = 0;
+  let isFatigued = false;
   
-  const isFatigued = recentIntense.length >= FATIGUE_CONFIG.recentIntenseThreshold;
+  for (let i = 0; i < context.recentIntensities.length; i++) {
+    const intensity = context.recentIntensities[i];
+    if (intensity === 'high' || intensity === 'extreme') {
+      intenseCount++;
+      if (intenseCount >= FATIGUE_CONFIG.recentIntenseThreshold) {
+        isFatigued = true;
+        break;
+      }
+    }
+  }
   
   if (isFatigued) {
     // User is fatigued, prefer low/medium intensity
