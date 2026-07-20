@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // verify-csp.mjs — asserts every external host referenced in src/ is present
 // in public/_headers connect-src. Prevents silent CSP/runtime drift.
-import { readFileSync, readdirSync, statSync } from 'fs';
-import path from 'path';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import path from 'node:path';
 
 function walk(dir, out = []) {
   for (const f of readdirSync(dir)) {

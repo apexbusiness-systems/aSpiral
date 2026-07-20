@@ -9,7 +9,7 @@
 // cannot be used for this check — return null rather than treating it as
 // malformed, so callers can fall back to a JWT-format key if one is available.
 function decodeJwtRef(jwt) {
-  if (!jwt || jwt.split('.').length !== 3) return null;
+  if (jwt?.split('.').length !== 3) return null;
   try {
     const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
     return payload.ref || null;
