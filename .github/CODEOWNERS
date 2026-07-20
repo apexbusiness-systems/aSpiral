@@ -1,0 +1,4 @@
+.env.production           @jrmendozaceo
+.env.*                    @jrmendozaceo
+public/_headers           @jrmendozaceo
+.github/workflows/*.yml   @jrmendozaceo

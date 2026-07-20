@@ -8,18 +8,20 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run verify:env && npm run verify:csp && vite build",
     "build:dev": "vite build --mode development",
-    "build:production": "vite build --mode production",
+    "build:production": "npm run verify:env && npm run verify:csp && vite build --mode production",
     "preview": "vite preview",
-    "pages:build": "vite build",
+    "pages:build": "npm run verify:env && npm run verify:csp && vite build",
     "pages:dev": "vite dev",
     "lint": "eslint .",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "security:audit": "npm audit --audit-level=high --omit=dev",
     "security:audit:dev": "npm audit --audit-level=high",
-    "validate": "npm run typecheck && npm run lint && npm test && npm run security:audit && npm run build:production"
+    "validate": "npm run typecheck && npm run lint && npm test && npm run security:audit && npm run build:production",
+    "verify:env": "node scripts/verify-env.mjs",
+    "verify:csp": "node scripts/verify-csp.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
