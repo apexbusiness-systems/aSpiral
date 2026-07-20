@@ -4,7 +4,12 @@
 // authoritative project ref. We assert VITE_SUPABASE_URL's host matches it.
 // This replaces a static bad-ref denylist, which only catches known past bugs.
 
+// Only Supabase's legacy anon/publishable key format is a JWT with a decodable
+// `ref` claim. The newer sb_publishable_* key format is an opaque token and
+// cannot be used for this check — return null rather than treating it as
+// malformed, so callers can fall back to a JWT-format key if one is available.
 function decodeJwtRef(jwt) {
+  if (!jwt || jwt.split('.').length !== 3) return null;
   try {
     const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
     return payload.ref || null;
@@ -23,15 +28,33 @@ function fail(msg) {
 }
 
 const url = process.env.VITE_SUPABASE_URL || '';
-const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+const anonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Cloudflare Pages Preview deployments don't inherit Production env vars, so
+// PR previews build with no Supabase config at all — that's not drift, it's
+// just an unconfigured preview. Only cross-validate when config is present.
+if (!url && !publishableKey && !anonKey) {
+  console.log('verify-env: skipped — no Supabase env vars set (expected for unconfigured preview builds)');
+  process.exit(0);
+}
 
 const urlMatch = url.match(/^https:\/\/([a-z0-9]{15,25})\.supabase\.co\/?$/);
 if (!urlMatch) fail(`VITE_SUPABASE_URL is missing or malformed: "${url}"`);
 
-if (!key) fail('No VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY set — cannot cross-validate.');
+if (!publishableKey && !anonKey) {
+  fail('No VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY set — cannot cross-validate.');
+}
 
-const jwtRef = decodeJwtRef(key);
-if (!jwtRef) fail('Could not decode a project ref from the Supabase key — key is malformed.');
+// Prefer whichever configured key is actually JWT-format and decodable —
+// don't assume PUBLISHABLE_KEY always is, since Supabase's newer opaque
+// sb_publishable_* keys don't carry a decodable ref.
+const jwtRef = decodeJwtRef(publishableKey) || decodeJwtRef(anonKey);
+
+if (!jwtRef) {
+  console.log('verify-env: skipped cross-validation — no JWT-format key available to decode a ref from (opaque sb_publishable_* key only)');
+  process.exit(0);
+}
 
 if (urlMatch[1] !== jwtRef) {
   fail(`Env drift: VITE_SUPABASE_URL ref "${urlMatch[1]}" does not match key's JWT ref "${jwtRef}".`);
