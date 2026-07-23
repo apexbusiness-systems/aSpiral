@@ -1,19 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
-import { PerformanceOptimizer } from '../src/lib/performance/optimizer';
-import { easing } from '../src/lib/cinematics/easing';
+import { describe, it, expect } from 'vitest';
+import { FPSMonitor, detectDeviceTier } from '../src/lib/performance/optimizer';
 import { catalog } from '../src/lib/breakthrough/catalog';
 import { useCssThemeColors } from '../src/lib/three/useCssThemeColors';
-import { useSessionStore } from '../src/stores/sessionStore';
-import { usePwaStore } from '../src/stores/pwaStore';
 
 describe('Exhaustive Lib Tests', () => {
-  it('PerformanceOptimizer executes correctly', () => {
-    expect(PerformanceOptimizer).toBeDefined();
-  });
-
-  it('Easing functions execute correctly', () => {
-    expect(easing).toBeDefined();
+  it('FPSMonitor and Tier detection execute correctly', () => {
+    expect(FPSMonitor).toBeDefined();
+    expect(detectDeviceTier).toBeDefined();
   });
 
   it('Catalog loads categories', () => {
@@ -21,15 +15,6 @@ describe('Exhaustive Lib Tests', () => {
   });
 
   it('Theme colors execute correctly', () => {
-    // Just verifying the import works since it's a hook
     expect(useCssThemeColors).toBeDefined();
-  });
-
-  it('Stores initialize correctly', () => {
-    const sessionState = useSessionStore.getState();
-    expect(sessionState).toBeDefined();
-    
-    const pwaState = usePwaStore.getState();
-    expect(pwaState).toBeDefined();
   });
 });

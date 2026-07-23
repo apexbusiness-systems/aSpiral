@@ -30,7 +30,7 @@ Object.defineProperty(globalThis, 'IntersectionObserver', {
   value: MockIntersectionObserver
 });
 
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('../src/contexts/AuthContext', () => ({
   useAuth: vi.fn().mockReturnValue({
     session: { user: { id: 'test-user', email: 'test@example.com' } },
     user: { id: 'test-user', email: 'test@example.com' },

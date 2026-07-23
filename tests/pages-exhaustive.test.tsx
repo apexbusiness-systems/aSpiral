@@ -25,7 +25,7 @@ Object.defineProperty(globalThis, 'matchMedia', {
 });
 
 // Mock AuthContext
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock('../src/contexts/AuthContext', () => ({
   useAuth: vi.fn().mockReturnValue({
     session: { user: { id: 'test-user', email: 'test@example.com' } },
     user: { id: 'test-user', email: 'test@example.com' },
@@ -36,7 +36,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 // Mock Supabase
-vi.mock('@/lib/supabase/client', () => ({
+vi.mock('../src/integrations/supabase/client', () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
@@ -71,8 +71,18 @@ vi.mock('@react-three/drei', () => ({
   Environment: () => <div data-testid="mock-environment" />,
 }));
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const renderWithRouter = (ui: React.ReactElement) => {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>{ui}</BrowserRouter>
+    </QueryClientProvider>
+  );
 };
 
 describe('Exhaustive Pages Render Tests', () => {
