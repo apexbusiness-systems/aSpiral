@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { FPSMonitor, detectDeviceTier } from '../src/lib/performance/optimizer';
-import { catalog } from '../src/lib/breakthrough/catalog';
+import { BREAKTHROUGH_VARIANTS } from '../src/lib/breakthrough/catalog';
 import { useCssThemeColors } from '../src/lib/three/useCssThemeColors';
 
 describe('Exhaustive Lib Tests', () => {
@@ -11,7 +11,8 @@ describe('Exhaustive Lib Tests', () => {
   });
 
   it('Catalog loads categories', () => {
-    expect(catalog).toBeDefined();
+    expect(BREAKTHROUGH_VARIANTS).toBeDefined();
+    expect(BREAKTHROUGH_VARIANTS.length).toBeGreaterThan(0);
   });
 
   it('Theme colors execute correctly', () => {
