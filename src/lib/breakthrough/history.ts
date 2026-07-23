@@ -324,10 +324,15 @@ export function getMostUsedVariants(limit: number = 5): Array<{ variantId: strin
     counts.set(entry.variantId, (counts.get(entry.variantId) || 0) + 1);
   }
   
-  return Array.from(counts.entries())
-    .map(([variantId, count]) => ({ variantId, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+  // Performance Optimization: Replaced Array.from(counts.entries()).map()
+  // with a direct for...of loop to avoid creating a full intermediate array
+  // copy of the Map iterator just to map it immediately, reducing GC pressure.
+  const mappedCounts: Array<{ variantId: string; count: number }> = [];
+  for (const [variantId, count] of counts.entries()) {
+    mappedCounts.push({ variantId, count });
+  }
+
+  return mappedCounts.sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
 /**
