@@ -8,6 +8,8 @@ import ApiKeys from '../src/pages/ApiKeys';
 import Breakthroughs from '../src/pages/Breakthroughs';
 import Sessions from '../src/pages/Sessions';
 import AdminDashboard from '../src/pages/AdminDashboard';
+import VoiceYourChaos from '../src/pages/steps/VoiceYourChaos';
+import AnswerQuestions from '../src/pages/steps/AnswerQuestions';
 
 // Mock matchMedia
 Object.defineProperty(globalThis, 'matchMedia', {
@@ -23,6 +25,13 @@ Object.defineProperty(globalThis, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// Mock ResizeObserver
+globalThis.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 // Mock AuthContext
 vi.mock('../src/contexts/AuthContext', () => ({
@@ -77,6 +86,11 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
+import { afterAll } from 'vitest';
+afterAll(() => {
+  queryClient.clear();
+});
+
 const renderWithRouter = (ui: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
@@ -108,6 +122,16 @@ describe('Exhaustive Pages Render Tests', () => {
 
   it('renders AdminDashboard page', () => {
     const { container } = renderWithRouter(<AdminDashboard />);
+    expect(container).toBeTruthy();
+  });
+
+  it('renders VoiceYourChaos page', () => {
+    const { container } = renderWithRouter(<VoiceYourChaos />);
+    expect(container).toBeTruthy();
+  });
+
+  it('renders AnswerQuestions page', () => {
+    const { container } = renderWithRouter(<AnswerQuestions />);
     expect(container).toBeTruthy();
   });
 });
