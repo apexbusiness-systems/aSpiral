@@ -34,9 +34,11 @@ const Auth = () => {
   useEffect(() => {
     if (user) {
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app';
-      navigate(from, { replace: true });
+      if (location.pathname !== from) {
+        navigate(from, { replace: true });
+      }
     }
-  }, [user, navigate, location]);
+  }, [user, navigate, location.pathname, location.state]);
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};

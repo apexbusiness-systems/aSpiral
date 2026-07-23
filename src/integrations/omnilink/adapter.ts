@@ -165,12 +165,16 @@ async function processQueue(): Promise<void> {
   }
 }
 
-// Start background queue processing
-if (typeof window !== "undefined") {
-  setInterval(() => {
+let queueInterval: ReturnType<typeof setInterval> | null = null;
+if (typeof window !== "undefined" && import.meta.env?.MODE !== 'test') {
+  queueInterval = setInterval(() => {
     processQueue().catch(console.error);
   }, 30000); // Every 30 seconds
 }
+
+export const _stopQueueForTests = () => {
+  if (queueInterval) clearInterval(queueInterval);
+};
 
 /**
  * OMNiLiNK Adapter - Public API

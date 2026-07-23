@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     exclude: [...configDefaults.exclude, "**/supabase/functions/spiral-ai/**/*.test.ts", "temp_repo/**/*.test.ts", "APEX-OmniHub/**/*.test.ts", "APEX-OmniHub/**/*.spec.ts"],
-    setupFiles: ["./src/setupTests.ts"],
+    setupFiles: [path.resolve(__dirname, "./src/setupTests.ts")],
   },
   plugins: [
     react(),
