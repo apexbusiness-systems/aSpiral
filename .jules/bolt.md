@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-07-25 - Avoid Array Re-Allocation from Map iterators
+**Learning:** `Array.from(map.entries())` creates an intermediate array of tuples representing the key-value pairs of the Map. Chaining `.map()` or `.sort()` right after this forces the JavaScript engine to allocate and iterate over this full intermediate array, causing unnecessary garbage collection (GC) pressure.
+**Action:** Replace `Array.from(map.entries()).map(...)` with a `for...of` loop over `map.entries()`. Push mapped properties directly into the target array to avoid the intermediate allocation and improve performance.
