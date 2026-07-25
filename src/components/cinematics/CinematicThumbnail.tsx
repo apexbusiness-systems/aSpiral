@@ -134,6 +134,7 @@ export const CinematicThumbnail: React.FC<CinematicThumbnailProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const style = variantStyles[variant];
+  if (!style) { console.warn("Missing style for variant:", variant); return null; }
   const Icon = style.icon;
 
   return (
