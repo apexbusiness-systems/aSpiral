@@ -324,10 +324,12 @@ export function getMostUsedVariants(limit: number = 5): Array<{ variantId: strin
     counts.set(entry.variantId, (counts.get(entry.variantId) || 0) + 1);
   }
   
+  // Performance Optimization: Sort the native tuples before mapping to avoid
+  // allocating objects for items that will just be sliced away.
   return Array.from(counts.entries())
-    .map(([variantId, count]) => ({ variantId, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([variantId, count]) => ({ variantId, count }));
 }
 
 /**
