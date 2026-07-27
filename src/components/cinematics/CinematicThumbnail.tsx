@@ -133,7 +133,12 @@ export const CinematicThumbnail: React.FC<CinematicThumbnailProps> = ({
   className,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const style = variantStyles[variant];
+  const style = variantStyles[variant] || {
+    bgGradient: 'from-gray-900/80 via-gray-800/60 to-black',
+    accentColor: 'rgb(156 163 175)',
+    icon: Sparkles,
+    particles: ['#9ca3af', '#d1d5db', '#f3f4f6'],
+  };
   const Icon = style.icon;
 
   return (
