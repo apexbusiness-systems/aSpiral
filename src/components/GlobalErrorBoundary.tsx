@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { analytics } from '@/lib/analytics';
 import { addBreadcrumb, setFatalErrorSnapshot } from '@/lib/debugOverlay';
+import { getErrorMessage } from '@/lib/normalizeError';
 
 interface Props {
   children: ReactNode;
@@ -40,8 +41,19 @@ class GlobalErrorBoundary extends Component<Props, State> {
     console.error('[GlobalErrorBoundary] Caught error:', error);
     console.error('[GlobalErrorBoundary] Component stack:', errorInfo.componentStack);
 
+    // Route through the shared normalizer for consistency with the rest of the app.
+    // If the normalized message is still empty/generic, fall back to a raw
+    // type + stringified-value capture — this is what was missing: the prior
+    // 'Unknown error' fallback discarded the only clue (a non-Error throw,
+    // or an Error with a stripped message) instead of surfacing it.
+    const normalizedMessage = getErrorMessage(error);
+    const diagnosticMessage =
+      !normalizedMessage || normalizedMessage === 'An unexpected error occurred'
+        ? `Unknown error — thrown value type: ${typeof error}, raw: ${String(error).slice(0, 200)}`
+        : normalizedMessage;
+
     setFatalErrorSnapshot({
-      message: error.message || 'Unknown error',
+      message: diagnosticMessage,
       stack: error.stack?.slice(0, 2000),
     });
     addBreadcrumb({ type: 'system', message: 'fatal_ui_error' });
@@ -55,7 +67,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
           : undefined;
 
       analytics.trackFatalUiError({
-        message: error.message || 'Unknown error',
+        message: diagnosticMessage,
         stack: trimmedStack,
         route: window.location.href,
         userAgent: navigator.userAgent,

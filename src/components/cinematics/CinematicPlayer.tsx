@@ -429,6 +429,7 @@ export function CinematicPlayer({
           onCreated={({ gl }) => {
             gl.domElement.addEventListener('webglcontextlost', handleContextLost);
           }}
+          onError={(err) => logger.warn('R3F Canvas onError', { detail: String(err) })}
         >
           <Suspense fallback={null}>
             <color attach="background" args={['#000000']} />
