@@ -4,10 +4,14 @@ import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Entity } from '@/lib/types';
 
+// NOSONAR - This file uses React Three Fiber JSX intrinsics (position, args, castShadow,
+// receiveShadow, emissive, emissiveIntensity, metalness, roughness, etc.) which are valid
+// R3F props, not HTML attributes.
+
 interface EntityMeshProps {
-    entity: Entity;
-    index: number;
-    position: [number, number, number];
+    readonly entity: Entity;
+    readonly index: number;
+    readonly position: [number, number, number];
 }
 
 interface EntityConfig {

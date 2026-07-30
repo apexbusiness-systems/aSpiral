@@ -4,6 +4,9 @@ import { detectDeviceCapabilities } from "@/lib/performance/optimizer";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
 import * as THREE from "three";
 
+// NOSONAR - This file uses React Three Fiber JSX intrinsics (position, intensity, args, etc.)
+// which are valid R3F/Three.js props, not standard HTML attributes.
+
 interface SceneLightingProps {
   enableEnvironment?: boolean;
   capabilities?: DeviceCapabilities;

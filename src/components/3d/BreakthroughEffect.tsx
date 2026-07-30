@@ -4,9 +4,12 @@ import * as THREE from "three";
 import { secureMathRandom } from "@/lib/secureMathRandom";
 import { prefersReducedMotion } from "@/lib/performance/optimizer";
 
+// NOSONAR - This file uses React Three Fiber JSX intrinsics (position, args, transparent,
+// intensity, distance, side, rotation, etc.) which are valid R3F props, not HTML attributes.
+
 interface BreakthroughEffectProps {
-  isActive: boolean;
-  onComplete?: () => void;
+  readonly isActive: boolean;
+  readonly onComplete?: () => void;
 }
 
 // Particle for explosion

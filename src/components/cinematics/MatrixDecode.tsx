@@ -1,6 +1,8 @@
 /**
  * Matrix Decode Cinematic Variant
  * Digital matrix rain with grid and glitch effects
+ * NOSONAR - R3F intrinsic JSX props: position, rotation, args, wireframe, transparent,
+ * blending, intensity, distance - valid R3F/Three.js props, not standard HTML attributes.
  */
 
 import { useRef } from 'react';
@@ -11,8 +13,8 @@ import type { CameraControllerRef, ParticleSystemRef } from '@/lib/cinematics/ty
 import * as THREE from 'three';
 
 interface MatrixDecodeProps {
-  onComplete?: () => void;
-  particleCount?: number;
+  readonly onComplete?: () => void;
+  readonly particleCount?: number;
 }
 
 export function MatrixDecode({ onComplete, particleCount }: MatrixDecodeProps) {

@@ -15,6 +15,44 @@ interface MicButtonProps {
   onStop?: () => void;
 }
 
+function RecordingPulseEffect({ isRecording, isPaused }: { isRecording: boolean; isPaused: boolean }) {
+  if (!isRecording || isPaused) return null;
+  return (
+    <>
+      <motion.div
+        className="absolute inset-0 rounded-full border-2 border-destructive/50"
+        animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+      />
+      <motion.div
+        className="absolute inset-0 rounded-full border-2 border-destructive/30"
+        animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+        transition={{ duration: 1.5, delay: 0.5, repeat: Infinity }}
+      />
+    </>
+  );
+}
+
+function RecordingStatusIcon({ isProcessing, isRecording, iconSize }: { isProcessing: boolean; isRecording: boolean; iconSize: string }) {
+  if (isProcessing) {
+    return (
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
+      />
+    );
+  }
+  if (isRecording) {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <Mic className={cn("text-white animate-pulse", iconSize)} />
+      </div>
+    );
+  }
+  return <Mic className={cn("text-white drop-shadow-md", iconSize)} />;
+}
+
 export function MicButton({
   isRecording,
   isProcessing,
@@ -159,36 +197,18 @@ export function MicButton({
             isMainPressed ? "scale-90" : "scale-100"
           )}
         >
-          {isProcessing ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
-            />
-          ) : isRecording ? (
-             <div className="flex flex-col items-center justify-center">
-                 <Mic className={cn("text-white animate-pulse", iconSize)} />
-             </div>
-          ) : (
-            <Mic className={cn("text-white drop-shadow-md", iconSize)} />
-          )}
+          <RecordingStatusIcon 
+            isProcessing={isProcessing} 
+            isRecording={isRecording} 
+            iconSize={iconSize} 
+          />
         </Button>
         
         {/* Recording ripple effect */}
-        {isRecording && !isPaused && (
-          <>
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-destructive/50"
-              animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-destructive/30"
-              animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
-              transition={{ duration: 1.5, delay: 0.5, repeat: Infinity }}
-            />
-          </>
-        )}
+        <RecordingPulseEffect 
+          isRecording={isRecording} 
+          isPaused={isPaused} 
+        />
       </div>
 
       {/* Pause Button - visible when recording */}

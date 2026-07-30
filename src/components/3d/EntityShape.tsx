@@ -4,10 +4,13 @@ import { Text, Float, Cloud } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity, EntityType } from "@/lib/types";
 
+// NOSONAR - R3F intrinsic JSX props: args, emissive, emissiveIntensity, transparent,
+// roughness, metalness, position - valid R3F/Three.js props, not HTML attributes.
+
 interface EntityShapeProps {
-  entity: Entity;
-  position: [number, number, number];
-  onClick?: (entity: Entity) => void;
+  readonly entity: Entity;
+  readonly position: [number, number, number];
+  readonly onClick?: (entity: Entity) => void;
 }
 
 // Colors for each entity type

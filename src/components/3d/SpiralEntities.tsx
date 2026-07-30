@@ -4,6 +4,8 @@ import { ConnectionLine } from "./ConnectionLine";
 import { useEntities } from "@/hooks/useEntities";
 import type { Entity } from "@/lib/types";
 
+// NOSONAR - R3F intrinsic JSX props: position, args - valid R3F props, not HTML attributes.
+
 /**
  * APEX Phase 2: Off-Main-Thread Physics Integration
  * Uses Web Worker for force-directed layout calculations
