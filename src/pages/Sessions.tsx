@@ -20,7 +20,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { 
-  ArrowLeft, 
   Clock, 
   Trash2, 
   Play, 
@@ -32,12 +31,10 @@ import {
   Download,
   FileText,
   Layers,
-  Flame,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { createLogger } from '@/lib/logger';
-import { getErrorMessage } from '@/lib/normalizeError';
 
 interface SessionListItem {
   id: string;
