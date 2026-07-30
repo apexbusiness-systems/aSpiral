@@ -1,30 +1,11 @@
-import { serveWithAuth } from "../_shared/apiHelper.ts";
+import { serveWithAuth, verifySessionOwner, jsonResponse } from "../_shared/apiHelper.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
-  const sessionId = url.searchParams.get('session_id');
-
-  if (!sessionId) {
-    return new Response(JSON.stringify({ error: 'session_id required' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Verify session ownership
-  const { data: session } = await supabase
-    .from('sessions')
-    .select('id')
-    .eq('id', sessionId)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), {
-      status: 404,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+serveWithAuth(async (ctx) => {
+  const { req, supabase, corsHeaders } = ctx;
+  const result = await verifySessionOwner(ctx);
+  if (result instanceof Response) return result;
+  const { sessionId } = result;
 
   if (req.method === 'GET') {
     const { data, error } = await supabase
@@ -34,10 +15,7 @@ serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-
-    return new Response(JSON.stringify({ entities: data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ entities: data }, corsHeaders);
   }
 
   if (req.method === 'POST') {
@@ -63,15 +41,8 @@ serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
     if (error) throw error;
 
     console.log('Created entity:', data.id);
-
-    return new Response(JSON.stringify({ entity: data }), {
-      status: 201,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ entity: data }, corsHeaders, 201);
   }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-    status: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ error: 'Method not allowed' }, corsHeaders, 405);
 });

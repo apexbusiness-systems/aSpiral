@@ -1,9 +1,10 @@
 import { useRef, useState, useMemo, useEffect } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Float, Html } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
 import { getEntityVisualConfig, getColorByValence } from "@/lib/visualVariety";
+import { EntityGeometry } from "./EntityGeometry";
+import { BaseEntityOrb } from "./BaseEntityOrb";
 
 interface AdaptiveEntityProps {
   readonly entity: Entity;
@@ -15,8 +16,6 @@ interface AdaptiveEntityProps {
   readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-import { EntityGeometry } from "./EntityGeometry";
-
 export function AdaptiveEntity({
   entity,
   position,
@@ -25,11 +24,9 @@ export function AdaptiveEntity({
   showLabel = "hover",
   onMeshRef,
 }: AdaptiveEntityProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
-  const [appeared, setAppeared] = useState(false);
 
   // Register mesh ref for direct position updates from physics worker
   useEffect(() => {
@@ -38,14 +35,6 @@ export function AdaptiveEntity({
     }
     return () => onMeshRef?.(null);
   }, [onMeshRef]);
-
-  // Animate appearance
-  useEffect(() => {
-    if (isVisible && !appeared) {
-      const timer = setTimeout(() => setAppeared(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, appeared]);
 
   const visualConfig = useMemo(() =>
     getEntityVisualConfig(entity.type, entity.metadata?.role),
@@ -69,119 +58,89 @@ export function AdaptiveEntity({
     return false;
   }, [showLabel, hovered, selected, importance]);
 
-  useFrame((state) => {
-    if (!meshRef.current || !isVisible) return;
-
-    const time = state.clock.elapsedTime;
-
-    // Simplified scale animation
-    const targetScale = appeared ? 1 : 0;
-    const currentScale = meshRef.current.scale.x;
-    const newScale = currentScale + (targetScale - currentScale) * 0.15;
-
-    // Simplified hover/pulse - reduced calculations
-    const pulseAmount = hovered ? Math.sin(time * 3) * 0.05 : 0;
-    const hoverScale = hovered ? 1.1 : 1;
-
-    meshRef.current.scale.setScalar(newScale * hoverScale * (1 + pulseAmount));
-    // Removed rotation for performance
-  });
-
   if (!isVisible) return null;
 
+  const customGeometry = <EntityGeometry type={visualConfig.geometry} size={baseSize} />;
+  const customMaterial = (
+    <meshBasicMaterial
+      color={color}
+      transparent // NOSONAR
+      opacity={hovered ? 1 : 0.85}
+    />
+  );
+
+  const handleClick = (e: Entity) => {
+    setSelected(!selected);
+    onClick?.(e);
+  };
+
   return (
-    <Float
-      speed={1.5}
-      rotationIntensity={0.1}
-      floatIntensity={0.2}
-      floatingRange={[-0.03, 0.03]}
+    <BaseEntityOrb
+      entity={entity}
+      position={position}
+      onClick={handleClick}
+      onHover={setHovered}
+      customColor={color}
+      customSize={baseSize}
+      customGeometry={customGeometry}
+      customMaterial={customMaterial}
+      hideDefaultLabel={true}
+      groupRef={groupRef}
+      floatSpeed={1.5}
     >
-      <group ref={groupRef} position={position}> {/* NOSONAR */}
-        {/* Main mesh */}
-        <mesh
-          ref={meshRef}
-          onClick={() => {
-            setSelected(!selected);
-            onClick?.(entity);
-          }}
-          onPointerOver={() => setHovered(true)}
-          onPointerOut={() => setHovered(false)}
-          scale={0}
+      {/* Ground indicator - simplified */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -baseSize - 0.1, 0]}> {/* NOSONAR */}
+        <ringGeometry args={[baseSize * 0.8, baseSize * 1, 16]} />{/* NOSONAR */}
+        <meshBasicMaterial
+          color={color}
+          transparent // NOSONAR
+          opacity={hovered ? 0.3 : 0.1}
+        />
+      </mesh>
+
+      {/* Adaptive label using Html - compact for mobile */}
+      {shouldShowLabel && (
+        <Html
+          position={[0, baseSize + 0.3, 0]}
+          center
+          distanceFactor={10}
+          style={{ pointerEvents: "none" }}
+          zIndexRange={[0, 10]}
         >
-          <EntityGeometry type={visualConfig.geometry} size={baseSize} />
-          <meshBasicMaterial
-            color={color}
-            transparent // NOSONAR
-            opacity={hovered ? 1 : 0.85}
-          />
-        </mesh>
-
-        {/* Simplified glow - only on hover */}
-        {hovered && (
-          <mesh scale={1.3}>
-            <EntityGeometry type={visualConfig.geometry} size={baseSize} />
-            <meshBasicMaterial
-              color={color}
-              transparent // NOSONAR
-              opacity={0.15}
-            />
-          </mesh>
-        )}
-
-        {/* Ground indicator - simplified */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -baseSize - 0.1, 0]}> {/* NOSONAR */}
-          <ringGeometry args={[baseSize * 0.8, baseSize * 1, 16]} />{/* NOSONAR */}
-          <meshBasicMaterial
-            color={color}
-            transparent // NOSONAR
-            opacity={hovered ? 0.3 : 0.1}
-          />
-        </mesh>
-
-        {/* Adaptive label using Html - compact for mobile */}
-        {shouldShowLabel && (
-          <Html
-            position={[0, baseSize + 0.3, 0]}
-            center
-            distanceFactor={10}
-            style={{ pointerEvents: "none" }}
-            zIndexRange={[0, 10]}
+          <div
+            className="entity-label"
+            style={{
+              background: "rgba(0, 0, 0, 0.8)",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              borderRadius: "6px",
+              padding: "3px 8px",
+              fontFamily: "var(--font-body, system-ui)",
+              fontSize: "10px",
+              fontWeight: 500,
+              color: "white",
+              whiteSpace: "nowrap",
+              maxWidth: "140px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              animation: "labelFadeIn 0.2s ease-out",
+            }}
           >
+            {entity.label}
             <div
-              className="entity-label"
               style={{
-                background: "rgba(0, 0, 0, 0.8)",
-                backdropFilter: "blur(6px)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                borderRadius: "6px",
-                padding: "3px 8px",
-                fontFamily: "var(--font-body, system-ui)",
-                fontSize: "10px",
-                fontWeight: 500,
-                color: "white",
-                whiteSpace: "nowrap",
-                maxWidth: "140px",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                animation: "labelFadeIn 0.2s ease-out",
+                fontSize: "7px",
+                color: color,
+                textTransform: "uppercase",
+                marginTop: "1px",
+                opacity: 0.8,
               }}
             >
-              {entity.label}
-              <div
-                style={{
-                  fontSize: "7px",
-                  color: color,
-                  textTransform: "uppercase",
-                  marginTop: "1px",
-                  opacity: 0.8,
-                }}
-              >
-                {entity.metadata?.role || entity.type}
-              </div>
+              {entity.metadata?.role || entity.type}
             </div>
-          </Html>
-        )}
-      </group>
-    </Float>
+          </div>
+        </Html>
+      )}
+    </BaseEntityOrb>
   );
 }

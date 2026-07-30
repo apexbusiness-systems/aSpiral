@@ -1,4 +1,4 @@
-import { serveWithAuth } from "../_shared/apiHelper.ts";
+import { serveWithAuth, verifySessionOwner, jsonResponse } from "../_shared/apiHelper.ts";
 
 function toCSV(data: Record<string, unknown>[], headers: string[]): string {
   const headerRow = headers.join(',');
@@ -16,38 +16,17 @@ function toCSV(data: Record<string, unknown>[], headers: string[]): string {
   return [headerRow, ...rows].join('\n');
 }
 
-serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
+serveWithAuth(async (ctx) => {
+  const { req, supabase, corsHeaders, url } = ctx;
   if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Method not allowed' }, corsHeaders, 405);
   }
 
-  const sessionId = url.searchParams.get('session_id');
+  const result = await verifySessionOwner(ctx);
+  if (result instanceof Response) return result;
+  const { session, sessionId } = result;
+
   const format = url.searchParams.get('format') || 'json';
-
-  if (!sessionId) {
-    return new Response(JSON.stringify({ error: 'session_id required' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Verify session ownership
-  const { data: session } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('id', sessionId)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), {
-      status: 404,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
 
   // Fetch all session data from canonical tables
   const [entities, connections, breakthroughs] = await Promise.all([
@@ -81,12 +60,8 @@ serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
   }
 
   console.log('Exported session:', sessionId, 'format:', format);
-
-  return new Response(JSON.stringify(exportData), {
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json',
-      'Content-Disposition': `attachment; filename="session-${sessionId}.json"`,
-    },
+  return jsonResponse(exportData, {
+    ...corsHeaders,
+    'Content-Disposition': `attachment; filename="session-${sessionId}.json"`,
   });
 });
