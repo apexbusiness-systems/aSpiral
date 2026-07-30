@@ -14,28 +14,7 @@ interface SemanticEntityProps {
   readonly onClick?: (entity: Entity) => void;
 }
 
-// Geometry components
-function EntityGeometry({ 
-  type, 
-  size 
-}: { 
-  type: "sphere" | "cube" | "octahedron" | "torus" | "cone"; 
-  size: number;
-}) {
-  switch (type) {
-    case "cube":
-      return <boxGeometry args={[size, size, size]} />;
-    case "octahedron":
-      return <octahedronGeometry args={[size, 0]} />;
-    case "torus":
-      return <torusGeometry args={[size * 0.6, size * 0.2, 16, 32]} />;
-    case "cone":
-      return <coneGeometry args={[size * 0.6, size, 16]} />;
-    case "sphere":
-    default:
-      return <sphereGeometry args={[size, 32, 32]} />;
-  }
-}
+import { EntityGeometry } from "./EntityGeometry";
 
 export function SemanticEntity({ entity, position, onClick }: SemanticEntityProps) {
   const meshRef = useRef<THREE.Mesh>(null);

@@ -1,108 +1,77 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
-import { validateAuth } from "../_shared/auth.ts";
+import { serveWithAuth } from "../_shared/apiHelper.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-serve(async (req) => {
-  const preflight = handleCorsPreFlight(req);
-  if (preflight) return preflight;
+serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
+  const sessionId = url.searchParams.get('session_id');
 
-  const corsHeaders = getCorsHeaders(req);
-
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const userId = await validateAuth(req, supabase);
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const url = new URL(req.url);
-    const sessionId = url.searchParams.get('session_id');
-
-    if (!sessionId) {
-      return new Response(JSON.stringify({ error: 'session_id required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Verify session ownership
-    const { data: session } = await supabase
-      .from('sessions')
-      .select('id')
-      .eq('id', sessionId)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Session not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (req.method === 'GET') {
-      const { data, error } = await supabase
-        .from('session_entities')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      return new Response(JSON.stringify({ entities: data }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (req.method === 'POST') {
-      const body = await req.json();
-
-      const { data, error } = await supabase
-        .from('session_entities')
-        .insert({
-          session_id: sessionId,
-          label: body.label,
-          type: body.type || 'concept',
-          metadata: {
-            entity_id: body.entity_id || crypto.randomUUID(),
-            energy: body.energy || 'neutral',
-            position_x: body.position_x ?? 0,
-            position_y: body.position_y ?? 0,
-            position_z: body.position_z ?? 0,
-          },
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      console.log('Created entity:', data.id);
-
-      return new Response(JSON.stringify({ entity: data }), {
-        status: 201,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (error: unknown) {
-    console.error('API Entities error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
+  if (!sessionId) {
+    return new Response(JSON.stringify({ error: 'session_id required' }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+  // Verify session ownership
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!session) {
+    return new Response(JSON.stringify({ error: 'Session not found' }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (req.method === 'GET') {
+    const { data, error } = await supabase
+      .from('session_entities')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ entities: data }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (req.method === 'POST') {
+    const body = await req.json();
+
+    const { data, error } = await supabase
+      .from('session_entities')
+      .insert({
+        session_id: sessionId,
+        label: body.label,
+        type: body.type || 'concept',
+        metadata: {
+          entity_id: body.entity_id || crypto.randomUUID(),
+          energy: body.energy || 'neutral',
+          position_x: body.position_x ?? 0,
+          position_y: body.position_y ?? 0,
+          position_z: body.position_z ?? 0,
+        },
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('Created entity:', data.id);
+
+    return new Response(JSON.stringify({ entity: data }), {
+      status: 201,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 });

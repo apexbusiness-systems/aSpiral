@@ -5,12 +5,9 @@
  * blending, intensity, distance - valid R3F/Three.js props, not standard HTML attributes.
  */
 
-import { useRef } from 'react';
-import { CameraController } from '@/lib/cinematics/CameraController';
-import { ParticleSystem } from '@/lib/cinematics/ParticleSystem';
-import { MATRIX_DECODE_CONFIG } from '@/lib/cinematics/configs';
-import type { CameraControllerRef, ParticleSystemRef } from '@/lib/cinematics/types';
 import * as THREE from 'three';
+import { CinematicBase } from './CinematicBase';
+import { MATRIX_DECODE_CONFIG } from '@/lib/cinematics/configs';
 
 interface MatrixDecodeProps {
   readonly onComplete?: () => void;
@@ -18,39 +15,12 @@ interface MatrixDecodeProps {
 }
 
 export function MatrixDecode({ onComplete, particleCount }: MatrixDecodeProps) {
-  const cameraRef = useRef<CameraControllerRef>(null);
-  const particlesRef = useRef<ParticleSystemRef>(null);
-
-  const config = MATRIX_DECODE_CONFIG;
-  const actualParticleCount = particleCount || config.particles!.count;
-
   return (
-    <group>
-      {/* Camera Animation */}
-      <CameraController
-        ref={cameraRef}
-        path={config.camera}
-        duration={config.duration}
-        onComplete={onComplete}
-      />
-
-      {/* Matrix Rain Particles */}
-      <ParticleSystem
-        ref={particlesRef}
-        count={actualParticleCount}
-        color={config.particles!.color}
-        size={config.particles!.size}
-        sizeVariation={config.particles!.sizeVariation}
-        speed={config.particles!.speed}
-        speedVariation={config.particles!.speedVariation}
-        lifetime={config.particles!.lifetime}
-        pattern={config.particles!.pattern}
-        patternParams={config.particles!.patternParams}
-        opacity={config.particles!.opacity}
-        blending={config.particles!.blending}
-        loop
-      />
-
+    <CinematicBase
+      config={MATRIX_DECODE_CONFIG}
+      onComplete={onComplete}
+      particleCount={particleCount}
+    >
       {/* Background Grid */}
       <mesh position={[0, 0, -5]} rotation={[0, 0, 0]}>
         <planeGeometry args={[40, 40, 20, 20]} />
@@ -79,21 +49,6 @@ export function MatrixDecode({ onComplete, particleCount }: MatrixDecodeProps) {
         );
       })}
 
-      {/* Lighting */}
-      <ambientLight
-        intensity={config.lighting!.ambient!.intensity}
-        color={config.lighting!.ambient!.color}
-      />
-      {config.lighting!.pointLights!.map((light, i) => (
-        <pointLight
-          key={i}
-          position={[light.position.x, light.position.y, light.position.z]}
-          color={light.color}
-          intensity={light.intensity}
-          distance={light.distance}
-        />
-      ))}
-
       {/* Central Data Sphere */}
       <mesh>
         <sphereGeometry args={[1, 32, 32]} />
@@ -105,6 +60,6 @@ export function MatrixDecode({ onComplete, particleCount }: MatrixDecodeProps) {
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-    </group>
+    </CinematicBase>
   );
 }

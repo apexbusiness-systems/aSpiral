@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
+import { useStreak } from '@/hooks/useStreak';
 import { useSessionStore } from '@/stores/sessionStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { AppPageLayout } from '@/components/layout/AppPageLayout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
@@ -18,7 +20,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { 
-  ArrowLeft, 
   Clock, 
   Trash2, 
   Play, 
@@ -30,12 +31,10 @@ import {
   Download,
   FileText,
   Layers,
-  Flame,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { createLogger } from '@/lib/logger';
-import { getErrorMessage } from '@/lib/normalizeError';
 
 interface SessionListItem {
   id: string;
@@ -62,7 +61,7 @@ const Sessions = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState<string | null>(null);
-  const [streakDays, setStreakDays] = useState(0);
+  const { streakDays } = useStreak(user?.id);
   // Load sessions with entity counts and breakthrough data
   const loadSessionsWithMetadata = useCallback(async () => {
     if (!user) return;
@@ -102,26 +101,9 @@ const Sessions = () => {
     setSessions(enriched);
   }, [user, loadSessions]);
 
-  // Load streak from profile
-  const loadStreak = useCallback(async () => {
-    if (!user) return;
-    try {
-      const db = supabase as any;
-      const { data } = await db
-        .from('profiles')
-        .select('streak_days')
-        .eq('id', user.id)
-        .single();
-      if (data) setStreakDays(data.streak_days || 0);
-    } catch (error) {
-      logger.warn('Failed to load streak', { error: getErrorMessage(error) });
-    }
-  }, [user]);
-
   useEffect(() => {
     loadSessionsWithMetadata();
-    loadStreak();
-  }, [loadSessionsWithMetadata, loadStreak]);
+  }, [loadSessionsWithMetadata]);
 
   const handleResumeSession = async (sessionId: string) => {
     const session = await loadSession(sessionId);
@@ -234,51 +216,23 @@ const Sessions = () => {
   };
 
   return (
-    <div className="app-container min-h-screen">
-      {/* Ambient background */}
-      <div className="ambient-orb w-96 h-96 bg-primary/30 top-0 left-0" />
-      <div className="ambient-orb w-80 h-80 bg-secondary/20 bottom-20 right-10" style={{ animationDelay: '-5s' }} />
-      
-      <div className="relative z-10 container max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/app')}
-              className="rounded-xl"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="font-display text-2xl font-bold text-foreground">
-                Session History
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Your exploration journey
-              </p>
-            </div>
-            {streakDays > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/15 border border-warning/30 text-warning">
-                <Flame className="w-4 h-4" />
-                <span className="text-sm font-semibold">{streakDays}</span>
-                <span className="text-xs text-warning/80">day{streakDays === 1 ? '' : 's'}</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/breakthroughs')} className="rounded-xl">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Breakthroughs
-            </Button>
-            <Button onClick={handleNewSession} className="rounded-xl">
-              <Sparkles className="w-4 h-4 mr-2" />
-              New Session
-            </Button>
-          </div>
-        </div>
-
+    <AppPageLayout
+      title="Session History"
+      subtitle="Your exploration journey"
+      streakDays={streakDays}
+      headerActions={
+        <>
+          <Button variant="outline" onClick={() => navigate('/breakthroughs')} className="rounded-xl">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Breakthroughs
+          </Button>
+          <Button onClick={handleNewSession} className="rounded-xl">
+            <Sparkles className="w-4 h-4 mr-2" />
+            New Session
+          </Button>
+        </>
+      }
+    >
         {/* Sessions List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -391,7 +345,6 @@ const Sessions = () => {
             </div>
           </ScrollArea>
         )}
-      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
@@ -418,7 +371,7 @@ const Sessions = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AppPageLayout>
   );
 };
 
