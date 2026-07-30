@@ -5,11 +5,13 @@ import { detectDeviceCapabilities, prefersReducedMotion } from "@/lib/performanc
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
 import * as THREE from "three";
 
+// NOSONAR - R3F intrinsic JSX props: object (primitive) - valid R3F prop, not HTML attribute.
+
 interface PremiumSpiralProps {
-  isPaused?: boolean;
-  instanceCount?: number;
-  capabilities?: DeviceCapabilities;
-  reducedMotion?: boolean;
+  readonly isPaused?: boolean;
+  readonly instanceCount?: number;
+  readonly capabilities?: DeviceCapabilities;
+  readonly reducedMotion?: boolean;
 }
 
 const SPIRAL_HEIGHT = 3.8; // Taller for more grandeur

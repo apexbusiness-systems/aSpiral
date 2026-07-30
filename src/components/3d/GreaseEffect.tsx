@@ -2,11 +2,14 @@ import { useRef, useState, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
+// NOSONAR - R3F intrinsic JSX props: position, args, emissive, emissiveIntensity,
+// transparent, roughness, metalness, rotation - valid R3F/Three.js props, not HTML attributes.
+
 interface GreaseEffectProps {
-  isActive: boolean;
-  isCorrect: boolean; // true = sticks (green), false = evaporates
-  position?: [number, number, number];
-  onComplete?: () => void;
+  readonly isActive: boolean;
+  readonly isCorrect: boolean; // true = sticks (green), false = evaporates
+  readonly position?: [number, number, number];
+  readonly onComplete?: () => void;
 }
 
 // Individual grease droplet
@@ -28,58 +31,66 @@ function GreaseDroplet({
   const startTime = useRef(0);
   const landTime = useRef(0);
 
+  const handleWaiting = (time: number) => {
+    if (startTime.current === 0) startTime.current = time;
+    if (time - startTime.current > delay) {
+      setPhase("falling");
+    }
+  };
+
+  const handleFalling = (time: number) => {
+    if (!ref.current) return;
+    const fallSpeed = 2;
+    ref.current.position.y -= fallSpeed * 0.016;
+
+    // Stretch while falling
+    ref.current.scale.y = 1.5;
+    ref.current.scale.x = 0.7;
+    ref.current.scale.z = 0.7;
+
+    if (ref.current.position.y <= targetY) {
+      ref.current.position.y = targetY;
+      landTime.current = time;
+      setPhase("landed");
+      onLand();
+    }
+  };
+
+  const handleLanded = (time: number) => {
+    if (!ref.current) return;
+    const landDuration = time - landTime.current;
+    if (landDuration < 0.2) {
+      ref.current.scale.y = 0.3;
+      ref.current.scale.x = 1 + landDuration * 3;
+      ref.current.scale.z = 1 + landDuration * 3;
+    } else if (!sticks) {
+      setPhase("evaporating");
+    }
+  };
+
+  const handleEvaporating = () => {
+    if (!ref.current) return;
+    // Rise and fade
+    ref.current.position.y += 0.02;
+    ref.current.scale.multiplyScalar(0.95);
+    const material = ref.current.material as THREE.MeshStandardMaterial;
+    material.opacity *= 0.95;
+
+    if (material.opacity < 0.05) {
+      setPhase("done");
+    }
+  };
+
   useFrame((state) => {
     if (!ref.current) return;
-
     const time = state.clock.elapsedTime;
 
-    if (phase === "waiting") {
-      if (startTime.current === 0) startTime.current = time;
-      if (time - startTime.current > delay) {
-        setPhase("falling");
-      }
-      return;
-    }
-
-    if (phase === "falling") {
-      const fallSpeed = 2;
-      ref.current.position.y -= fallSpeed * 0.016;
-
-      // Stretch while falling
-      ref.current.scale.y = 1.5;
-      ref.current.scale.x = 0.7;
-      ref.current.scale.z = 0.7;
-
-      if (ref.current.position.y <= targetY) {
-        ref.current.position.y = targetY;
-        landTime.current = time;
-        setPhase("landed");
-        onLand();
-      }
-    }
-
-    if (phase === "landed") {
-      // Splat effect
-      const landDuration = time - landTime.current;
-      if (landDuration < 0.2) {
-        ref.current.scale.y = 0.3;
-        ref.current.scale.x = 1 + landDuration * 3;
-        ref.current.scale.z = 1 + landDuration * 3;
-      } else if (!sticks) {
-        setPhase("evaporating");
-      }
-    }
-
-    if (phase === "evaporating") {
-      // Rise and fade
-      ref.current.position.y += 0.02;
-      ref.current.scale.multiplyScalar(0.95);
-      const material = ref.current.material as THREE.MeshStandardMaterial;
-      material.opacity *= 0.95;
-
-      if (material.opacity < 0.05) {
-        setPhase("done");
-      }
+    switch (phase) {
+      case "waiting": return handleWaiting(time);
+      case "falling": return handleFalling(time);
+      case "landed": return handleLanded(time);
+      case "evaporating": return handleEvaporating();
+      case "done": return;
     }
   });
 

@@ -1,6 +1,8 @@
 /**
  * Space Warp Cinematic Variant
  * Camera accelerates through light tunnel with star streaks
+ * NOSONAR - R3F intrinsic JSX props: position, args, transparent, blending, side,
+ * rotation, intensity, distance, wireframe - valid R3F/Three.js props, not HTML attributes.
  */
 
 import { useRef, useState } from 'react';
@@ -13,8 +15,8 @@ import * as THREE from 'three';
 import { easeOutExpo } from '@/lib/cinematics/easing';
 
 interface SpaceWarpProps {
-  onComplete?: () => void;
-  particleCount?: number;
+  readonly onComplete?: () => void;
+  readonly particleCount?: number;
 }
 
 export function SpaceWarp({ onComplete, particleCount }: SpaceWarpProps) {

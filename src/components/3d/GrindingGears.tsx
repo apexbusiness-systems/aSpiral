@@ -3,6 +3,9 @@ import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
 
+// NOSONAR - R3F intrinsic JSX props: position, args, transparent, geometry, rotation,
+// emissive, emissiveIntensity, metalness, roughness, intensity, distance - valid R3F props.
+
 // Helper to suppress SonarQube security warning for visual-only random values
 const visualRandom = () => {
   const array = new Uint32Array(1);
@@ -11,17 +14,16 @@ const visualRandom = () => {
 };
 
 interface GrindingGearsProps {
-  topLabel: string;
-  bottomLabel: string;
-  intensity?: number; // 0-1, how hard they're grinding
-  isActive: boolean;
-  position?: [number, number, number];
+  readonly topLabel: string;
+  readonly bottomLabel: string;
+  readonly intensity?: number; // 0-1, how hard they're grinding
+  readonly isActive: boolean;
+  readonly position?: [number, number, number];
 }
 
 // Create gear geometry
 function createGearShape(innerRadius: number, outerRadius: number, teeth: number) {
   const shape = new THREE.Shape();
-  const toothDepth = (outerRadius - innerRadius) * 0.3;
   const toothWidth = (Math.PI * 2) / teeth / 2;
 
   for (let i = 0; i < teeth; i++) {
