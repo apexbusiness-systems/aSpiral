@@ -107,7 +107,7 @@ export function QuestionBubble({
         {!isTyping && onAnswer && (
           <p className="mt-5 text-sm text-muted-foreground animate-in fade-in-0 duration-500 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            Answer with your voice or type below
+            <span>Answer with your voice or type below</span>
           </p>
         )}
       </div>

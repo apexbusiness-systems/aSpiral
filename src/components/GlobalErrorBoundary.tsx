@@ -226,6 +226,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
 
           {/* Reload button */}
           <button
+            type="button"
             onClick={this.handleReload}
             style={{
               padding: '14px 32px',

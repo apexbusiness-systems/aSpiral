@@ -52,6 +52,7 @@ export function MobileNav({ activeTab, onTabChange, isRecording, className }: Mo
 
           return (
             <button
+              type="button"
               key={tab.id}
               onClick={() => handleTabPress(tab.id)}
               onPointerDown={() => setPressedTab(tab.id)}
