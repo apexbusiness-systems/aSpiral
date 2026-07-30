@@ -119,6 +119,7 @@ export function EntityCard({
       {/* Dismiss button */}
       {onDismiss && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onDismiss(entity);
@@ -174,6 +175,7 @@ export function EntityCardList({
       {/* Header row with collapse toggle and clear all */}
       <div className="flex items-center justify-between mb-1.5 px-1">
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
           className="text-[10px] text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
         >
@@ -181,6 +183,7 @@ export function EntityCardList({
         </button>
         {!collapsed && onClearAll && entities.length > 0 && (
           <button
+            type="button"
             onClick={onClearAll}
             className="text-[10px] text-muted-foreground hover:text-destructive transition-colors touch-manipulation"
           >

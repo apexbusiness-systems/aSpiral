@@ -32,6 +32,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-expressions": "off",
       "@typescript-eslint/no-require-imports": "off",
       "react/prop-types": "off",
+      "react/no-unknown-property": "off",
     },
   },
 );

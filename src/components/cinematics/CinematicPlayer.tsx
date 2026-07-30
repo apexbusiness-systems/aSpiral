@@ -469,6 +469,7 @@ export function CinematicPlayer({
       {/* Skip Button */}
       {allowSkip && isPlaying && (
         <button
+          type="button"
           onClick={handleSkip}
           className="absolute bottom-8 right-8 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-sm transition-colors border border-white/20 font-medium"
           aria-label="Skip cinematic"
