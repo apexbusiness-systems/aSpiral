@@ -121,13 +121,13 @@ jobs:
           path: dist/
 
       - name: Capacitor doctor
-        run: npx @capacitor/cli@8.0.0 doctor || true
+        run: npx --no @capacitor/cli@8.0.0 doctor || true
 
       - name: Validate capacitor.config.ts
         run: |
           if [[ -f "capacitor.config.ts" ]]; then
             echo "✅ capacitor.config.ts found"
-            npx typescript@5.8.3 --noEmit capacitor.config.ts 2>/dev/null || echo "⚠️ Config validation skipped"
+            npx --no typescript@5.8.3 --noEmit capacitor.config.ts 2>/dev/null || echo "⚠️ Config validation skipped"
           else
             echo "⚠️ capacitor.config.ts not found"
           fi

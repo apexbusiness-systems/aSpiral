@@ -162,6 +162,41 @@ function selectMimeType(): string {
   return "";
 }
 
+async function performSttFetch(url: string, formData: FormData, accessToken: string): Promise<Response> {
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!response.ok && response.status >= 500 && attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
+        continue;
+      }
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        throw err;
+      }
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("STT fetch exhausted retries");
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 let sttSessionCounter = 0;
@@ -301,48 +336,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         const accessToken = authData.session?.access_token ?? (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string);
         const url = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/speech-to-text`;
 
-        let response: Response | null = null;
-        for (let attempt = 0; attempt <= 2; attempt++) {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000);
-          try {
-            response = await fetch(url, {
-              method: "POST",
-              headers: {
-                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: formData,
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            if (!response.ok && response.status >= 500 && attempt < 2) {
-              await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
-              continue;
-            }
-            break;
-          } catch (err) {
-            clearTimeout(timeoutId);
-            if (err instanceof Error && err.name === "AbortError") {
-              const timeoutError: SpiralError = { code: "STT_TIMEOUT", message: "Speech request timed out", retryable: true };
-              setSttError(timeoutError);
-              setSttResult({ transcript: null, error: timeoutError });
-              return;
-            }
-            if (attempt < 2) {
-              await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** attempt)));
-              continue;
-            }
-            throw err;
-          }
-        }
-
-        if (!response) {
-          const fetchError: SpiralError = { code: "STT_FETCH_FAILED", message: "No response from speech service", retryable: true };
-          setSttError(fetchError);
-          setSttResult({ transcript: null, error: fetchError });
-          return;
-        }
+        const response = await performSttFetch(url, formData, accessToken);
 
         if (!response.ok) {
           const errText = await response.text();
@@ -365,6 +359,13 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           }
         }
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          const timeoutError: SpiralError = { code: "STT_TIMEOUT", message: "Speech request timed out", retryable: true };
+          setSttError(timeoutError);
+          setSttResult({ transcript: null, error: timeoutError });
+          return;
+        }
+
         const message = err instanceof Error ? err.message : String(err);
         const isCorsError = /cors|networkerror|failed to fetch/i.test(message);
         const failureError: SpiralError = {

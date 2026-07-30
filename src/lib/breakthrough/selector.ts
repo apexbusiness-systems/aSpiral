@@ -209,6 +209,31 @@ function calculateTotalScore(
 // SELECTION FUNCTIONS
 // ============================================================================
 
+function pickTopVariant(
+  sortedVariants: BaseVariant[],
+  scores: Map<string, number>,
+  mostRecentVariantId: string | undefined
+): BaseVariant {
+  const topN = Math.min(3, sortedVariants.length);
+  const topVariants = sortedVariants.slice(0, topN);
+
+  const candidateTopVariants =
+    mostRecentVariantId && topVariants.length > 1
+      ? topVariants.filter((variant) => variant.id !== mostRecentVariantId)
+      : topVariants;
+
+  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+  let random = secureMathRandom() * totalTopScore;
+
+  for (const variant of candidateTopVariants) {
+    random -= scores.get(variant.id) || 0;
+    if (random <= 0) {
+      return variant;
+    }
+  }
+  return candidateTopVariants[0] || topVariants[0];
+}
+
 /**
  * Get eligible variants based on quality tier and reduced motion
  */
@@ -277,29 +302,8 @@ export function selectVariant(context: SelectionContext): {
   );
   
   // Select top variant (with some randomness for variety)
-  const topN = Math.min(3, sortedVariants.length);
-  const topVariants = sortedVariants.slice(0, topN);
-
-  // Avoid immediate repeats when viable: if last selected variant is in the top pool,
-  // remove it when at least one alternative remains.
   const mostRecentVariantId = effectiveContext.recentVariantIds[effectiveContext.recentVariantIds.length - 1];
-  const candidateTopVariants =
-    mostRecentVariantId && topVariants.length > 1
-      ? topVariants.filter((variant) => variant.id !== mostRecentVariantId)
-      : topVariants;
-
-  // Weighted random selection from the filtered top pool.
-  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
-  let random = secureMathRandom() * totalTopScore;
-
-  let selectedVariant = candidateTopVariants[0] || topVariants[0];
-  for (const variant of candidateTopVariants) {
-    random -= scores.get(variant.id) || 0;
-    if (random <= 0) {
-      selectedVariant = variant;
-      break;
-    }
-  }
+  const selectedVariant = pickTopVariant(sortedVariants, scores, mostRecentVariantId);
   
   // Generate seed and mutate
   const seed = generateSeed();

@@ -174,59 +174,30 @@ function calculateSimilarity(a: string, b: string): number {
   return overlap / Math.max(wordsA.size, wordsB.size);
 }
 
-/**
- * Get the strategic question for current stage
- */
+const STAGE_QUESTIONS: Record<ConversationStage, { systemPrompt: string; maxWords: number }> = {
+  friction: {
+    systemPrompt: `Ask ONE direct question to identify what's grinding.\n\nEXAMPLES:\n- "So it's the traffic. What's the real grind there?"\n- "Stuck on the decision. What's making it hard?"\n- "Feeling overwhelmed. What's the biggest piece?"\n\nBe DIRECT. Reference their words. Under 15 words.`,
+    maxWords: 15,
+  },
+  desire: {
+    systemPrompt: `Ask ONE question to identify what they actually want.\n\nEXAMPLES:\n- "Okay. What do you want instead?"\n- "If this wasn't grinding, what would you have?"\n- "Strip away the noise. What matters?"\n\nBe DIRECT. Under 15 words.`,
+    maxWords: 15,
+  },
+  blocker: {
+    systemPrompt: `Ask ONE question to identify what's blocking them.\n\nEXAMPLES:\n- "So what's stopping you?"\n- "If you could do that, what's in the way?"\n- "What's the real blocker here?"\n\nBe DIRECT. Under 15 words.`,
+    maxWords: 15,
+  },
+  breakthrough: {
+    systemPrompt: "",
+    maxWords: 0,
+  }
+};
+
 export function getStageQuestion(stage: ConversationStage): {
   systemPrompt: string;
   maxWords: number;
 } {
-  switch (stage) {
-    case "friction":
-      return {
-        systemPrompt: `Ask ONE direct question to identify what's grinding.
-        
-EXAMPLES:
-- "So it's the traffic. What's the real grind there?"
-- "Stuck on the decision. What's making it hard?"
-- "Feeling overwhelmed. What's the biggest piece?"
-
-Be DIRECT. Reference their words. Under 15 words.`,
-        maxWords: 15,
-      };
-    
-    case "desire":
-      return {
-        systemPrompt: `Ask ONE question to identify what they actually want.
-
-EXAMPLES:
-- "Okay. What do you want instead?"
-- "If this wasn't grinding, what would you have?"
-- "Strip away the noise. What matters?"
-
-Be DIRECT. Under 15 words.`,
-        maxWords: 15,
-      };
-    
-    case "blocker":
-      return {
-        systemPrompt: `Ask ONE question to identify what's blocking them.
-
-EXAMPLES:
-- "So what's stopping you?"
-- "If you could do that, what's in the way?"
-- "What's the real blocker here?"
-
-Be DIRECT. Under 15 words.`,
-        maxWords: 15,
-      };
-    
-    default:
-      return {
-        systemPrompt: "",
-        maxWords: 0,
-      };
-  }
+  return STAGE_QUESTIONS[stage] || STAGE_QUESTIONS.breakthrough;
 }
 
 /**

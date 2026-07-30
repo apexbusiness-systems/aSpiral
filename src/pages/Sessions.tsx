@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionPersistence } from '@/hooks/useSessionPersistence';
 import { useStreak } from '@/hooks/useStreak';
@@ -47,10 +46,7 @@ interface SessionListItem {
   hasBreakthrough?: boolean;
 }
 
-const logger = createLogger('SessionsPage');
-
 const Sessions = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { loadSessions, loadSession, deleteSession, isLoading } = useSessionPersistence();

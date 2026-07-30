@@ -1,93 +1,26 @@
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Sparkles, Eye, Layers, Zap, Move3D } from "lucide-react";
-import aspiralLogo from "@/assets/aspiral-logo.png";
+import { Eye, Layers, Zap, Move3D } from "lucide-react";
 import visualizeIcon from "@/assets/visualize-icon.png";
-
 import { fadeUp } from "@/lib/animations";
+import { StepLayout } from "@/components/layouts/StepLayout";
 
 const WatchItVisualize = () => {
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Aurora Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <motion.div 
-          className="absolute top-0 -left-20 w-[120%] h-[500px]"
-          style={{
-            background: `radial-gradient(ellipse 80% 50% at 70% 20%, hsl(180 60% 50% / 0.12) 0%, hsl(var(--primary) / 0.18) 40%, transparent 70%)`,
-            filter: 'blur(80px)',
-          }}
-          animate={{ opacity: [0.5, 0.7, 0.5] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background)/0.4)_50%,hsl(var(--background))_100%)]" />
-      </div>
-
-      {/* Header */}
-      <header className="relative z-10 border-b border-border/30 backdrop-blur-sm">
-        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <img src={aspiralLogo} alt="aSpiral" className="h-10 drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
-          </Link>
-          <Link to="/auth">
-            <Button size="sm" className="bg-primary hover:bg-primary/90">
-              Get Started
-              <Sparkles className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative z-10 py-16 md:py-24 px-6">
-        <div className="mx-auto max-w-4xl">
-          {/* Back Navigation */}
-          <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={0}>
-            <Link to="/#how-it-works" className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors mb-8 group">
-              <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              Back to How It Works
-            </Link>
-          </motion.div>
-
-          {/* Step Badge */}
-          <motion.div 
-            className="flex items-center gap-4 mb-8"
-            initial="hidden" animate="visible" variants={fadeUp} custom={0.1}
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-xl font-bold text-primary">
-              2
-            </div>
-            <span className="text-muted-foreground text-lg">Step 2 of 4</span>
-          </motion.div>
-
-          {/* Hero */}
-          <motion.div 
-            className="flex flex-col md:flex-row items-start gap-8 mb-16"
-            initial="hidden" animate="visible" variants={fadeUp} custom={0.2}
-          >
-            <motion.img 
-              src={visualizeIcon} 
-              alt="Visualize Icon" 
-              className="w-24 h-24 md:w-32 md:h-32"
-              animate={{ 
-                rotate: [0, 5, -5, 0],
-                filter: ["drop-shadow(0 0 20px hsl(180 60% 50% / 0.3))", "drop-shadow(0 0 40px hsl(180 60% 50% / 0.5))", "drop-shadow(0 0 20px hsl(180 60% 50% / 0.3))"]
-              }}
-              transition={{ duration: 4, repeat: Infinity }}
-            />
-            <div>
-              <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-                Watch It Visualize
-              </h1>
-              <p className="text-xl md:text-2xl text-muted-foreground">
-                Your thoughts become 3D objects you can see and understand.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Content Sections */}
-          <div className="space-y-16">
+    <StepLayout
+      step={2}
+      totalSteps={4}
+      heroTitle="Watch It Visualize"
+      heroSubtitle="Your thoughts become 3D objects you can see and understand."
+      heroIcon={visualizeIcon}
+      prevLink="/steps/voice"
+      prevText="Previous: Voice"
+      nextLink="/steps/questions"
+      nextText="Next: Questions"
+      gradientStart="hsl(180 60% 50% / 0.12)"
+      gradientMid="hsl(var(--primary) / 0.18)"
+      gradientPos="70% 20%"
+    >
+      <div className="space-y-16">
             {/* The Magic */}
             <motion.section initial="hidden" animate="visible" variants={fadeUp} custom={0.3}>
               <h2 className="font-display text-2xl md:text-3xl font-semibold mb-6 text-primary">
@@ -180,37 +113,8 @@ const WatchItVisualize = () => {
               </blockquote>
               <p className="mt-4 text-sm text-muted-foreground/70">— Beta user feedback</p>
             </motion.section>
-          </div>
-
-          {/* Navigation */}
-          <motion.div 
-            className="mt-20 pt-10 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-6"
-            initial="hidden" animate="visible" variants={fadeUp} custom={0.7}
-          >
-            <Link to="/steps/voice">
-              <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Previous: Voice
-              </Button>
-            </Link>
-            <div className="flex gap-4">
-              <Link to="/auth">
-                <Button size="lg" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30">
-                  Start Your Breakthrough
-                  <Sparkles className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/steps/questions">
-                <Button variant="outline" size="lg" className="border-primary/50 hover:bg-primary/10">
-                  Next: Questions
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </StepLayout>
   );
 };
 

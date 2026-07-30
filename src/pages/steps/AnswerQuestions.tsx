@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 import { Target, Brain, Clock, Heart } from "lucide-react";
 import questionIcon from "@/assets/question-icon.png";
 import { StepLayout } from "@/components/layouts/StepLayout";
-
 import { fadeUp } from "@/lib/animations";
+import { FeatureGrid } from "@/components/ui/FeatureGrid";
 
 const AnswerQuestions = () => {
   return (
@@ -41,30 +41,19 @@ const AnswerQuestions = () => {
         </div>
       </motion.section>
 
-      {/* How It Works */}
       <motion.section initial="hidden" animate="visible" variants={fadeUp as any} custom={0.4}>
         <h2 className="font-display text-2xl md:text-3xl font-semibold mb-6 text-secondary">
           Smart questions, not more questions.
         </h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          {[
+        <FeatureGrid
+          cols={2}
+          items={[
             { icon: Brain, title: "AI-generated", desc: "Based on what YOU said, not some generic template. Each question is tailored to your specific chaos." },
             { icon: Target, title: "Precision focus", desc: "Questions aim at the friction point—the thing that's actually stuck, not the symptoms around it." },
             { icon: Clock, title: "2-3 max", desc: "Most people need 2 questions. Sometimes 3. Never 20. We respect your time and energy." },
             { icon: Heart, title: "Gently probing", desc: "Questions feel like a good therapist's follow-up, not an interrogation or a corporate survey." },
-          ].map((item, i) => (
-            <motion.div 
-              key={i}
-              className="p-6 rounded-2xl border border-border/30 bg-card/30 backdrop-blur-sm"
-              whileHover={{ scale: 1.02, borderColor: "hsl(var(--primary)/0.4)" }}
-              transition={{ type: "spring", stiffness: 400 }}
-            >
-              <item.icon className="w-8 h-8 text-primary mb-4" />
-              <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-              <p className="text-muted-foreground text-sm">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
+          ]}
+        />
       </motion.section>
 
       {/* Examples */}

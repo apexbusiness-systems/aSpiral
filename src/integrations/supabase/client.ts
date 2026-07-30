@@ -111,80 +111,73 @@ function createMockClient(): SupabaseClient<Database> {
   return createProxy({} as SupabaseClient<Database>);
 }
 
+function validateEnvVariables(): boolean {
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    printInitError('', [
+      'Missing required environment variables:',
+      !SUPABASE_URL ? '  ✗ VITE_SUPABASE_URL is not defined' : '',
+      !SUPABASE_PUBLISHABLE_KEY ? '  ✗ VITE_SUPABASE_PUBLISHABLE_KEY is not defined' : '',
+      '',
+      'The app will boot with a mock client. Authentication and',
+      'database features will not work until these are configured.'
+    ].filter(Boolean));
+    return false;
+  }
+  return true;
+}
+
+function validateUrlFormat(): boolean {
+  try {
+    new URL(SUPABASE_URL!);
+    return true;
+  } catch {
+    printInitError('', [`VITE_SUPABASE_URL is not a valid URL: ${SUPABASE_URL}`]);
+    return false;
+  }
+}
+
+function flagMisconfigured() {
+  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+    const w = globalThis.window as Window & { __SUPABASE_MISCONFIGURED__?: boolean };
+    w.__SUPABASE_MISCONFIGURED__ = true;
+  }
+}
+
+function validateKnownBadValues(): boolean {
+  const KNOWN_BAD_REFS = ['egtwatyodujxofrdznen', 'your-project-id', 'YOUR_ACTUAL_PROJECT'];
+  if (KNOWN_BAD_REFS.some(bad => SUPABASE_URL!.includes(bad))) {
+    printInitError('PLACEHOLDER URL DETECTED', [
+      `VITE_SUPABASE_URL contains a known placeholder: ${SUPABASE_URL}`,
+      'The Supabase project has not been provisioned yet, or the',
+      'credentials have not been updated after provisioning.',
+      'See SUPABASE_SETUP.md for setup instructions.'
+    ]);
+    flagMisconfigured();
+    return false;
+  }
+
+  const KNOWN_BAD_KEYS = ['REPLACE_WITH_REAL_ANON_KEY', 'your-anon-key-here'];
+  if (KNOWN_BAD_KEYS.some(bad => SUPABASE_PUBLISHABLE_KEY!.includes(bad))) {
+    printInitError('', ['VITE_SUPABASE_PUBLISHABLE_KEY is a placeholder — not a real anon key']);
+    flagMisconfigured();
+    return false;
+  }
+  return true;
+}
+
 /**
  * Initialize Supabase client with defensive checks.
  * Returns a working client if properly configured, or a mock client that
  * fails gracefully if environment variables are missing.
  */
 function initializeSupabaseClient(): SupabaseClient<Database> {
-  // Check for missing environment variables
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error('  SUPABASE INITIALIZATION FAILED');
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error('  Missing required environment variables:');
-    if (!SUPABASE_URL) {
-      console.error('    ✗ VITE_SUPABASE_URL is not defined');
-    }
-    if (!SUPABASE_PUBLISHABLE_KEY) {
-      console.error('    ✗ VITE_SUPABASE_PUBLISHABLE_KEY is not defined');
-    }
-    console.error('');
-    console.error('  The app will boot with a mock client. Authentication and');
-    console.error('  database features will not work until these are configured.');
-    console.error('═══════════════════════════════════════════════════════════════');
-
-    return createMockClient();
-  }
-
-  // Validate URL format
-  try {
-    new URL(SUPABASE_URL);
-  } catch {
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error('  SUPABASE INITIALIZATION FAILED');
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error(`  VITE_SUPABASE_URL is not a valid URL: ${SUPABASE_URL}`);
-    console.error('═══════════════════════════════════════════════════════════════');
-
-    return createMockClient();
-  }
-
-
-  // Guard against known-bad placeholder values that indicate provisioning hasn't occurred
-  const KNOWN_BAD_REFS = ['egtwatyodujxofrdznen', 'your-project-id', 'YOUR_ACTUAL_PROJECT'];
-  const isBadUrl = KNOWN_BAD_REFS.some(bad => SUPABASE_URL.includes(bad));
-  if (isBadUrl) {
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error('  SUPABASE INITIALIZATION FAILED — PLACEHOLDER URL DETECTED');
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error(`  VITE_SUPABASE_URL contains a known placeholder: ${SUPABASE_URL}`);
-    console.error('  The Supabase project has not been provisioned yet, or the');
-    console.error('  credentials have not been updated after provisioning.');
-    console.error('  See SUPABASE_SETUP.md for setup instructions.');
-    console.error('═══════════════════════════════════════════════════════════════');
-    // Set a global flag that the app UI can check to show a config error screen
-    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
-      const w = globalThis.window as Window & { __SUPABASE_MISCONFIGURED__?: boolean };
-      w.__SUPABASE_MISCONFIGURED__ = true;
-    }
-    return createMockClient();
-  }
-
-  const KNOWN_BAD_KEYS = ['REPLACE_WITH_REAL_ANON_KEY', 'your-anon-key-here'];
-  const isBadKey = KNOWN_BAD_KEYS.some(bad => SUPABASE_PUBLISHABLE_KEY?.includes(bad));
-  if (isBadKey) {
-    console.error('  VITE_SUPABASE_PUBLISHABLE_KEY is a placeholder — not a real anon key');
-    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
-      const w = globalThis.window as Window & { __SUPABASE_MISCONFIGURED__?: boolean };
-      w.__SUPABASE_MISCONFIGURED__ = true;
-    }
+  if (!validateEnvVariables() || !validateUrlFormat() || !validateKnownBadValues()) {
     return createMockClient();
   }
 
   // Create the real client
   try {
-    return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    return createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
       auth: {
         // FIX: Use localStorage (not sessionStorage) to persist auth sessions
         // across tab closes, PWA backgrounding, and page reloads on mobile.
@@ -196,12 +189,7 @@ function initializeSupabaseClient(): SupabaseClient<Database> {
       },
     });
   } catch (error) {
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error('  SUPABASE INITIALIZATION FAILED');
-    console.error('═══════════════════════════════════════════════════════════════');
-    console.error('  Error creating Supabase client:', error);
-    console.error('═══════════════════════════════════════════════════════════════');
-
+    printInitError('', ['Error creating Supabase client:', String(error)]);
     return createMockClient();
   }
 }
