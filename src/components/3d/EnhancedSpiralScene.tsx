@@ -1,6 +1,7 @@
 import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
+import { createLogger } from "@/lib/logger";
 import { detectDeviceCapabilities, prefersReducedMotion } from "@/lib/performance/optimizer";
 import { SpiralEntities } from "./SpiralEntities";
 import { FrictionEffects } from "./FrictionEffects";
@@ -13,6 +14,8 @@ import { AuroraPlatform } from "./aurora/AuroraPlatform";
 import { isRendererWorkerEnabled } from "@/lib/rendererFlags";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { DeviceCapabilities } from "@/lib/cinematics/types";
+
+const logger = createLogger("EnhancedSpiralScene");
 
 function supportsOffscreenCanvas(): boolean {
   return (
@@ -102,6 +105,7 @@ export function EnhancedSpiralScene({ interactive = true }: EnhancedSpiralSceneP
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.05;
         }}
+        onError={(err) => logger.warn("R3F Canvas onError", { detail: String(err) })}
       >
         <Suspense fallback={null}>
           <EnhancedSceneContent capabilities={capabilities} reducedMotion={reducedMotion} />
