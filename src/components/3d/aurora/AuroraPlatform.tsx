@@ -2,6 +2,9 @@
  * @fileoverview Premium Aurora platform stage component
  * @module components/3d/aurora/AuroraPlatform
  * @sonarqube cognitive-complexity: 6
+ * NOSONAR - R3F intrinsic JSX props: position, rotation, args, transparent,
+ * metalness, roughness, blending, depthWrite, attach, count, array, itemSize,
+ * sizeAttenuation, alphaMap - valid R3F/Three.js props, not standard HTML attributes.
  */
 
 import { useMemo, useRef, useEffect } from 'react'

@@ -1,6 +1,8 @@
 /**
  * Particle Explosion Cinematic Variant
  * Camera zooms in while particles explode outward with shockwave
+ * NOSONAR - R3F intrinsic JSX props: rotation, args, transparent, side, blending,
+ * intensity, position, distance, decay - valid R3F/Three.js props, not HTML attributes.
  */
 
 import { useRef, useState } from 'react';
@@ -13,8 +15,8 @@ import * as THREE from 'three';
 import { easeOutExpo } from '@/lib/cinematics/easing';
 
 interface ParticleExplosionProps {
-  onComplete?: () => void;
-  particleCount?: number;
+  readonly onComplete?: () => void;
+  readonly particleCount?: number;
 }
 
 export function ParticleExplosion({ onComplete, particleCount }: ParticleExplosionProps) {

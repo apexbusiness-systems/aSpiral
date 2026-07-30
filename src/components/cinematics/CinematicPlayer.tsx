@@ -3,6 +3,7 @@
  * Handles variant selection, audio, analytics, and skip functionality
  * Includes fallback timeout for WebGL failures
  * Integrated with Breakthrough V2 Director for enhanced variety and reliability
+ * NOSONAR - R3F intrinsic JSX props: attach, args - valid R3F props, not HTML attributes.
  */
 
 import { useState, useEffect, useRef, Suspense, Component, ReactNode, useCallback } from 'react';

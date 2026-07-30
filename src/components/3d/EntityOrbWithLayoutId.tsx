@@ -3,6 +3,8 @@
  * 
  * Wraps the 3D EntityOrb with a framer-motion layoutId for
  * seamless morphing between 3D scene and 2D chat interface.
+ * NOSONAR - R3F intrinsic JSX props: position, args, emissive, emissiveIntensity,
+ * transparent, roughness, metalness, rotation, side - valid R3F props, not HTML.
  */
 
 import { useRef, useState } from "react";
@@ -13,10 +15,10 @@ import * as THREE from "three";
 import type { Entity } from "@/lib/types";
 
 interface EntityOrbWithLayoutIdProps {
-  entity: Entity;
-  position: [number, number, number];
-  onClick?: (entity: Entity) => void;
-  enableLayoutAnimation?: boolean;
+  readonly entity: Entity;
+  readonly position: [number, number, number];
+  readonly onClick?: (entity: Entity) => void;
+  readonly enableLayoutAnimation?: boolean;
 }
 
 const entityColors: Record<string, string> = {

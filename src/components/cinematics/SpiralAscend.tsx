@@ -1,6 +1,8 @@
 /**
  * Spiral Ascend Cinematic Variant
  * Camera spirals upward with green vortex particles
+ * NOSONAR - R3F intrinsic JSX props: position, args, transparent, emissive,
+ * emissiveIntensity, intensity, distance - valid R3F/Three.js props, not HTML attributes.
  */
 
 import { useRef } from 'react';
@@ -11,8 +13,8 @@ import { SPIRAL_ASCEND_CONFIG } from '@/lib/cinematics/configs';
 import type { CameraControllerRef, ParticleSystemRef } from '@/lib/cinematics/types';
 
 interface SpiralAscendProps {
-  onComplete?: () => void;
-  particleCount?: number;
+  readonly onComplete?: () => void;
+  readonly particleCount?: number;
 }
 
 export function SpiralAscend({ onComplete, particleCount }: SpiralAscendProps) {

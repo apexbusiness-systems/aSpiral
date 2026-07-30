@@ -1,6 +1,8 @@
 /**
  * Portal Reveal Cinematic Variant
  * Camera glides through rotating portal ring with energy particles
+ * NOSONAR - R3F intrinsic JSX props: rotation, args, transparent, blending, position,
+ * intensity, distance - valid R3F/Three.js props, not standard HTML attributes.
  */
 
 import { useRef, useState } from 'react';
@@ -12,8 +14,8 @@ import type { CameraControllerRef, ParticleSystemRef } from '@/lib/cinematics/ty
 import * as THREE from 'three';
 
 interface PortalRevealProps {
-  onComplete?: () => void;
-  particleCount?: number;
+  readonly onComplete?: () => void;
+  readonly particleCount?: number;
 }
 
 export function PortalReveal({ onComplete, particleCount }: PortalRevealProps) {

@@ -5,10 +5,13 @@ import * as THREE from "three";
 import type { Entity } from "@/lib/types";
 import { getEntityVisualConfig, getColorByValence } from "@/lib/visualVariety";
 
+// NOSONAR - R3F intrinsic JSX props: args, emissive, emissiveIntensity, transparent,
+// roughness, metalness, wireframe, position - valid R3F/Three.js props, not HTML attributes.
+
 interface SemanticEntityProps {
-  entity: Entity;
-  position: [number, number, number];
-  onClick?: (entity: Entity) => void;
+  readonly entity: Entity;
+  readonly position: [number, number, number];
+  readonly onClick?: (entity: Entity) => void;
 }
 
 // Geometry components

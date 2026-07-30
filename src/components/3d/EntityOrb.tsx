@@ -4,10 +4,13 @@ import { Text, Float } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
 
+// NOSONAR - R3F intrinsic JSX props: position, args, emissive, emissiveIntensity,
+// transparent, roughness, metalness, intensity, distance - valid R3F props, not HTML.
+
 interface EntityOrbProps {
-  entity: Entity;
-  position: [number, number, number];
-  onClick?: (entity: Entity) => void;
+  readonly entity: Entity;
+  readonly position: [number, number, number];
+  readonly onClick?: (entity: Entity) => void;
 }
 
 const entityColors: Record<string, string> = {

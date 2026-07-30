@@ -1,6 +1,8 @@
 /**
  * Breakthrough Fallback - Lightweight Clarity Pulse Effect
  * Safe mode fallback when main breakthrough effects fail or device is low-tier
+ * NOSONAR - R3F intrinsic JSX props: args, transparent, rotation, side, intensity, position
+ * are valid R3F/Three.js props, not standard HTML attributes.
  */
 
 import { useRef } from 'react';
@@ -8,9 +10,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface BreakthroughFallbackProps {
-  onComplete: () => void;
-  duration?: number;
-  color?: string;
+  readonly onComplete: () => void;
+  readonly duration?: number;
+  readonly color?: string;
 }
 
 export function BreakthroughFallback({
