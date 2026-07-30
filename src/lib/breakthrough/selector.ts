@@ -245,12 +245,25 @@ export function selectVariant(context: SelectionContext): {
 
   // Refresh recency/fatigue signals from persisted history so callers with a stale context
   // still get anti-repetition behavior across sequential selections.
+
+  // Performance Optimization: Replaced chained .slice().map() with a single-pass for loop
+  // to decrease garbage collection pressure, strictly following memory guidelines.
+  const recentVariantIdsCount = Math.min(RECENCY_WINDOW, history.entries.length);
+  const recentVariantIds = new Array(recentVariantIdsCount);
+  for (let i = 0; i < recentVariantIdsCount; i++) {
+    recentVariantIds[i] = history.entries[history.entries.length - recentVariantIdsCount + i].variantId;
+  }
+
+  const recentIntensitiesCount = Math.min(FATIGUE_CONFIG.fatigueWindow, history.entries.length);
+  const recentIntensities = new Array(recentIntensitiesCount);
+  for (let i = 0; i < recentIntensitiesCount; i++) {
+    recentIntensities[i] = history.entries[history.entries.length - recentIntensitiesCount + i].intensity;
+  }
+
   const effectiveContext: SelectionContext = {
     ...context,
-    recentVariantIds: history.entries.slice(-RECENCY_WINDOW).map((entry) => entry.variantId),
-    recentIntensities: history.entries
-      .slice(-FATIGUE_CONFIG.fatigueWindow)
-      .map((entry) => entry.intensity),
+    recentVariantIds,
+    recentIntensities,
   };
 
   const eligibleVariants = getEligibleVariants(effectiveContext);
@@ -289,7 +302,12 @@ export function selectVariant(context: SelectionContext): {
       : topVariants;
 
   // Weighted random selection from the filtered top pool.
-  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+  // Performance Optimization: Replaced .reduce() with a single-pass for loop
+  // to decrease garbage collection pressure, strictly following memory guidelines.
+  let totalTopScore = 0;
+  for (let i = 0; i < candidateTopVariants.length; i++) {
+    totalTopScore += scores.get(candidateTopVariants[i].id) || 0;
+  }
   let random = secureMathRandom() * totalTopScore;
 
   let selectedVariant = candidateTopVariants[0] || topVariants[0];
