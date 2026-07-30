@@ -6,16 +6,16 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallback, useRef, useState } from "react";
 
 interface MicButtonProps {
-  isRecording: boolean;
-  isProcessing: boolean;
-  isSupported: boolean;
-  isPaused?: boolean;
-  onClick: () => void;
-  onPause?: () => void;
-  onStop?: () => void;
+  readonly isRecording: boolean;
+  readonly isProcessing: boolean;
+  readonly isSupported: boolean;
+  readonly isPaused?: boolean;
+  readonly onClick: () => void;
+  readonly onPause?: () => void;
+  readonly onStop?: () => void;
 }
 
-function RecordingPulseEffect({ isRecording, isPaused }: { isRecording: boolean; isPaused: boolean }) {
+function RecordingPulseEffect({ isRecording, isPaused }: { readonly isRecording: boolean; readonly isPaused: boolean }) {
   if (!isRecording || isPaused) return null;
   return (
     <>
@@ -33,7 +33,7 @@ function RecordingPulseEffect({ isRecording, isPaused }: { isRecording: boolean;
   );
 }
 
-function RecordingStatusIcon({ isProcessing, isRecording, iconSize }: { isProcessing: boolean; isRecording: boolean; iconSize: string }) {
+function RecordingStatusIcon({ isProcessing, isRecording, iconSize }: { readonly isProcessing: boolean; readonly isRecording: boolean; readonly iconSize: string }) {
   if (isProcessing) {
     return (
       <motion.div
