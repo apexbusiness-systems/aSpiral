@@ -1,18 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { motion, type Easing } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Sparkles, Eye, Layers, Zap, Move3D } from "lucide-react";
 import aspiralLogo from "@/assets/aspiral-logo.png";
 import visualizeIcon from "@/assets/visualize-icon.png";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (delay: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" as Easing, delay },
-  }),
-};
+import { fadeUp } from "@/lib/animations";
 
 const WatchItVisualize = () => {
   return (

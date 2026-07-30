@@ -3,14 +3,7 @@ import { Target, Brain, Clock, Heart } from "lucide-react";
 import questionIcon from "@/assets/question-icon.png";
 import { StepLayout } from "@/components/layouts/StepLayout";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (delay: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut", delay },
-  }),
-};
+import { fadeUp } from "@/lib/animations";
 
 const AnswerQuestions = () => {
   return (

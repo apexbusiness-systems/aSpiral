@@ -1,4 +1,4 @@
-import { serveWithAuth } from "../_shared/apiHelper.ts";
+import { serveWithAuth, jsonResponse } from "../_shared/apiHelper.ts";
 
 async function handleGet(supabase: any, userId: string, corsHeaders: any, url: URL, sessionId: string | null) {
   if (sessionId) {
@@ -10,10 +10,7 @@ async function handleGet(supabase: any, userId: string, corsHeaders: any, url: U
       .maybeSingle();
 
     if (error) throw error;
-    
-    return new Response(JSON.stringify({ session: data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ session: data }, corsHeaders);
   }
 
   const limit = parseInt(url.searchParams.get('limit') || '50');
@@ -27,10 +24,7 @@ async function handleGet(supabase: any, userId: string, corsHeaders: any, url: U
     .range(offset, offset + limit - 1);
 
   if (error) throw error;
-
-  return new Response(JSON.stringify({ sessions: data, total: count }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ sessions: data, total: count }, corsHeaders);
 }
 
 async function handlePost(req: Request, supabase: any, userId: string, corsHeaders: any) {
@@ -49,11 +43,7 @@ async function handlePost(req: Request, supabase: any, userId: string, corsHeade
   if (error) throw error;
 
   console.log('Created session:', data.id);
-
-  return new Response(JSON.stringify({ session: data }), {
-    status: 201,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ session: data }, corsHeaders, 201);
 }
 
 async function handleDelete(supabase: any, userId: string, corsHeaders: any, sessionId: string) {
@@ -66,10 +56,7 @@ async function handleDelete(supabase: any, userId: string, corsHeaders: any, ses
   if (error) throw error;
 
   console.log('Deleted session:', sessionId);
-
-  return new Response(JSON.stringify({ success: true }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ success: true }, corsHeaders);
 }
 
 serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
@@ -87,8 +74,5 @@ serveWithAuth(async ({ req, supabase, userId, corsHeaders, url }) => {
     return handleDelete(supabase, userId, corsHeaders, sessionId);
   }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-    status: 405,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ error: 'Method not allowed' }, corsHeaders, 405);
 });
