@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Check site loads without error boundary
         run: |
-          BODY=$(curl -sL https://aspiral.icu)
+          BODY=$(curl -sL --proto-redir =https https://aspiral.icu)
           echo "$BODY" | grep -qi "Something went wrong" && { echo "::error::Production error boundary detected"; exit 1; }
           echo "OK: no error boundary text found"
       - name: Check Supabase project resolves
