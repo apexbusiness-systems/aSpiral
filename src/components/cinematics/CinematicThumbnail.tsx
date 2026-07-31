@@ -133,7 +133,7 @@ export const CinematicThumbnail: React.FC<CinematicThumbnailProps> = ({
   className,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const style = variantStyles[variant];
+  const style = variantStyles[variant as CinematicVariant] || variantStyles.spiral_ascend;
   const Icon = style.icon;
 
   return (

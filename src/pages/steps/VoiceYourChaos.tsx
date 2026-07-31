@@ -2,9 +2,8 @@ import { motion } from "framer-motion";
 import { Mic, Volume2, MessageCircle } from "lucide-react";
 import voiceIcon from "@/assets/voice-icon.png";
 import { StepLayout } from "@/components/layouts/StepLayout";
-
 import { fadeUp } from "@/lib/animations";
-
+import { FeatureGrid } from "@/components/ui/FeatureGrid";
 const VoiceYourChaos = () => {
   return (
     <StepLayout
@@ -40,29 +39,18 @@ const VoiceYourChaos = () => {
         </div>
       </motion.section>
 
-      {/* The Solution */}
       <motion.section initial="hidden" animate="visible" variants={fadeUp as any} custom={0.4}>
         <h2 className="font-display text-2xl md:text-3xl font-semibold mb-6 text-secondary">
           Just hit the mic and talk.
         </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
+        <FeatureGrid
+          cols={3}
+          items={[
             { icon: Mic, title: "No structure needed", desc: "Ramble. Jump topics. Contradict yourself. It's all valid." },
             { icon: Volume2, title: "Real-time transcription", desc: "Watch your words appear as you speak. Nothing gets lost." },
             { icon: MessageCircle, title: "No judgment", desc: "It's just you and the mic. Say what you actually feel." },
-          ].map((item, i) => (
-            <motion.div 
-              key={i}
-              className="p-6 rounded-2xl border border-border/30 bg-card/30 backdrop-blur-sm"
-              whileHover={{ scale: 1.02, borderColor: "hsl(var(--primary)/0.4)" }}
-              transition={{ type: "spring", stiffness: 400 }}
-            >
-              <item.icon className="w-8 h-8 text-primary mb-4" />
-              <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-              <p className="text-muted-foreground text-sm">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
+          ]}
+        />
       </motion.section>
 
       {/* Why It Works */}

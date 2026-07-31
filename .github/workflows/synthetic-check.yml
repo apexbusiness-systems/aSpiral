@@ -9,10 +9,10 @@ jobs:
     steps:
       - name: Check site loads without error boundary
         run: |
-          BODY=$(curl -sL --proto-redir =https https://aspiral.icu)
+          BODY=$(curl -sL --proto =https --proto-redir =https https://aspiral.icu)
           echo "$BODY" | grep -qi "Something went wrong" && { echo "::error::Production error boundary detected"; exit 1; }
           echo "OK: no error boundary text found"
       - name: Check Supabase project resolves
         run: |
           REF=$(grep VITE_SUPABASE_URL .env.production | grep -oE '[a-z0-9]{15,25}' | head -1)
-          curl -sf "https://${REF}.supabase.co/auth/v1/health" > /dev/null || { echo "::error::Supabase project ${REF} unreachable"; exit 1; }
+          curl -sf --proto =https "https://${REF}.supabase.co/auth/v1/health" > /dev/null || { echo "::error::Supabase project ${REF} unreachable"; exit 1; }

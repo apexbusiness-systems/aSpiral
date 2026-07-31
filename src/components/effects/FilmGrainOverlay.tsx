@@ -1,3 +1,4 @@
+// NOSONAR - Suppress R3F Unknown property warnings
 import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * FilmGrainOverlay - Phase 4 Cinematic Polish

@@ -47,6 +47,25 @@ const TYPE_PRIORITY: Record<string, number> = {
   action: 1,
 };
 
+function hasEntityMatch(labelWords: string[], words: Set<string>, transcriptLower: string): boolean {
+  for (let j = 0; j < labelWords.length; j++) {
+    const word = labelWords[j];
+
+    if (words.has(word)) return true;
+    if (word.length > 3 && transcriptLower.includes(word)) return true;
+    
+    const matches = SEMANTIC_MATCHES[word];
+    if (matches) {
+      for (let k = 0; k < matches.length; k++) {
+        if (transcriptLower.includes(matches[k])) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Check if entities are coherent with the transcript
  */
@@ -67,39 +86,7 @@ export function validateCoherence(
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     const labelWords = entity.label.toLowerCase().split(/\s+/);
-    
-    let hasMatch = false;
-    // Check if any word from label appears in transcript
-    for (let j = 0; j < labelWords.length; j++) {
-      const word = labelWords[j];
-
-      // Direct match
-      if (words.has(word)) {
-        hasMatch = true;
-        break;
-      }
-      
-      // Fuzzy match (word appears as substring)
-      if (word.length > 3 && transcriptLower.includes(word)) {
-        hasMatch = true;
-        break;
-      }
-      
-      const matches = SEMANTIC_MATCHES[word];
-      if (matches) {
-        let semanticMatch = false;
-        for (let k = 0; k < matches.length; k++) {
-          if (transcriptLower.includes(matches[k])) {
-            semanticMatch = true;
-            break;
-          }
-        }
-        if (semanticMatch) {
-          hasMatch = true;
-          break;
-        }
-      }
-    }
+    const hasMatch = hasEntityMatch(labelWords, words, transcriptLower);
     
     if (hasMatch) {
       mentioned.push(entity);

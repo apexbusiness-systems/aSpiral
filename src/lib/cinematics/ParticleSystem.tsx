@@ -1,3 +1,4 @@
+// NOSONAR - Suppress R3F Unknown property warnings
 import { secureMathRandom } from '@/lib/secureMathRandom';
 /**
  * Particle System for ASPIRAL Cinematics

@@ -406,6 +406,90 @@ function buildContextInfo(
 }
 
 // =============================================================================
+// ERROR HANDLER
+// =============================================================================
+
+async function handleServeError(
+  error: unknown,
+  requestId: string,
+  startTime: number,
+  complianceLogger: ComplianceLogger,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const processingTime = Date.now() - startTime;
+  const errorMessage = error instanceof Error ? error.message : "Unknown";
+  console.error("[spiral-ai] Unhandled error:", error);
+  console.error("[SPIRAL-AI] Error:", { requestId, error: errorMessage, processingMs: processingTime });
+
+  await complianceLogger.finalizeRun({ 
+    status: "ERROR", 
+    errorCode: error instanceof Error && error.name === "AbortError" ? "TIMEOUT" : "INTERNAL_ERROR",
+    errorMessage: errorMessage.substring(0, 200),
+  });
+  await complianceLogger.flush(FLUSH_BLOCK_MS);
+
+  if (error instanceof Error && error.name === "AbortError") {
+    complianceLogger.log("ERROR_OCCURRED", { errorCode: "TIMEOUT", errorMessage: "AI gateway timeout" });
+    return new Response(
+      JSON.stringify({
+        error: "Request timed out. Please try again.",
+        requestId,
+        entities: [],
+        connections: [],
+        question: "That took too long. Want to try again?",
+        response: "",
+      }),
+      { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
+    );
+  }
+
+  if (error instanceof Error && error.message.includes("429")) {
+    complianceLogger.log("ERROR_OCCURRED", { errorCode: "AI_RATE_LIMIT", errorMessage: "AI gateway rate limited" });
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Try again shortly.", requestId }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId, "Retry-After": "30" } }
+    );
+  }
+
+  if (error instanceof Error && error.message.includes("402")) {
+    complianceLogger.log("ERROR_OCCURRED", { errorCode: "QUOTA_EXCEEDED", errorMessage: "AI credits exhausted" });
+    return new Response(
+      JSON.stringify({ error: "AI credits exhausted. Please add credits.", requestId }),
+      { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
+    );
+  }
+
+  if (error instanceof Error && (error.message.includes("fetch") || error.message.includes("network"))) {
+    complianceLogger.log("ERROR_OCCURRED", { errorCode: "NETWORK_ERROR", errorMessage: "AI gateway unreachable" });
+    return new Response(
+      JSON.stringify({
+        error: "Service temporarily unavailable. Please try again.",
+        requestId,
+        entities: [],
+        connections: [],
+        question: "Having trouble connecting. Try again?",
+        response: "",
+      }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId, "Retry-After": "5" } }
+    );
+  }
+
+  complianceLogger.log("ERROR_OCCURRED", { errorCode: "INTERNAL_ERROR", errorMessage: errorMessage });
+  return new Response(
+    JSON.stringify({
+      error: "Internal server error",
+      code: "SPIRAL_AI_UNHANDLED",
+      requestId,
+      entities: [],
+      connections: [],
+      question: "Something went wrong. Try again?",
+      response: "",
+    }),
+    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
+  );
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
@@ -848,82 +932,6 @@ Respond ONLY with the JSON object. No other text.`;
       },
     });
   } catch (error) {
-    const processingTime = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : "Unknown";
-    console.error("[spiral-ai] Unhandled error:", error);
-    console.error("[SPIRAL-AI] Error:", { requestId, error: errorMessage, processingMs: processingTime });
-
-    // Finalize run as ERROR (never throws)
-    await complianceLogger.finalizeRun({ 
-      status: "ERROR", 
-      errorCode: error instanceof Error && error.name === "AbortError" ? "TIMEOUT" : "INTERNAL_ERROR",
-      errorMessage: errorMessage.substring(0, 200), // Truncate for safety
-    });
-    await complianceLogger.flush(FLUSH_BLOCK_MS);
-
-    // Handle timeout errors
-    if (error instanceof Error && error.name === "AbortError") {
-      complianceLogger.log("ERROR_OCCURRED", { errorCode: "TIMEOUT", errorMessage: "AI gateway timeout" });
-      return new Response(
-        JSON.stringify({
-          error: "Request timed out. Please try again.",
-          requestId,
-          entities: [],
-          connections: [],
-          question: "That took too long. Want to try again?",
-          response: "",
-        }),
-        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
-      );
-    }
-
-    // Handle rate limit errors from AI gateway
-    if (error instanceof Error && error.message.includes("429")) {
-      complianceLogger.log("ERROR_OCCURRED", { errorCode: "AI_RATE_LIMIT", errorMessage: "AI gateway rate limited" });
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Try again shortly.", requestId }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId, "Retry-After": "30" } }
-      );
-    }
-
-    // Handle payment/quota errors
-    if (error instanceof Error && error.message.includes("402")) {
-      complianceLogger.log("ERROR_OCCURRED", { errorCode: "QUOTA_EXCEEDED", errorMessage: "AI credits exhausted" });
-      return new Response(
-        JSON.stringify({ error: "AI credits exhausted. Please add credits.", requestId }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
-      );
-    }
-
-    // Handle network errors
-    if (error instanceof Error && (error.message.includes("fetch") || error.message.includes("network"))) {
-      complianceLogger.log("ERROR_OCCURRED", { errorCode: "NETWORK_ERROR", errorMessage: "AI gateway unreachable" });
-      return new Response(
-        JSON.stringify({
-          error: "Service temporarily unavailable. Please try again.",
-          requestId,
-          entities: [],
-          connections: [],
-          question: "Having trouble connecting. Try again?",
-          response: "",
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId, "Retry-After": "5" } }
-      );
-    }
-
-    // Generic error fallback - hide internal details in production
-    complianceLogger.log("ERROR_OCCURRED", { errorCode: "INTERNAL_ERROR", errorMessage: errorMessage });
-    return new Response(
-      JSON.stringify({
-        error: "Internal server error",
-        code: "SPIRAL_AI_UNHANDLED",
-        requestId,
-        entities: [],
-        connections: [],
-        question: "Something went wrong. Try again?",
-        response: "",
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json", "X-Request-Id": requestId } }
-    );
+    return await handleServeError(error, requestId, startTime, complianceLogger, corsHeaders);
   }
 });
