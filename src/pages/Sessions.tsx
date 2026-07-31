@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { createLogger } from '@/lib/logger';
 
 interface SessionListItem {
   id: string;

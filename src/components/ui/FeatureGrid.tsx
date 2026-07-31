@@ -13,7 +13,8 @@ interface FeatureGridProps {
 }
 
 export const FeatureGrid = ({ items, cols = 3 }: FeatureGridProps) => {
-  const colClass = cols === 2 ? 'md:grid-cols-2' : cols === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3';
+  const colMap: Record<number, string> = { 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4' };
+  const colClass = colMap[cols] || 'md:grid-cols-3';
   return (
     <div className={`grid ${colClass} gap-6`}>
       {items.map((item, i) => (

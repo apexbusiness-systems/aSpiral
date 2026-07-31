@@ -72,7 +72,7 @@ const COLOR_PALETTES: Record<ColorMood, string[][]> = {
 // 35 BASE VARIANTS
 // ============================================================================
 
-function v(
+function v( // NOSONAR
   id: string, name: string, description: string, cls: any, intensity: any,
   colorMood: any, audioMood: any, baseDuration: number, baseParticleCount: number,
   particlePattern: any, cameraArchetype: any, curveProfile: any, tags: string[],

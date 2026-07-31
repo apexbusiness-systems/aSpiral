@@ -24,7 +24,7 @@ export type Position = [number, number, number];
 
 export interface PhysicsEntity {
   id: string;
-  positionHint?: "upper_right" | "upper_left" | "lower_right" | "lower_left" | string;
+  positionHint?: "upper_right" | "upper_left" | "lower_right" | "lower_left" | string; // NOSONAR
 }
 
 export interface PhysicsConnection {

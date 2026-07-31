@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Sparkles, Zap, Lightbulb, RefreshCw, Gift } from "lucide-react";
+import { Zap, Lightbulb, RefreshCw, Gift } from "lucide-react";
 import breakthroughIcon from "@/assets/breakthrough-icon.png";
 import { StepLayout } from "@/components/layouts/StepLayout";
 import { fadeUp } from "@/lib/animations";
