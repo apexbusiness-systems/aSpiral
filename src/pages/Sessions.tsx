@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/normalizeError';
 
 interface SessionListItem {
@@ -47,8 +46,6 @@ interface SessionListItem {
   entityCount?: number;
   hasBreakthrough?: boolean;
 }
-
-const logger = createLogger('SessionsPage');
 
 const Sessions = () => {
   const { t } = useTranslation();
@@ -114,7 +111,7 @@ const Sessions = () => {
         .single();
       if (data) setStreakDays(data.streak_days || 0);
     } catch (error) {
-      logger.warn('Failed to load streak', { error: getErrorMessage(error) });
+      console.warn('Failed to load streak', { error: getErrorMessage(error) });
     }
   }, [user]);
 

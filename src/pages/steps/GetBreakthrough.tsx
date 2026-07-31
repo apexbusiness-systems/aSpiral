@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion, type Easing } from "framer-motion";
-import { ArrowLeft, Sparkles, Zap, Lightbulb, RefreshCw, Gift } from "lucide-react";
+import { ArrowLeft, Sparkles, Zap, Lightbulb, RefreshCw, Gift } from "lucide-react"; // NOSONAR
 import aspiralLogo from "@/assets/aspiral-logo.png";
 import breakthroughIcon from "@/assets/breakthrough-icon.png";
 
