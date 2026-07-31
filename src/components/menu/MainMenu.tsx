@@ -20,11 +20,14 @@ import {
   Key,
   LayoutDashboard,
   Smartphone,
+  LogOut,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { usePwaStore } from "@/stores/pwaStore";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MainMenuProps {
   isOpen: boolean;
@@ -72,8 +75,22 @@ export function MainMenu({
   const isPaused = sessionState === "paused";
   const isBreakthrough = sessionState === "breakthrough";
   const isInstalled = usePwaStore((state) => state.isInstalled);
+  const { user, signOut } = useAuth();
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+  const handleSignOut = async () => {
+    try {
+      const { signOut: appSignOut } = await import('@/lib/auth');
+      await signOut();
+      await appSignOut();
+      navigate('/');
+      onClose();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error('Failed to sign out');
+    }
+  };
 
   function handleActionWithConfirmation(action: string, handler: () => void) {
     const needsConfirmation = ["stop", "restart"];
@@ -377,6 +394,44 @@ export function MainMenu({
                       );
                     }}
                   />
+                </div>
+              </div>
+
+              {/* Account Status */}
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                  Account
+                </h3>
+                <div className="flex flex-col gap-2">
+                  {user ? (
+                    <>
+                      <div className="flex items-center gap-3 w-full p-4 border rounded-xl bg-muted/20 border-border/30 mb-2">
+                        <User size={20} className="text-primary flex-shrink-0" />
+                        <div className="flex-1 overflow-hidden">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {user.email || 'Authenticated User'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Signed In</p>
+                        </div>
+                      </div>
+                      <MenuAction
+                        icon={LogOut}
+                        label="Sign Out"
+                        variant="danger"
+                        onClick={handleSignOut}
+                      />
+                    </>
+                  ) : (
+                    <MenuAction
+                      icon={User}
+                      label="Sign In"
+                      variant="primary"
+                      onClick={() => {
+                        navigate('/auth');
+                        onClose();
+                      }}
+                    />
+                  )}
                 </div>
               </div>
 
