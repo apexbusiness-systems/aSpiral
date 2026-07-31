@@ -187,10 +187,9 @@ const App = () => {
 
             <PremiumSplash isVisible={showSplash} />
 
-            {/* PWA Install Prompt - visible banner for install CTA */}
-            <PwaInstallPrompt />
-
             <HashRouter>
+              {/* PWA Install Prompt — must stay inside HashRouter: calls useLocation() */}
+              <PwaInstallPrompt />
               <StandaloneModeRedirect />
               <DebugOverlay />
               <Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
