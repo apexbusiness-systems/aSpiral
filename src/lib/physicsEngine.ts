@@ -138,11 +138,7 @@ export function runPhysicsIteration(
   entities.forEach(entity => {
     const pos = positions.get(entity.id)!;
     const force = forces.get(entity.id)!;
-    const movement = Math.sqrt(
-      force[0] * force[0] + 
-      force[1] * force[1] + 
-      force[2] * force[2]
-    ) * config.damping * decay;
+    const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
     totalMovement += movement;
     
     positions.set(entity.id, [
