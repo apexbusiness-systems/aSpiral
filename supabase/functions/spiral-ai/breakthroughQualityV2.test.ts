@@ -6,7 +6,7 @@
  */
 
 import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { isGenericBreakthroughText, hasValidBreakthrough } from "./index.ts";
+import { isGenericBreakthroughText, hasValidBreakthrough, hasSpecificityAnchor } from "./index.ts";
 
 // =============================================================================
 // isGenericBreakthroughText tests
@@ -134,3 +134,45 @@ Deno.test("onBreakthroughRejected: detects new banned phrases correctly", () => 
 });
 
 console.log("\n✅ All Breakthrough Quality V2 tests defined.\n");
+
+// =============================================================================
+// hasSpecificityAnchor tests (Breakthrough Specificity Gate)
+// =============================================================================
+
+const TRANSCRIPT = "I built a Shopify plugin for local bakeries last year and never launched it.";
+
+const SPECIFICITY_CASES: [string, string, string, boolean][] = [
+  ["accepts grounded field sharing transcript token", TRANSCRIPT, "The Shopify plugin you already built and shelved", true],
+  ["rejects pure abstraction with no transcript overlap", TRANSCRIPT, "Exploring different areas to find the best fit for your passions", false],
+  ["rejects high abstract-noun ratio even with one overlap", TRANSCRIPT, "Your skills and passions and opportunities and journey and path", false],
+  ["rejects empty field", TRANSCRIPT, "", false],
+];
+
+for (const [label, transcript, field, expected] of SPECIFICITY_CASES) {
+  Deno.test(`hasSpecificityAnchor: ${label}`, () => {
+    assertEquals(hasSpecificityAnchor(field, transcript), expected);
+  });
+}
+
+Deno.test("hasValidBreakthrough: specificity gate rejects ungrounded triple even when no banned phrase present", () => {
+  const result = hasValidBreakthrough(
+    {
+      entities: [], connections: [], question: "", response: "",
+      friction: "Uncertainty about how to apply your skills",
+      grease: "Exploring different areas to find the best fit",
+      insight: "Identifying how your skills align with your passions",
+    },
+    TRANSCRIPT
+  );
+  assertEquals(result, false);
+});
+
+Deno.test("hasValidBreakthrough: backward compatible when no transcript passed", () => {
+  // Existing call-sites/tests that omit transcript must be unaffected by this change.
+  const result = hasValidBreakthrough({
+    entities: [], connections: [], question: "", response: "",
+    friction: "Real problem here", grease: "Real solution here", insight: "Real insight here",
+  });
+  assertEquals(result, true);
+});
+

@@ -5,11 +5,11 @@ const START_MARKER = "# ▶▶ SYSTEM PROMPT START ◀◀";
 const END_MARKER = "# ▶▶ SYSTEM PROMPT END ◀◀";
 const MAX_FILE_SIZE_BYTES = 200 * 1024;
 const MAX_PROMPT_SIZE_BYTES = 120 * 1024;
-const EXPECTED_VERSION = "1.1.2";
+const EXPECTED_VERSION = "1.1.3";
 
 export interface AspiralMindcorePrompt {
   systemPrompt: string;
-  version: "1.1.2";
+  version: "1.1.3";
   sha256: string;
 }
 

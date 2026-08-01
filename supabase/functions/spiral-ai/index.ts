@@ -36,6 +36,9 @@ const ENABLE_DETAILED_ERRORS = Deno.env.get("ENABLE_DETAILED_ERRORS") === "true"
 // Breakthrough Quality V2 feature flag (default: ON)
 const BREAKTHROUGH_QUALITY_V2 = Deno.env.get("BREAKTHROUGH_QUALITY_V2") !== "false";
 
+// Breakthrough Specificity Gate — extends V2 with grounded-content scoring (default: ON)
+const BREAKTHROUGH_SPECIFICITY_GATE = Deno.env.get("BREAKTHROUGH_SPECIFICITY_GATE") !== "false";
+
 // Flush timeouts (ms)
 const FLUSH_START_MS = 250;
 const FLUSH_BLOCK_MS = 400;
@@ -78,17 +81,48 @@ export function isGenericBreakthroughText(text: string): boolean {
 }
 
 /**
+ * Returns true if `field` contains a concrete anchor grounded in what the person
+ * actually said — i.e. it is not padded with abstract category-nouns and it shares
+ * at least one non-trivial token with the transcript. Deterministic, no LLM call.
+ * Exported for testing.
+ */
+export function hasSpecificityAnchor(field: string, transcript: string): boolean {
+  if (!field?.trim() || !transcript?.trim()) return false;
+
+  const ABSTRACT_PADDING = /\b(skills?|path|journey|passions?|opportunit(y|ies)|best fit|different areas?|fulfilling|purpose|potential|possibilities)\b/gi;
+  const words = field.trim().split(/\s+/).filter(Boolean);
+  const abstractHits = (field.match(ABSTRACT_PADDING) || []).length;
+  const genericRatio = words.length > 0 ? abstractHits / words.length : 1;
+  if (genericRatio > 0.25) return false;
+
+  const STOPWORDS = new Set(["that", "this", "with", "your", "from", "have", "they", "them", "what", "when", "which", "into", "about", "there", "their", "would", "could", "should"]);
+  const transcriptTokens = new Set(
+    (transcript.toLowerCase().match(/\b\w{4,}\b/g) || []).filter(t => !STOPWORDS.has(t))
+  );
+  const fieldTokens = (field.toLowerCase().match(/\b\w{4,}\b/g) || []).filter(t => !STOPWORDS.has(t));
+
+  return fieldTokens.some(t => transcriptTokens.has(t));
+}
+
+/**
  * Returns true if a response has complete, non-empty, non-generic breakthrough fields.
  * Exported for testing.
  */
-export function hasValidBreakthrough(data: SpiralAIResponse): boolean {
-  return !!(
+export function hasValidBreakthrough(data: SpiralAIResponse, transcript = ""): boolean {
+  const basicValid = !!(
     data.friction?.trim() &&
     data.grease?.trim() &&
     data.insight?.trim() &&
     !isGenericBreakthroughText(data.friction) &&
     !isGenericBreakthroughText(data.grease) &&
     !isGenericBreakthroughText(data.insight)
+  );
+  if (!basicValid) return false;
+  if (!BREAKTHROUGH_SPECIFICITY_GATE || !transcript) return true; // flag off, or no transcript passed (e.g. legacy test call) — do not regress old behavior
+  return (
+    hasSpecificityAnchor(data.friction || "", transcript) &&
+    hasSpecificityAnchor(data.grease || "", transcript) &&
+    hasSpecificityAnchor(data.insight || "", transcript)
   );
 }
 
@@ -225,9 +259,12 @@ async function callAIWithValidation(
 
     // V2: If breakthrough expected, check for generic/incomplete content
     if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough) {
-      if (!hasValidBreakthrough(validatedData)) {
+      if (!hasValidBreakthrough(validatedData, userContent)) {
         const rejectionReason = !validatedData.friction?.trim() || !validatedData.grease?.trim() || !validatedData.insight?.trim()
-          ? 'empty_or_partial' : 'generic_phrase';
+          ? 'empty_or_partial'
+          : isGenericBreakthroughText(validatedData.friction) || isGenericBreakthroughText(validatedData.grease) || isGenericBreakthroughText(validatedData.insight)
+            ? 'generic_phrase'
+            : 'low_specificity';
         console.warn(`[SPIRAL-AI] ⚠️ Breakthrough content is generic/incomplete on attempt ${attempt + 1} (${rejectionReason}) — retrying`);
         onBreakthroughRejected?.({ attempt: attempt + 1, reason: rejectionReason });
         lastError = new Error("Breakthrough content is generic or incomplete. Provide specific, personalized friction, grease, and insight based on the user's actual situation.");
@@ -290,7 +327,13 @@ function generateRequestId(): string {
 // HELPER FUNCTIONS FOR ERROR RESPONSES
 // =============================================================================
 
-function createErrorResponse(status: number, body: unknown, additionalHeaders: Record<string, string> = {}): Response {
+const DEFAULT_CORS_HEADERS = {
+  'Access-Control-Allow-Origin': 'https://aspiral.icu',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-request-id',
+};
+
+function createErrorResponse(status: number, body: unknown, additionalHeaders: Record<string, string> = {}, corsHeaders: Record<string, string> = DEFAULT_CORS_HEADERS): Response {
   return new Response(
     JSON.stringify(body),
     {
@@ -304,14 +347,14 @@ function createErrorResponse(status: number, body: unknown, additionalHeaders: R
   );
 }
 
-function handleValidationError(errors: unknown[]): Response {
+function handleValidationError(errors: unknown[], corsHeaders?: Record<string, string>): Response {
   return createErrorResponse(400, {
     error: "Invalid request format",
     details: (errors as Array<{ message: string }>)?.map((e) => e.message),
-  });
+  }, {}, corsHeaders);
 }
 
-function handleInjectionBlock(): Response {
+function handleInjectionBlock(corsHeaders?: Record<string, string>): Response {
   return createErrorResponse(200, {
     entities: [],
     connections: [],
@@ -319,17 +362,17 @@ function handleInjectionBlock(): Response {
     response: INJECTION_RESPONSES.BLOCKED.message,
     blocked: true,
     category: "INJECTION_ATTEMPT",
-  }, { "X-Security-Block": "INJECTION" });
+  }, { "X-Security-Block": "INJECTION" }, corsHeaders);
 }
 
-function handleAnomalyDetection(): Response {
+function handleAnomalyDetection(corsHeaders?: Record<string, string>): Response {
   return createErrorResponse(429, {
     error: INJECTION_RESPONSES.RATE_ANOMALY.message,
     retryAfter: INJECTION_RESPONSES.RATE_ANOMALY.retryAfter,
-  }, { "Retry-After": "60" });
+  }, { "Retry-After": "60" }, corsHeaders);
 }
 
-function handleRateLimit(rateLimitResult: RateLimitResult): Response {
+function handleRateLimit(rateLimitResult: RateLimitResult, corsHeaders?: Record<string, string>): Response {
   return createErrorResponse(429, {
     error: SAFE_RESPONSES.RATE_LIMITED.message,
     retryAfter: rateLimitResult.retryAfterSeconds,
@@ -338,10 +381,10 @@ function handleRateLimit(rateLimitResult: RateLimitResult): Response {
     "Retry-After": String(rateLimitResult.retryAfterSeconds || 60),
     "X-RateLimit-Limit": String(rateLimitResult.limits.requestsPerMinute),
     "X-RateLimit-Remaining": String(Math.max(0, rateLimitResult.limits.requestsPerMinute - rateLimitResult.currentUsage.minute)),
-  });
+  }, corsHeaders);
 }
 
-function handleModerationBlock(moderationResult: ModerationResult): Response {
+function handleModerationBlock(moderationResult: ModerationResult, corsHeaders?: Record<string, string>): Response {
   // Return appropriate safe response
   if (moderationResult.action === "REDIRECT_RESOURCES") {
     return createErrorResponse(200, {
@@ -349,7 +392,7 @@ function handleModerationBlock(moderationResult: ModerationResult): Response {
       resources: moderationResult.resources,
       blocked: true,
       category: "CRISIS_SUPPORT",
-    });
+    }, {}, corsHeaders);
   }
 
   let safeResponse = SAFE_RESPONSES.BLOCKED_GENERAL;
@@ -371,7 +414,7 @@ function handleModerationBlock(moderationResult: ModerationResult): Response {
   }, {
     "X-Content-Blocked": "true",
     "X-Block-Category": moderationResult.category || "POLICY_VIOLATION",
-  });
+  }, corsHeaders);
 }
 
 function buildContextInfo(
@@ -815,10 +858,13 @@ Respond ONLY with the JSON object. No other text.`;
     );
 
     // Track final breakthrough rejection after all retries exhausted
-    if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough && !hasValidBreakthrough(validatedResult)) {
+    if (BREAKTHROUGH_QUALITY_V2 && shouldBreakthrough && !hasValidBreakthrough(validatedResult, userContent)) {
       breakthroughRejected = true;
       const reason = !validatedResult.friction?.trim() || !validatedResult.grease?.trim() || !validatedResult.insight?.trim()
-        ? 'empty_or_partial' : 'generic_phrase';
+        ? 'empty_or_partial'
+        : isGenericBreakthroughText(validatedResult.friction) || isGenericBreakthroughText(validatedResult.grease) || isGenericBreakthroughText(validatedResult.insight)
+          ? 'generic_phrase'
+          : 'low_specificity';
       complianceLogger.log("BREAKTHROUGH_REJECTED", {
         errorCode: reason,
         errorMessage: `retries=${retryCount} friction=${!!validatedResult.friction?.trim()} grease=${!!validatedResult.grease?.trim()} insight=${!!validatedResult.insight?.trim()}`,
