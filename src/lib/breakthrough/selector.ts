@@ -205,6 +205,25 @@ function calculateTotalScore(
   return score;
 }
 
+
+/**
+ * Helper to safely extract and map the most recent N items from an array without
+ * allocating intermediate arrays (like slice().map() does).
+ */
+function getRecentMappedValues<T, R>(
+  arr: T[],
+  window: number,
+  mapper: (val: T) => R
+): R[] {
+  const len = Math.min(window, arr.length);
+  const start = Math.max(0, arr.length - window);
+  const result = new Array<R>(len);
+  for (let i = 0; i < len; i++) {
+    result[i] = mapper(arr[start + i]);
+  }
+  return result;
+}
+
 // ============================================================================
 // SELECTION FUNCTIONS
 // ============================================================================
@@ -272,10 +291,16 @@ export function selectVariant(context: SelectionContext): {
   // still get anti-repetition behavior across sequential selections.
   const effectiveContext: SelectionContext = {
     ...context,
-    recentVariantIds: history.entries.slice(-RECENCY_WINDOW).map((entry) => entry.variantId),
-    recentIntensities: history.entries
-      .slice(-FATIGUE_CONFIG.fatigueWindow)
-      .map((entry) => entry.intensity),
+    recentVariantIds: getRecentMappedValues(
+      history.entries,
+      RECENCY_WINDOW,
+      (entry) => entry.variantId
+    ),
+    recentIntensities: getRecentMappedValues(
+      history.entries,
+      FATIGUE_CONFIG.fatigueWindow,
+      (entry) => entry.intensity
+    ),
   };
 
   const eligibleVariants = getEligibleVariants(effectiveContext);
@@ -372,12 +397,18 @@ export function buildSelectionContext(
 ): SelectionContext {
   const history = getBreakthroughHistory();
   
-  // Extract recent variant IDs and intensities from history
-  const recentEntries = history.entries.slice(-RECENCY_WINDOW);
-  const recentVariantIds = recentEntries.map((e) => e.variantId);
-  const recentIntensities = recentEntries
-    .slice(-FATIGUE_CONFIG.fatigueWindow)
-    .map((e) => e.intensity);
+  // Extract recent variant IDs and intensities from history (Optimized: single pass)
+  const recentVariantIds = getRecentMappedValues(
+    history.entries,
+    RECENCY_WINDOW,
+    (e) => e.variantId
+  );
+
+  const recentIntensities = getRecentMappedValues(
+    history.entries,
+    FATIGUE_CONFIG.fatigueWindow,
+    (e) => e.intensity
+  );
   
   // Performance Optimization: Replaced chained .filter().map().reduce() with a single-pass loop
   // This computes sentiment, friction intensity, and the mapped entities array in true O(N) time

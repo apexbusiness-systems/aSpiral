@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-06-25 - Avoid Intermediate Arrays When Updating Context
+**Learning:** Chained array methods like `.slice(-count).map(...)` create unnecessary intermediate arrays, adding overhead from garbage collection when fetching recent items in hot paths.
+**Action:** Use a pre-allocated array combined with a standard for loop to avoid intermediate allocations when mapping recent entries from history.
