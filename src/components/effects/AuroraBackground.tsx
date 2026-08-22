@@ -57,6 +57,24 @@ export function AuroraBackground() {
         }}
       />
 
+      {/* Ambient green aurora wash - always visible, independent of session/breakthrough state */}
+      <div
+        className="absolute inset-0 mix-blend-screen aurora-green-ambient"
+        style={{
+          background: `
+            radial-gradient(ellipse 70% 45% at 65% 15%,
+              hsl(var(--aurora-green-1) / 0.55),
+              transparent 55%
+            ),
+            radial-gradient(ellipse 55% 35% at 15% 65%,
+              hsl(var(--aurora-green-2) / 0.45),
+              transparent 55%
+            )
+          `,
+          filter: "blur(85px)",
+        }}
+      />
+
       {/* Subtle pulsing glow layer - matches Landing heromark effect */}
       <motion.div
         className="absolute inset-0 opacity-15"

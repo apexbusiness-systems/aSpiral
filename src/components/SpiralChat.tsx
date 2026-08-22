@@ -705,11 +705,19 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
 
           {/* Messages */}
           <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
-            </div>
+            {messages.length === 0 ? (
+              <div className="h-full min-h-[120px] flex items-center justify-center text-center px-6">
+                <p className="text-sm text-muted-foreground">
+                  Your reflections will appear here as you talk or type.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <ChatMessage key={message.id} message={message} />
+                ))}
+              </div>
+            )}
           </ScrollArea>
 
           {/* Live Transcript */}

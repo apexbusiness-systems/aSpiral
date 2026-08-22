@@ -68,24 +68,33 @@ export function QuickActionsBar({
             </div>
             
             {/* Progress Indicator - hidden on very small screens */}
-            <div className="hidden xs:flex items-center gap-1.5 sm:gap-2">
-              <div className="flex gap-0.5 sm:gap-1">
-                {Array.from({ length: maxQuestions }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all",
-                      i < questionCount
-                        ? "bg-accent"
-                        : "bg-foreground/30 sm:bg-muted-foreground/30"
-                    )}
-                  />
-                ))}
-              </div>
-              <span className="text-[10px] sm:text-xs text-foreground/70 sm:text-muted-foreground">
-                {questionCount}/{maxQuestions}
-              </span>
-            </div>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="hidden xs:flex items-center gap-1.5 sm:gap-2 cursor-help">
+                    <div className="flex gap-0.5 sm:gap-1">
+                      {Array.from({ length: maxQuestions }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all",
+                            i < questionCount
+                              ? "bg-accent"
+                              : "bg-foreground/30 sm:bg-muted-foreground/30"
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] sm:text-xs text-foreground/70 sm:text-muted-foreground">
+                      {questionCount}/{maxQuestions}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="hidden sm:block">
+                  <p>{questionCount} of {maxQuestions} questions answered this session</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Divider - hidden on mobile */}
@@ -100,7 +109,7 @@ export function QuickActionsBar({
                   <motion.button
                     aria-label={isPaused ? "Resume session" : "Pause session"}
                     className={cn(
-                      "min-w-[40px] min-h-[40px] h-10 w-10 sm:h-10 sm:w-10 flex items-center justify-center rounded-lg sm:rounded-xl",
+                      "min-w-[44px] min-h-[44px] h-11 w-11 sm:h-11 sm:w-11 flex items-center justify-center rounded-lg sm:rounded-xl",
                       "transition-all cursor-pointer touch-manipulation",
                       isPaused
                         ? "bg-accent/30 border border-accent text-accent hover:bg-accent/40"
@@ -123,7 +132,7 @@ export function QuickActionsBar({
                   <motion.button
                     aria-label="Stop session"
                     className={cn(
-                      "min-w-[40px] min-h-[40px] h-10 w-10 sm:h-10 sm:w-10 flex items-center justify-center rounded-lg sm:rounded-xl",
+                      "min-w-[44px] min-h-[44px] h-11 w-11 sm:h-11 sm:w-11 flex items-center justify-center rounded-lg sm:rounded-xl",
                       "bg-destructive/20 border border-destructive/60",
                       "text-destructive hover:bg-destructive/30",
                       "transition-all cursor-pointer touch-manipulation"
@@ -149,7 +158,7 @@ export function QuickActionsBar({
                     <motion.button
                       aria-label={`Skip to breakthrough (${questionCount + 1} of ${maxQuestions})`}
                       className={cn(
-                        "min-h-[40px] h-10 sm:h-10 px-2.5 sm:px-4 flex items-center gap-1 sm:gap-2 rounded-lg sm:rounded-xl",
+                        "min-h-[44px] h-11 sm:h-11 px-2.5 sm:px-4 flex items-center gap-1 sm:gap-2 rounded-lg sm:rounded-xl",
                         "bg-secondary/30 border border-secondary",
                         "text-secondary hover:bg-secondary/40",
                         "transition-all cursor-pointer touch-manipulation font-medium text-[11px] sm:text-sm"
@@ -174,7 +183,7 @@ export function QuickActionsBar({
                   <motion.button
                     aria-label="Save session progress"
                     className={cn(
-                      "hidden sm:flex h-10 w-10 items-center justify-center rounded-xl",
+                      "hidden sm:flex h-11 w-11 items-center justify-center rounded-xl",
                       "bg-accent/20 border-2 border-accent/50",
                       "text-accent hover:bg-accent/30",
                       "transition-all cursor-pointer"
