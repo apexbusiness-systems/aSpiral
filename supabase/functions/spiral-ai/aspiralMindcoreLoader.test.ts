@@ -21,7 +21,7 @@ Deno.test("MindCore loader: golden snapshot matches extracted system prompt exac
   Deno.env.set("ASPIRAL_MINDCORE_DIR", SSOT_DIR);
   const loaded = await loadAspiralMindcore();
   const snapshotPath = join(THIS_DIR, "__snapshots__/aspiral-mindcore.prompt.snapshot.txt");
-  const snapshot = await Deno.readTextFile(snapshotPath);
+  const snapshot = (await Deno.readTextFile(snapshotPath)).replaceAll("\r", "");
 
   assertEquals(loaded.systemPrompt, snapshot);
 });

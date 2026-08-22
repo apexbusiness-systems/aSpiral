@@ -36,3 +36,28 @@ export async function requireUser(
 
   return user;
 }
+
+export async function getOptionalUser(
+  req: Request
+): Promise<{ id: string; email?: string } | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return null;
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
+    return user ?? null;
+  } catch {
+    return null;
+  }
+}
+

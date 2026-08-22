@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
-import { requireUser } from "../_shared/requireUser.ts";
+import { getOptionalUser } from "../_shared/requireUser.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 if (!OPENAI_API_KEY) {
@@ -24,9 +24,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Expected multipart/form-data or audio/*" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const userOrResp = await requireUser(req, corsHeaders);
-    if (userOrResp instanceof Response) return userOrResp;
-    const user = userOrResp;
+    const optionalUser = await getOptionalUser(req);
+    const user = optionalUser ?? { id: "guest" };
 
     const groqApiKey = Deno.env.get("GROQ_API_KEY");
     if (!groqApiKey) {

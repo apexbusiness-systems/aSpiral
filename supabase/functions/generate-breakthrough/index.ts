@@ -4,7 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "llama-3.3-70b-versatile";
+const GROQ_CHAT_MODEL = Deno.env.get("GROQ_CHAT_MODEL") || "openai/gpt-oss-120b";
 const GROQ_AI_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 interface BreakthroughRequest {
@@ -45,11 +45,9 @@ serve(async (req) => {
 
   if (req.method === "OPTIONS") return handleCorsPreFlight(req);
 
-  // AUTH GATE — added by audit/fix-all-issues
-  const { requireUser } = await import('../_shared/requireUser.ts');
-  const userOrResp = await requireUser(req, corsHeaders);
-  if (userOrResp instanceof Response) return userOrResp;
-  const user = userOrResp;
+  const { getOptionalUser } = await import('../_shared/requireUser.ts');
+  const optionalUser = await getOptionalUser(req);
+  const user = optionalUser ?? { id: "guest" };
 
   const corsHeaders = getCorsHeaders(req);
 
