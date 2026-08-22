@@ -112,7 +112,7 @@ export function AuroraPlatform({
         platformMatRef.current?.color.copy(colors.primary)
         hazeMatRef.current?.color.copy(colors.spiralGlow)
         ring1MatRef.current?.color.copy(colors.spiralAccent)
-        ring2MatRef.current?.color.copy(colors.secondary)
+        ring2MatRef.current?.color.copy(colors.primary)
         sparkleMatRef.current?.color.copy(colors.spiralGlow)
 
         invalidate()
@@ -147,7 +147,7 @@ export function AuroraPlatform({
                     ref={hazeMatRef}
                     color={colors.spiralGlow}
                     transparent // NOSONAR
-                    opacity={0.18}
+                    opacity={0.25}
                     alphaMap={glowTexture} // NOSONAR
                     blending={THREE.AdditiveBlending} // NOSONAR
                     depthWrite={false} // NOSONAR
@@ -171,7 +171,7 @@ export function AuroraPlatform({
                 />
             </mesh>
 
-            {/* Outer ring (secondary) */}
+            {/* Outer ring (secondary aurora green) */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}> {/* NOSONAR */}
                 <ringGeometry args={[ // NOSONAR
                     GEOMETRY.outerRingInner,
@@ -180,9 +180,9 @@ export function AuroraPlatform({
                 ]} />
                 <meshBasicMaterial // NOSONAR
                     ref={ring2MatRef}
-                    color={colors.secondary}
+                    color={colors.primary}
                     transparent // NOSONAR
-                    opacity={0.22}
+                    opacity={0.35}
                     blending={THREE.AdditiveBlending} // NOSONAR
                     depthWrite={false} // NOSONAR
                 />
