@@ -123,30 +123,34 @@ export function runPhysicsIteration(
     forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
   });
   
-  entities.forEach(entity => {
-    const pos = positions.get(entity.id)!;
-    const f = forces.get(entity.id)!;
-    forces.set(entity.id, [
-      f[0] - pos[0] * 0.01,
-      f[1] - pos[1] * 0.01,
-      f[2] - pos[2] * 0.02,
-    ]);
-  });
-  
   const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
+  const dampDecay = config.damping * decay;
   
-  entities.forEach(entity => {
-    const pos = positions.get(entity.id)!;
-    const force = forces.get(entity.id)!;
-    const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
-    totalMovement += movement;
+  for (let i = 0; i < entities.length; i++) {
+    const entityId = entities[i].id;
+    const pos = positions.get(entityId)!;
+    const f = forces.get(entityId)!;
     
-    positions.set(entity.id, [
-      pos[0] + force[0] * config.damping * decay,
-      pos[1] + force[1] * config.damping * decay,
-      pos[2] + force[2] * config.damping * decay,
+    // Apply center gravity
+    const fx = f[0] - pos[0] * 0.01;
+    const fy = f[1] - pos[1] * 0.01;
+    const fz = f[2] - pos[2] * 0.02;
+
+    // Calculate movement
+    const moveX = fx * dampDecay;
+    const moveY = fy * dampDecay;
+    const moveZ = fz * dampDecay;
+
+    totalMovement += Math.hypot(fx, fy, fz) * dampDecay;
+
+    // Update forces and positions
+    forces.set(entityId, [fx, fy, fz]);
+    positions.set(entityId, [
+      pos[0] + moveX,
+      pos[1] + moveY,
+      pos[2] + moveZ,
     ]);
-  });
+  }
   
   return totalMovement;
 }
