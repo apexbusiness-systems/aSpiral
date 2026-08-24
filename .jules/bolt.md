@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-11-20 - Loop Consolidation in Physics Hot Paths
+**Learning:** The physics engine (`runPhysicsIteration`) was performing two separate sequential `entities.forEach` passes per tick to apply center gravity, calculate movement decay, and update final positions. In a 60FPS simulation with many entities, these redundant iterations and closure allocations create significant garbage collection pressure and CPU overhead.
+**Action:** Consolidate sequential operations on the same data set into a single `for` loop on hot paths to minimize array traversal overhead, closure allocations, and redundant map lookups.
