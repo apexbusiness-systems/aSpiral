@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-05-14 - Optimize array slicing with index offsets
+**Learning:** Chaining `.slice(-count).map(...)` on large arrays creates redundant intermediate arrays. Instead of using a reverse loop (which reverses the order), you can maintain chronological order by pre-allocating an array (`new Array(count)`) and populating it with a forward loop using calculated index offsets (`length - count + i`).
+**Action:** When extracting a chronologically ordered subset from the end of an array on a hot path, replace `.slice(-count).map(...)` with a single-pass forward loop utilizing index offsets to avoid intermediate array allocations and reduce GC pressure.
