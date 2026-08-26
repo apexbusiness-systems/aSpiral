@@ -35,7 +35,18 @@ export class Logger {
 
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
-      if (SENSITIVE_FIELDS.some((field) => key.toLowerCase().includes(field))) {
+      // Performance Optimization: Hoisted key.toLowerCase() out of the loop and replaced SENSITIVE_FIELDS.some()
+      // with a standard for loop to prevent redundant string allocations and closure overhead per property.
+      const lowerKey = key.toLowerCase();
+      let isSensitive = false;
+      for (let i = 0; i < SENSITIVE_FIELDS.length; i++) {
+        if (lowerKey.includes(SENSITIVE_FIELDS[i])) {
+          isSensitive = true;
+          break;
+        }
+      }
+
+      if (isSensitive) {
         sanitized[key] = "[REDACTED]";
       } else if (typeof value === "object" && value !== null) {
         sanitized[key] = this.sanitize(value);
