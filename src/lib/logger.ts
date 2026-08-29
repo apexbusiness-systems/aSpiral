@@ -35,7 +35,10 @@ export class Logger {
 
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
-      if (SENSITIVE_FIELDS.some((field) => key.toLowerCase().includes(field))) {
+      // Performance Optimization: Hoist .toLowerCase() outside inner validation loop
+      // to prevent redundant string allocations per sensitive field check.
+      const lowerKey = key.toLowerCase();
+      if (SENSITIVE_FIELDS.some((field) => lowerKey.includes(field))) {
         sanitized[key] = "[REDACTED]";
       } else if (typeof value === "object" && value !== null) {
         sanitized[key] = this.sanitize(value);
