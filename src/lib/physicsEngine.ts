@@ -128,30 +128,27 @@ export function runPhysicsIteration(
     forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
   }
   
+  const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
+  
+  // Performance Optimization: Consolidate entity force updates into a single loop
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     const pos = positions.get(entity.id)!;
     const f = forces.get(entity.id)!;
-    forces.set(entity.id, [
-      f[0] - pos[0] * 0.01,
-      f[1] - pos[1] * 0.01,
-      f[2] - pos[2] * 0.02,
-    ]);
-  }
-  
-  const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
-  
-  for (let i = 0; i < entities.length; i++) {
-    const entity = entities[i];
-    const pos = positions.get(entity.id)!;
-    const force = forces.get(entity.id)!;
-    const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
+
+    // Apply center gravity
+    const fx = f[0] - pos[0] * 0.01;
+    const fy = f[1] - pos[1] * 0.01;
+    const fz = f[2] - pos[2] * 0.02;
+
+    // Apply movement
+    const movement = Math.hypot(fx, fy, fz) * config.damping * decay;
     totalMovement += movement;
     
     positions.set(entity.id, [
-      pos[0] + force[0] * config.damping * decay,
-      pos[1] + force[1] * config.damping * decay,
-      pos[2] + force[2] * config.damping * decay,
+      pos[0] + fx * config.damping * decay,
+      pos[1] + fy * config.damping * decay,
+      pos[2] + fz * config.damping * decay,
     ]);
   }
   
