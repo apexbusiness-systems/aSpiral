@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2025-03-05 - [Optimize Iterative Loops]
+**Learning:** Replacing Array.prototype.forEach, .map, .filter with standard for loops in high-frequency paths eliminates closure allocation overhead, significantly reducing GC pressure.
+**Action:** Always prefer standard for loops for iterating over collections in performance-critical calculation loops.
