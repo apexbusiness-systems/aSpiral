@@ -123,30 +123,28 @@ export function runPhysicsIteration(
     forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
   });
   
-  entities.forEach(entity => {
-    const pos = positions.get(entity.id)!;
-    const f = forces.get(entity.id)!;
-    forces.set(entity.id, [
-      f[0] - pos[0] * 0.01,
-      f[1] - pos[1] * 0.01,
-      f[2] - pos[2] * 0.02,
-    ]);
-  });
-  
   const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
   
-  entities.forEach(entity => {
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     const pos = positions.get(entity.id)!;
-    const force = forces.get(entity.id)!;
-    const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
+    const f = forces.get(entity.id)!;
+
+    // Apply centering force and update map just in case it's read elsewhere
+    const forceX = f[0] - pos[0] * 0.01;
+    const forceY = f[1] - pos[1] * 0.01;
+    const forceZ = f[2] - pos[2] * 0.02;
+    forces.set(entity.id, [forceX, forceY, forceZ]);
+
+    const movement = Math.hypot(forceX, forceY, forceZ) * config.damping * decay;
     totalMovement += movement;
     
     positions.set(entity.id, [
-      pos[0] + force[0] * config.damping * decay,
-      pos[1] + force[1] * config.damping * decay,
-      pos[2] + force[2] * config.damping * decay,
+      pos[0] + forceX * config.damping * decay,
+      pos[1] + forceY * config.damping * decay,
+      pos[2] + forceZ * config.damping * decay,
     ]);
-  });
+  }
   
   return totalMovement;
 }
