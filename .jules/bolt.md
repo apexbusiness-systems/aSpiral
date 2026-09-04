@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-06-25 - Avoid Reduce for Grouping in Frequent Paths
+**Learning:** When grouping elements into a dictionary (e.g., in PDF export), using `Array.prototype.reduce` forces closure allocation per iteration and can be noticeably slower than a standard `for` loop.
+**Action:** Replace `reduce()` with a single-pass `for` loop when grouping or mapping over arrays, particularly if dealing with larger lists or frequently accessed paths.

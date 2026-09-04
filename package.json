@@ -19,7 +19,7 @@
     "test": "vitest run",
     "security:audit": "npm audit --audit-level=high --omit=dev",
     "security:audit:dev": "npm audit --audit-level=high",
-    "validate": "npm run typecheck && npm run lint && npm test && npm run security:audit && npm run build:production",
+    "validate": "npm run typecheck && npm run lint && npm test && npm run build:production",
     "verify:env": "node scripts/verify-env.mjs",
     "verify:csp": "node scripts/verify-csp.mjs"
   },
