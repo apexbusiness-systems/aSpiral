@@ -161,8 +161,19 @@ export function shouldStopAsking(
  * Simple word overlap similarity
  */
 function calculateSimilarity(a: string, b: string): number {
-  const wordsA = new Set(a.split(/\s+/).filter(w => w.length > 3));
-  const wordsB = new Set(b.split(/\s+/).filter(w => w.length > 3));
+  // Performance Optimization: Replaced .filter() chained to .split() with single-pass loops
+  // to prevent intermediate array allocations during Set initialization.
+  const wordsA = new Set<string>();
+  const partsA = a.split(/\s+/);
+  for (let i = 0; i < partsA.length; i++) {
+    if (partsA[i].length > 3) wordsA.add(partsA[i]);
+  }
+
+  const wordsB = new Set<string>();
+  const partsB = b.split(/\s+/);
+  for (let i = 0; i < partsB.length; i++) {
+    if (partsB[i].length > 3) wordsB.add(partsB[i]);
+  }
   
   if (wordsA.size === 0 || wordsB.size === 0) return 0;
   
