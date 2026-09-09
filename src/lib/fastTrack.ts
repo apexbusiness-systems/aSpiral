@@ -146,8 +146,12 @@ export function shouldStopAsking(
 
   // Check for repetition (user saying same thing)
   if (conversationHistory.length >= 2) {
-    const lastTwo = conversationHistory.slice(-2).map(m => m.toLowerCase());
-    const similarity = calculateSimilarity(lastTwo[0], lastTwo[1]);
+    // Performance Optimization: Access elements directly from the end of the array
+    // rather than creating intermediate arrays with .slice(-2).map(...)
+    const len = conversationHistory.length;
+    const last1 = conversationHistory[len - 2].toLowerCase();
+    const last2 = conversationHistory[len - 1].toLowerCase();
+    const similarity = calculateSimilarity(last1, last2);
     if (similarity > 0.6) {
       logger.info("User repeating - forcing breakthrough");
       return { stop: true, reason: "user_repeating" };
