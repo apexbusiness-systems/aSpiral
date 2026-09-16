@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-10-27 - [Physics Engine Hot Path Optimization]
+**Learning:** Consolidated multiple `forEach` loops into single-pass `for` loops within `src/lib/physicsEngine.ts` and `src/workers/physics.worker.ts` to reduce GC pressure and closure allocations on a 60FPS physics hot path.
+**Action:** Always prefer standard `for` loops in high-frequency, physics, or game-loop iterations to minimize unnecessary intermediate allocations and function overhead.
