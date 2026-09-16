@@ -64,13 +64,14 @@ function getPositionsAsFloat32Array(): { positions: Float32Array; entityIds: str
   const entityIds: string[] = [];
   const posArray = new Float32Array(entities.length * 3);
   
-  entities.forEach((entity, index) => {
+  for (let index = 0; index < entities.length; index++) {
+    const entity = entities[index];
     entityIds.push(entity.id);
     const pos = positions.get(entity.id) || [0, 0, 0];
     posArray[index * 3] = pos[0];
     posArray[index * 3 + 1] = pos[1];
     posArray[index * 3 + 2] = pos[2];
-  });
+  }
   
   return { positions: posArray, entityIds };
 }

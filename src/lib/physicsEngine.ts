@@ -37,7 +37,8 @@ export function initializePositions(entities: PhysicsEntity[], positions: Map<st
   positions.clear();
   if (entities.length === 0) return;
   
-  entities.forEach((entity, index) => {
+  for (let index = 0; index < entities.length; index++) {
+    const entity = entities[index];
     const angle = (index / entities.length) * Math.PI * 2;
     const radius = 2.5;
     
@@ -52,7 +53,7 @@ export function initializePositions(entities: PhysicsEntity[], positions: Map<st
       Math.sin(angle) * radius * 0.6 + baseOffset[1] * 0.5,
       Math.sin(angle) * 0.5,
     ]);
-  });
+  }
 }
 
 export function runPhysicsIteration(
@@ -65,7 +66,9 @@ export function runPhysicsIteration(
   if (entities.length === 0) return 0;
 
   const forces = new Map<string, Position>();
-  entities.forEach(e => forces.set(e.id, [0, 0, 0]));
+  for (let i = 0; i < entities.length; i++) {
+    forces.set(entities[i].id, [0, 0, 0]);
+  }
   
   let totalMovement = 0;
   
@@ -98,10 +101,11 @@ export function runPhysicsIteration(
     }
   }
   
-  connections.forEach(conn => {
+  for (let i = 0; i < connections.length; i++) {
+    const conn = connections[i];
     const pos1 = positions.get(conn.fromEntityId);
     const pos2 = positions.get(conn.toEntityId);
-    if (!pos1 || !pos2) return;
+    if (!pos1 || !pos2) continue;
     
     const dx = pos2[0] - pos1[0];
     const dy = pos2[1] - pos1[1];
@@ -121,32 +125,31 @@ export function runPhysicsIteration(
     forces.set(conn.fromEntityId, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
     const f2 = forces.get(conn.toEntityId)!;
     forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
-  });
-  
-  entities.forEach(entity => {
-    const pos = positions.get(entity.id)!;
-    const f = forces.get(entity.id)!;
-    forces.set(entity.id, [
-      f[0] - pos[0] * 0.01,
-      f[1] - pos[1] * 0.01,
-      f[2] - pos[2] * 0.02,
-    ]);
-  });
+  }
   
   const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
   
-  entities.forEach(entity => {
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     const pos = positions.get(entity.id)!;
-    const force = forces.get(entity.id)!;
-    const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
+    const f = forces.get(entity.id)!;
+
+    // Apply center gravity
+    const forceX = f[0] - pos[0] * 0.01;
+    const forceY = f[1] - pos[1] * 0.01;
+    const forceZ = f[2] - pos[2] * 0.02;
+
+    forces.set(entity.id, [forceX, forceY, forceZ]);
+
+    const movement = Math.hypot(forceX, forceY, forceZ) * config.damping * decay;
     totalMovement += movement;
     
     positions.set(entity.id, [
-      pos[0] + force[0] * config.damping * decay,
-      pos[1] + force[1] * config.damping * decay,
-      pos[2] + force[2] * config.damping * decay,
+      pos[0] + forceX * config.damping * decay,
+      pos[1] + forceY * config.damping * decay,
+      pos[2] + forceZ * config.damping * decay,
     ]);
-  });
+  }
   
   return totalMovement;
 }
