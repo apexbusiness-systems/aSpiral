@@ -37,8 +37,7 @@ export function initializePositions(entities: PhysicsEntity[], positions: Map<st
   positions.clear();
   if (entities.length === 0) return;
   
-  for (let index = 0; index < entities.length; index++) {
-    const entity = entities[index];
+  entities.forEach((entity, index) => {
     const angle = (index / entities.length) * Math.PI * 2;
     const radius = 2.5;
     
@@ -53,7 +52,7 @@ export function initializePositions(entities: PhysicsEntity[], positions: Map<st
       Math.sin(angle) * radius * 0.6 + baseOffset[1] * 0.5,
       Math.sin(angle) * 0.5,
     ]);
-  }
+  });
 }
 
 export function runPhysicsIteration(
@@ -107,14 +106,14 @@ export function runPhysicsIteration(
     const conn = connections[i];
     const pos1 = positions.get(conn.fromEntityId);
     const pos2 = positions.get(conn.toEntityId);
-    if (!pos1 || !pos2) continue;
+    if (!pos1 || !pos2) return;
     
     const dx = pos2[0] - pos1[0];
     const dy = pos2[1] - pos1[1];
     const dz = pos2[2] - pos1[2];
     const distSq = dx * dx + dy * dy + dz * dz;
     
-    if (distSq < 0.01) continue;
+    if (distSq < 0.01) return;
     const distance = Math.sqrt(distSq);
     
     const displacement = distance - config.idealDistance;
@@ -129,31 +128,31 @@ export function runPhysicsIteration(
     forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
   }
   
-  const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
-  
-  // Performance Optimization: Consolidated loops to apply decay and compute movement
+// Performance Optimization: Consolidated loops to apply decay and compute movement
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     const pos = positions.get(entity.id)!;
     const f = forces.get(entity.id)!;
-
-    // Apply bounds friction
     const fx = f[0] - pos[0] * 0.01;
     const fy = f[1] - pos[1] * 0.01;
     const fz = f[2] - pos[2] * 0.02;
     forces.set(entity.id, [fx, fy, fz]);
+  }
 
-    // Compute movement
-    const movement = Math.hypot(fx, fy, fz) * config.damping * decay;
+  const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
+
+  entities.forEach(entity => {
+    const pos = positions.get(entity.id)!;
+    const force = forces.get(entity.id)!;
+    const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
     totalMovement += movement;
     
-    // Update position
     positions.set(entity.id, [
-      pos[0] + fx * config.damping * decay,
-      pos[1] + fy * config.damping * decay,
-      pos[2] + fz * config.damping * decay,
+      pos[0] + force[0] * config.damping * decay,
+      pos[1] + force[1] * config.damping * decay,
+      pos[2] + force[2] * config.damping * decay,
     ]);
-  }
+  });
   
   return totalMovement;
 }
