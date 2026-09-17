@@ -37,7 +37,9 @@ export function initializePositions(entities: PhysicsEntity[], positions: Map<st
   positions.clear();
   if (entities.length === 0) return;
   
-  entities.forEach((entity, index) => {
+// Performance Optimization: Replaced .forEach() with standard for loop
+  for (let index = 0; index < entities.length; index++) {
+    const entity = entities[index];
     const angle = (index / entities.length) * Math.PI * 2;
     const radius = 2.5;
     
@@ -52,7 +54,7 @@ export function initializePositions(entities: PhysicsEntity[], positions: Map<st
       Math.sin(angle) * radius * 0.6 + baseOffset[1] * 0.5,
       Math.sin(angle) * 0.5,
     ]);
-  });
+  }
 }
 
 export function runPhysicsIteration(
@@ -65,7 +67,10 @@ export function runPhysicsIteration(
   if (entities.length === 0) return 0;
 
   const forces = new Map<string, Position>();
-  entities.forEach(e => forces.set(e.id, [0, 0, 0]));
+// Performance Optimization: Replaced .forEach() with a standard for loop
+  for (let i = 0; i < entities.length; i++) {
+    forces.set(entities[i].id, [0, 0, 0]);
+  }
   
   let totalMovement = 0;
   
@@ -98,17 +103,19 @@ export function runPhysicsIteration(
     }
   }
   
-  connections.forEach(conn => {
+// Performance Optimization: Replaced .forEach() with a standard for loop
+  for (let i = 0; i < connections.length; i++) {
+    const conn = connections[i];
     const pos1 = positions.get(conn.fromEntityId);
     const pos2 = positions.get(conn.toEntityId);
-    if (!pos1 || !pos2) return;
+    if (!pos1 || !pos2) continue;
     
     const dx = pos2[0] - pos1[0];
     const dy = pos2[1] - pos1[1];
     const dz = pos2[2] - pos1[2];
     const distSq = dx * dx + dy * dy + dz * dz;
     
-    if (distSq < 0.01) return;
+    if (distSq < 0.01) continue;
     const distance = Math.sqrt(distSq);
     
     const displacement = distance - config.idealDistance;
@@ -121,21 +128,24 @@ export function runPhysicsIteration(
     forces.set(conn.fromEntityId, [f1[0] + fx, f1[1] + fy, f1[2] + fz]);
     const f2 = forces.get(conn.toEntityId)!;
     forces.set(conn.toEntityId, [f2[0] - fx, f2[1] - fy, f2[2] - fz]);
-  });
+  }
   
-  entities.forEach(entity => {
+// Performance Optimization: Consolidated loops to apply decay and compute movement
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     const pos = positions.get(entity.id)!;
     const f = forces.get(entity.id)!;
-    forces.set(entity.id, [
-      f[0] - pos[0] * 0.01,
-      f[1] - pos[1] * 0.01,
-      f[2] - pos[2] * 0.02,
-    ]);
-  });
-  
+    const fx = f[0] - pos[0] * 0.01;
+    const fy = f[1] - pos[1] * 0.01;
+    const fz = f[2] - pos[2] * 0.02;
+    forces.set(entity.id, [fx, fy, fz]);
+  }
+
   const decay = Math.max(0.5, 1 - (iteration / config.iterations) * 0.5);
-  
-  entities.forEach(entity => {
+
+// Performance Optimization: Replaced .forEach() with a standard for loop
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     const pos = positions.get(entity.id)!;
     const force = forces.get(entity.id)!;
     const movement = Math.hypot(force[0], force[1], force[2]) * config.damping * decay;
@@ -146,7 +156,7 @@ export function runPhysicsIteration(
       pos[1] + force[1] * config.damping * decay,
       pos[2] + force[2] * config.damping * decay,
     ]);
-  });
+  }
   
   return totalMovement;
 }
@@ -157,21 +167,23 @@ export function normalizePositions(positions: Map<string, Position>, targetRange
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
   
-  positions.forEach(pos => {
+// Performance Optimization: Replaced .forEach() with a standard for loop
+  for (const pos of positions.values()) {
     minX = Math.min(minX, pos[0]);
     maxX = Math.max(maxX, pos[0]);
     minY = Math.min(minY, pos[1]);
     maxY = Math.max(maxY, pos[1]);
-  });
+  }
   
   const rangeX = maxX - minX || 1;
   const rangeY = maxY - minY || 1;
   
-  positions.forEach((pos, id) => {
+// Performance Optimization: Replaced .forEach() with a standard for loop
+  for (const [id, pos] of positions.entries()) {
     positions.set(id, [
       ((pos[0] - minX) / rangeX - 0.5) * targetRange,
       ((pos[1] - minY) / rangeY - 0.5) * targetRange * 0.7,
       pos[2],
     ]);
-  });
+  }
 }
