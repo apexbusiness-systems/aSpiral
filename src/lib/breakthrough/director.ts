@@ -50,7 +50,9 @@ export class BreakthroughDirector {
     currentVariant: null,
     startTime: null,
     error: null,
-    fpsHistory: [],
+    fpsHistory: new Float32Array(60),
+    fpsHead: 0,
+    fpsCount: 0,
     isSafeMode: false,
   };
   
@@ -218,7 +220,9 @@ export class BreakthroughDirector {
     // Reset state
     this.abortController = new AbortController();
     this.state.startTime = performance.now();
-    this.state.fpsHistory = [];
+    this.state.fpsHistory = new Float32Array(60);
+    this.state.fpsHead = 0;
+    this.state.fpsCount = 0;
     this.state.error = null;
     
     this.setPhase('playing');
@@ -242,11 +246,13 @@ export class BreakthroughDirector {
   reportFPS(fps: number): void {
     if (this.state.phase !== 'playing') return;
     
-    this.state.fpsHistory.push(fps);
-    
-    // Keep only last 60 frames (1 second at 60fps)
-    if (this.state.fpsHistory.length > 60) {
-      this.state.fpsHistory.shift();
+    // Performance Optimization: Use a ring buffer (Float32Array) for FPS history
+    // instead of an Array with .push() and .shift() to eliminate memory allocations
+    // and garbage collection on this hot path (called every frame).
+    this.state.fpsHistory[this.state.fpsHead] = fps;
+    this.state.fpsHead = (this.state.fpsHead + 1) % 60;
+    if (this.state.fpsCount < 60) {
+      this.state.fpsCount++;
     }
   }
   
@@ -350,14 +356,18 @@ export class BreakthroughDirector {
       }
 
       // Calculate average FPS from recent history
-      if (this.state.fpsHistory.length >= 30) {
+      if (this.state.fpsCount >= 30) {
         // Performance Optimization: Replaced .slice().reduce() with a single-pass loop
         // to avoid intermediate array allocation and closure overhead on this hot path.
         const hist = this.state.fpsHistory;
         const count = 30;
         let sum = 0;
-        for (let i = hist.length - count; i < hist.length; i++) {
-          sum += hist[i];
+
+        // Read the last 30 frames from the ring buffer
+        let idx = (this.state.fpsHead - count + 60) % 60;
+        for (let i = 0; i < count; i++) {
+          sum += hist[idx];
+          idx = (idx + 1) % 60;
         }
         const avgFps = sum / count;
 
@@ -451,7 +461,9 @@ export class BreakthroughDirector {
       currentVariant: null,
       startTime: null,
       error: null,
-      fpsHistory: [],
+      fpsHistory: new Float32Array(60),
+    fpsHead: 0,
+    fpsCount: 0,
       isSafeMode: false,
     };
     
@@ -486,13 +498,14 @@ export class BreakthroughDirector {
     let avgFps: number | undefined;
     let minFps: number | undefined;
     
-    if (this.state.fpsHistory.length > 0) {
+    if (this.state.fpsCount > 0) {
       let sum = 0;
-      let min = this.state.fpsHistory[0];
-      const len = this.state.fpsHistory.length;
+      let min = this.state.fpsHistory[0]; // will be updated correctly in loop
+      const len = this.state.fpsCount;
 
       for (let i = 0; i < len; i++) {
         const fps = this.state.fpsHistory[i];
+        if (i === 0) min = fps;
         sum += fps;
         if (fps < min) {
           min = fps;
