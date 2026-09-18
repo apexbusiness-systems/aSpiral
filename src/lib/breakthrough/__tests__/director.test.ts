@@ -209,7 +209,7 @@ describe('Breakthrough Director', () => {
       }
       
       const state = director.getState();
-      expect(state.fpsHistory.length).toBe(10);
+      expect(state.fpsCount).toBe(10);
     });
 
     it('should not accept FPS reports when not playing', () => {
@@ -218,7 +218,7 @@ describe('Breakthrough Director', () => {
       director.reportFPS(60);
       
       const state = director.getState();
-      expect(state.fpsHistory.length).toBe(0);
+      expect(state.fpsCount).toBe(0);
     });
   });
 

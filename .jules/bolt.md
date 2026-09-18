@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-05-18 - Optimize FPS history tracking with Float32Array
+**Learning:** In hot paths executed every frame (like `reportFPS` in `BreakthroughDirector`), using standard JavaScript arrays with `.push()` and `.shift()` creates continuous memory allocations and O(N) shifts, leading to garbage collection pressure and micro-stutters during critical visual effects.
+**Action:** Use a pre-allocated fixed-size typed array (like `Float32Array`) acting as a circular ring buffer to eliminate allocation and shift overhead.
