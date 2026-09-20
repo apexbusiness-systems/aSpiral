@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-07-25 - Prevent Array Allocations When Extracting String Prefixes
+**Learning:** Chaining array methods like `.split(" ").filter(...).slice(0, 3).join(" ")` or `.split(" ")[0]` to extract leading words from a string allocates multiple intermediate strings and arrays, severely impacting performance in hot paths (e.g. repeated history comparison loops).
+**Action:** Replace `.split(" ")[0]` with a manual space search using `indexOf(' ')` and `substring()`. For extracting multiple words, use a single-pass character iteration loop counting spaces to identify the substring bounds, eliminating intermediate arrays entirely.
