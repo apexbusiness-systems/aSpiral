@@ -167,9 +167,9 @@ function calculateSimilarity(a: string, b: string): number {
   if (wordsA.size === 0 || wordsB.size === 0) return 0;
   
   let overlap = 0;
-  wordsA.forEach(word => {
+  for (const word of wordsA) {
     if (wordsB.has(word)) overlap++;
-  });
+  }
   
   return overlap / Math.max(wordsA.size, wordsB.size);
 }

@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-09-21 - Consolidate Multiple Sequential Entity Iterations
+**Learning:** In high-frequency hot paths like the physics engine, running multiple consecutive iterations over the exact same collection of entities can incur measurable GC pressure and redundant CPU overhead from repeated Map lookups (`positions.get()`, `forces.get()`).
+**Action:** When a high-frequency function touches every entity in a graph sequentially, combine all possible state derivations (like centering forces, velocity updates, and positional shifts) into a single pass to eliminate redundant Map accesses and closures.
