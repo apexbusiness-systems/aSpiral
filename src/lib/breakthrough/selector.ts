@@ -222,7 +222,10 @@ function pickTopVariant(
       ? topVariants.filter((variant) => variant.id !== mostRecentVariantId)
       : topVariants;
 
-  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+  let totalTopScore = 0;
+  for (let i = 0; i < candidateTopVariants.length; i++) {
+    totalTopScore += scores.get(candidateTopVariants[i].id) || 0;
+  }
   let random = secureMathRandom() * totalTopScore;
 
   for (const variant of candidateTopVariants) {

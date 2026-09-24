@@ -56,6 +56,7 @@ export class BreakthroughDirector {
   
   private abortController: AbortController | null = null;
   private fpsCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private fpsIndex: number = 0;
   private maxDurationTimeout: ReturnType<typeof setTimeout> | null = null;
   private settleTimeout: ReturnType<typeof setTimeout> | null = null;
   
@@ -219,6 +220,7 @@ export class BreakthroughDirector {
     this.abortController = new AbortController();
     this.state.startTime = performance.now();
     this.state.fpsHistory = [];
+    this.fpsIndex = 0;
     this.state.error = null;
     
     this.setPhase('playing');
@@ -242,11 +244,13 @@ export class BreakthroughDirector {
   reportFPS(fps: number): void {
     if (this.state.phase !== 'playing') return;
     
-    this.state.fpsHistory.push(fps);
-    
-    // Keep only last 60 frames (1 second at 60fps)
-    if (this.state.fpsHistory.length > 60) {
-      this.state.fpsHistory.shift();
+    // Performance Optimization: Use a ring buffer instead of push/shift
+    // to avoid continuous array reallocation and garbage collection on every frame
+    if (this.state.fpsHistory.length < 60) {
+      this.state.fpsHistory.push(fps);
+    } else {
+      this.state.fpsHistory[this.fpsIndex] = fps;
+      this.fpsIndex = (this.fpsIndex + 1) % 60;
     }
   }
   
@@ -351,13 +355,22 @@ export class BreakthroughDirector {
 
       // Calculate average FPS from recent history
       if (this.state.fpsHistory.length >= 30) {
-        // Performance Optimization: Replaced .slice().reduce() with a single-pass loop
-        // to avoid intermediate array allocation and closure overhead on this hot path.
+        // Performance Optimization: Calculate sum correctly for ring buffer
         const hist = this.state.fpsHistory;
         const count = 30;
         let sum = 0;
-        for (let i = hist.length - count; i < hist.length; i++) {
-          sum += hist[i];
+
+        if (hist.length < 60) {
+          for (let i = hist.length - count; i < hist.length; i++) {
+            sum += hist[i];
+          }
+        } else {
+          // If ring buffer is full, read the 30 most recent entries
+          // which are placed before fpsIndex (wrapping around)
+          for (let i = 0; i < count; i++) {
+            const idx = (this.fpsIndex - 1 - i + 60) % 60;
+            sum += hist[idx];
+          }
         }
         const avgFps = sum / count;
 
@@ -454,6 +467,7 @@ export class BreakthroughDirector {
       fpsHistory: [],
       isSafeMode: false,
     };
+    this.fpsIndex = 0;
     
     this.abortController = null;
     this.prewarmedResources = { variant: null, ready: false };
