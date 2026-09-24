@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2026-09-24 - Optimize FPS History Ring Buffer in BreakthroughDirector
+**Learning:** The `fpsHistory` array in `BreakthroughDirector` was using `push()` and `shift()` to maintain a sliding window of 60 frames. This occurs on a very hot path (the render loop), and `shift()` causes the entire array to be reallocated and shifted in memory on every frame, generating unnecessary garbage collection pressure and CPU overhead.
+**Action:** Replace `push()`/`shift()` with a fixed-size ring buffer using an `fpsIndex` pointer. This avoids all array reallocations after the initial 60 frames, making the FPS tracking operations strictly O(1) in memory and time.
