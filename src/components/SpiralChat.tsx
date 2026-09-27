@@ -499,7 +499,12 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
   }, [selectedEntityId]);
 
   const handleClearAllEntities = useCallback(() => {
-    const allIds = new Set((currentSession?.entities || []).map(e => e.id));
+    // Performance Optimization: Iterate over entities instead of .map() to avoid array allocations
+    const entities = currentSession?.entities || [];
+    const allIds = new Set<string>();
+    for (let i = 0; i < entities.length; i++) {
+      allIds.add(entities[i].id);
+    }
     setDismissedEntityIds(allIds);
     setSelectedEntityId(undefined);
   }, [currentSession?.entities]);
