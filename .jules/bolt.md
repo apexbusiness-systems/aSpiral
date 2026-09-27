@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-06-12 - [Optimize Set initialization]
+**Learning:** Replaced chained .map() with a single-pass loop when populating a Set to avoid intermediate array allocations and GC pressure.
+**Action:** Use standard for loops with early termination logic instead of array methods when working with large data sets to be processed and mapped.
