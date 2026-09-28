@@ -16,7 +16,9 @@ export class AntiRepetitionEngine {
     if (recent.length === 0) return false;
 
     // Extract first word
-    const newStart = newQuestion.split(" ")[0].toLowerCase();
+    // ⚡ Bolt: Performance Optimization: Replaced .split(" ")[0] with allocation-free indexOf/substring
+    const firstSpaceIndex = newQuestion.indexOf(" ");
+    const newStart = (firstSpaceIndex === -1 ? newQuestion : newQuestion.substring(0, firstSpaceIndex)).toLowerCase();
 
     // Check if we've used this start word too often
     const startCount = this.startWordCounts.get(newStart) || 0;
