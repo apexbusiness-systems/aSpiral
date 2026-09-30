@@ -31,11 +31,16 @@ function generateSessionHTML(data: SessionExportData): string {
   const sessionTime = format(new Date(session.createdAt), 'h:mm a');
   
   // Group entities by type
-  const entityGroups = session.entities.reduce((acc, entity) => {
-    if (!acc[entity.type]) acc[entity.type] = [];
-    acc[entity.type].push(entity);
-    return acc;
-  }, {} as Record<string, Entity[]>);
+  // Performance Optimization: Replaced .reduce() with a single-pass loop
+  // to avoid intermediate object allocations and function closure overhead.
+  const entityGroups: Record<string, Entity[]> = {};
+  for (let i = 0; i < session.entities.length; i++) {
+    const entity = session.entities[i];
+    if (!entityGroups[entity.type]) {
+      entityGroups[entity.type] = [];
+    }
+    entityGroups[entity.type].push(entity);
+  }
 
   const entityTypeColors: Record<string, string> = {
     problem: '#ef4444',
