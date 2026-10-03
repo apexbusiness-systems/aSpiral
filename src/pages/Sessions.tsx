@@ -87,8 +87,8 @@ const Sessions = () => {
     // to avoid intermediate array allocations and GC pressure.
     const breakthroughSessions = new Set<string>();
     const breakthroughs = breakthroughResult.data || [];
-    for (let i = 0; i < breakthroughs.length; i++) {
-      breakthroughSessions.add(breakthroughs[i].session_id);
+    for (const b of breakthroughs) {
+      breakthroughSessions.add(b.session_id);
     }
 
     const enriched: SessionListItem[] = rawSessions.map(s => ({

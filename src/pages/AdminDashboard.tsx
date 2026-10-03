@@ -148,8 +148,8 @@ const AdminDashboard = () => {
       // to avoid intermediate array allocations and GC pressure.
       const sessionIds = new Set<string>();
       const safeSessions = sessions || [];
-      for (let i = 0; i < safeSessions.length; i++) {
-        sessionIds.add(safeSessions[i].id);
+      for (const s of safeSessions) {
+        sessionIds.add(s.id);
       }
       const sessionIdsArray = Array.from(sessionIds);
 

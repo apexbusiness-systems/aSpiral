@@ -313,7 +313,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     if (!currentSession) {
       const userId = user?.id || "anonymous";
       const session = createSession(userId);
-      OmniLinkAdapter.publishSessionStarted(session.id, session.userId);
+      OmniLinkAdapter.publishSessionStarted(session.id, session.userId).catch((err) => console.warn('Failed to publish session start:', err));
     }
   }, [currentSession, createSession, user]);
 
@@ -503,8 +503,8 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     // to avoid intermediate array allocations and GC pressure.
     const allIds = new Set<string>();
     const entities = currentSession?.entities || [];
-    for (let i = 0; i < entities.length; i++) {
-      allIds.add(entities[i].id);
+    for (const e of entities) {
+      allIds.add(e.id);
     }
     setDismissedEntityIds(allIds);
     setSelectedEntityId(undefined);
