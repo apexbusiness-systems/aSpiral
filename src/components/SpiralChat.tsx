@@ -439,7 +439,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     if (breakthroughData) {
       trackFeature('session_exported');
       const content = `# ASPIRAL Breakthrough\n\n## Friction\n${breakthroughData.friction}\n\n## Grease\n${breakthroughData.grease}\n\n## Insight\n${breakthroughData.insight}`;
-      navigator.clipboard.writeText(content);
+      navigator.clipboard.writeText(content).catch((err) => console.warn('Clipboard write failed:', err));
       toast({ title: "Exported", description: "Breakthrough copied to clipboard!" });
     }
   }, [breakthroughData, toast, trackFeature]);
