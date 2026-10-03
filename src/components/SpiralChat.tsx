@@ -313,7 +313,7 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     if (!currentSession) {
       const userId = user?.id || "anonymous";
       const session = createSession(userId);
-      OmniLinkAdapter.publishSessionStarted(session.id, session.userId).catch((err) => console.warn('Failed to publish session start:', err));
+      void OmniLinkAdapter.publishSessionStarted(session.id, session.userId).catch((err) => console.warn('Failed to publish session start:', err));
     }
   }, [currentSession, createSession, user]);
 
@@ -435,12 +435,21 @@ export const SpiralChat = forwardRef<SpiralChatHandle, SpiralChatProps>((_, ref)
     });
   }, [saveSession, isSaving, toast, trackFeature]);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (breakthroughData) {
       trackFeature('session_exported');
       const content = `# ASPIRAL Breakthrough\n\n## Friction\n${breakthroughData.friction}\n\n## Grease\n${breakthroughData.grease}\n\n## Insight\n${breakthroughData.insight}`;
-      navigator.clipboard.writeText(content).catch((err) => console.warn('Clipboard write failed:', err));
-      toast({ title: "Exported", description: "Breakthrough copied to clipboard!" });
+      if (navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(content);
+          toast({ title: "Exported", description: "Breakthrough copied to clipboard!" });
+        } catch (err) {
+          console.warn('Clipboard write failed:', err);
+          toast({ title: "Export Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Export Failed", description: "Clipboard not available.", variant: "destructive" });
+      }
     }
   }, [breakthroughData, toast, trackFeature]);
 
