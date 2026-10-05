@@ -21,3 +21,6 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+## 2024-06-15 - Add React.memo() to prevent unnecessary re-renders
+**Learning:** Heavily used `@react-three/fiber` 3D components (such as scene nodes) suffer from unnecessary frame re-renders during parent prop updates if they are not memoized, causing frame rate drops.
+**Action:** Always wrap heavily used 3D components (like AdaptiveEntity) with `React.memo()` to prevent unnecessary frame re-renders during parent prop updates.
