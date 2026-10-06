@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
@@ -16,7 +16,7 @@ interface AdaptiveEntityProps {
   readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-export function AdaptiveEntity({
+function InternalAdaptiveEntity({
   entity,
   position,
   isVisible,
@@ -144,3 +144,8 @@ export function AdaptiveEntity({
     </BaseEntityOrb>
   );
 }
+
+// Performance Optimization: Wrapped heavily used AdaptiveEntity with React.memo()
+// Impact: Prevents unnecessary frame re-renders during parent prop updates in the graph layout.
+// Measurement: Reduces React reconciliations on this hot 3D path, improving FPS and reducing GC pressure.
+export const AdaptiveEntity = React.memo(InternalAdaptiveEntity);
