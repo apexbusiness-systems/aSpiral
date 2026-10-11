@@ -128,6 +128,8 @@
     "vitest": "^4.0.16"
   },
   "overrides": {
-    "nanoid": "^3.3.18"
+    "nanoid": "^3.3.18",
+    "braces": "^3.0.3",
+    "micromatch": "^4.0.8"
   }
 }
