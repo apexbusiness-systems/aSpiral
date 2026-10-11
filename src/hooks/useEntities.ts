@@ -120,12 +120,23 @@ export function useEntities() {
     }, [entities, profile, invalidate]);
 
     // Register mesh ref for direct physics updates
-    const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {
-        if (mesh) {
-            meshRefs.current.set(id, mesh);
-        } else {
-            meshRefs.current.delete(id);
+    // Performance Optimization: Cache these callbacks so React.memo child components
+    // don't break referential equality across renders
+    const meshRefCallbacks = useRef<Map<string, (mesh: THREE.Mesh | null) => void>>(new Map());
+
+    const handleMeshRef = useCallback((id: string) => {
+        let cb = meshRefCallbacks.current.get(id);
+        if (!cb) {
+            cb = (mesh: THREE.Mesh | null) => {
+                if (mesh) {
+                    meshRefs.current.set(id, mesh);
+                } else {
+                    meshRefs.current.delete(id);
+                }
+            };
+            meshRefCallbacks.current.set(id, cb);
         }
+        return cb;
     }, []);
 
     // Memoize filtered connections for performance
