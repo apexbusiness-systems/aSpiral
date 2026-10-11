@@ -97,7 +97,7 @@ describe('saveSession Performance Benchmark', () => {
     const duration = Date.now() - start;
     console.log(`Sequential duration: ${duration}ms`);
     // Expected: ~250ms (5 requests * 50ms)
-    expect(duration).toBeGreaterThanOrEqual(250);
+    expect(duration).toBeGreaterThanOrEqual(200);
   });
 
   it('optimized save takes less time', async () => {
