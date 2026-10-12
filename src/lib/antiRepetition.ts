@@ -3,6 +3,15 @@
  * Tracks patterns and prevents repetitive question structures
  */
 
+// Performance Optimization: Replaced .split(" ")[0] with indexOf and substring
+// Why: Avoids O(N) array allocation and full string traversal just to extract the first word.
+// Impact: Reduces GC pressure and memory allocations on hot paths like question tracking.
+function getFirstWord(text: string): string {
+  const spaceIndex = text.indexOf(" ");
+  if (spaceIndex === -1) return text.toLowerCase();
+  return text.substring(0, spaceIndex).toLowerCase();
+}
+
 export class AntiRepetitionEngine {
   private questionHistory: string[] = [];
   private patternHistory: string[] = [];
@@ -16,7 +25,7 @@ export class AntiRepetitionEngine {
     if (recent.length === 0) return false;
 
     // Extract first word
-    const newStart = newQuestion.split(" ")[0].toLowerCase();
+    const newStart = getFirstWord(newQuestion);
 
     // Check if we've used this start word too often
     const startCount = this.startWordCounts.get(newStart) || 0;
@@ -62,7 +71,7 @@ export class AntiRepetitionEngine {
     this.patternHistory.push(pattern);
 
     // Track start word
-    const startWord = question.split(" ")[0].toLowerCase();
+    const startWord = getFirstWord(question);
     this.startWordCounts.set(
       startWord,
       (this.startWordCounts.get(startWord) || 0) + 1
@@ -75,7 +84,7 @@ export class AntiRepetitionEngine {
 
       // Decrement start word count
       if (removed) {
-        const removedStart = removed.split(" ")[0].toLowerCase();
+        const removedStart = getFirstWord(removed);
         const count = this.startWordCounts.get(removedStart) || 0;
         if (count > 1) {
           this.startWordCounts.set(removedStart, count - 1);
