@@ -1,3 +1,4 @@
+import React from "react";
 import { useMemo, useState } from "react";
 import type { Entity } from "@/lib/types";
 import { getEntityVisualConfig, getColorByValence } from "@/lib/visualVariety";
@@ -13,7 +14,7 @@ interface SemanticEntityProps {
   readonly onClick?: (entity: Entity) => void;
 }
 
-export function SemanticEntity({ entity, position, onClick }: SemanticEntityProps) {
+export const SemanticEntity = React.memo(function SemanticEntity({ entity, position, onClick }: SemanticEntityProps) {
   const [hovered, setHovered] = useState(false);
   
   // Get visual config based on entity type and role
@@ -61,4 +62,4 @@ export function SemanticEntity({ entity, position, onClick }: SemanticEntityProp
       customMaterial={customMaterial}
     />
   );
-}
+});
