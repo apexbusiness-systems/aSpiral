@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2026-06-15 - Memoize R3F 3D Components
+**Learning:** React Three Fiber 3D components (like nodes and lines in a physics layout) in high-frequency render paths cause significant performance drops due to unnecessary React reconciliation and re-renders if not memoized, even when physics positions update at 60FPS natively.
+**Action:** Always wrap heavily used @react-three/fiber 3D components with `React.memo()` to prevent unnecessary frame re-renders during parent prop updates.
