@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-06-15 - React Performance & Safety with React.memo
+**Learning:** When using `React.memo()` on child components that receive dynamically generated callback props (e.g., callbacks bound to specific entity IDs), the parent component should cache these callbacks (e.g., using a `useRef<Map<string, Function>>(new Map())`). This ensures referential equality of the callbacks across renders, preventing unnecessary re-renders while avoiding stale closures.
+**Action:** Always ensure callbacks are safely memoized by the parent before wrapping heavy child components in `React.memo()`.
