@@ -19,6 +19,7 @@ export function useEntities() {
     // Position refs for 60FPS updates (bypass React state)
     const positionRefs = useRef<Map<string, THREE.Vector3>>(new Map());
     const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map());
+    const meshRefCallbacks = useRef<Map<string, (mesh: THREE.Mesh | null) => void>>(new Map());
 
     const entities = useDeepCompareMemo(
         () => currentSession?.entities || [],
@@ -120,12 +121,20 @@ export function useEntities() {
     }, [entities, profile, invalidate]);
 
     // Register mesh ref for direct physics updates
-    const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {
-        if (mesh) {
-            meshRefs.current.set(id, mesh);
-        } else {
-            meshRefs.current.delete(id);
+    // Performance Optimization: Cache callbacks to ensure referential equality for React.memo
+    const handleMeshRef = useCallback((id: string) => {
+        let callback = meshRefCallbacks.current.get(id);
+        if (!callback) {
+            callback = (mesh: THREE.Mesh | null) => {
+                if (mesh) {
+                    meshRefs.current.set(id, mesh);
+                } else {
+                    meshRefs.current.delete(id);
+                }
+            };
+            meshRefCallbacks.current.set(id, callback);
         }
+        return callback;
     }, []);
 
     // Memoize filtered connections for performance
