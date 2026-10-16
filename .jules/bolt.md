@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2026-10-16 - Prevent Stale Closures with React.memo and Object Refs
+**Learning:** When using `React.memo` with a custom equality function on components receiving data objects (e.g., `entity`, `connection`), avoid comparing only their ID properties (e.g., `prevProps.entity.id !== nextProps.entity.id`). Using only the ID causes stale UI bugs when the object's other internal properties (like label or color) update. Additionally, when passing generated callback props (like `onMeshRef` bounds to an ID) to memoized components, the parent must cache those callbacks (e.g., via a `useRef<Map>`) to preserve referential equality and prevent invalidating the memoization on every render.
+**Action:** Always perform strict referential equality checks (`prevProps.entity !== nextProps.entity`) for data objects in custom comparators. Cache dynamically generated callback props at the parent level before passing them to memoized children.

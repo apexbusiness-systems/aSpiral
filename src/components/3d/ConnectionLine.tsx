@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, memo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
@@ -17,7 +17,7 @@ const connectionColors: Record<string, string> = {
   resolves: "#3b82f6",
 };
 
-export function ConnectionLine({
+const ConnectionLineComponent = function ConnectionLine({
   connection,
   fromPosition,
   toPosition,
@@ -46,3 +46,26 @@ export function ConnectionLine({
     />
   );
 }
+
+// Performance Optimization: Prevent unnecessary re-renders of 3D geometry
+// by safely memoizing the component and explicitly checking array/object contents.
+export const ConnectionLine = memo(ConnectionLineComponent, (prevProps, nextProps) => {
+  // Perform referential check on the connection object
+  if (prevProps.connection !== nextProps.connection) {
+    return false;
+  }
+
+  // Explicitly check position array values
+  if (
+    prevProps.fromPosition[0] !== nextProps.fromPosition[0] ||
+    prevProps.fromPosition[1] !== nextProps.fromPosition[1] ||
+    prevProps.fromPosition[2] !== nextProps.fromPosition[2] ||
+    prevProps.toPosition[0] !== nextProps.toPosition[0] ||
+    prevProps.toPosition[1] !== nextProps.toPosition[1] ||
+    prevProps.toPosition[2] !== nextProps.toPosition[2]
+  ) {
+    return false;
+  }
+
+  return true;
+});

@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from "react";
+import { useRef, useState, useMemo, useEffect, memo } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
@@ -16,7 +16,7 @@ interface AdaptiveEntityProps {
   readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-export function AdaptiveEntity({
+const AdaptiveEntityComponent = function AdaptiveEntity({
   entity,
   position,
   isVisible,
@@ -144,3 +144,29 @@ export function AdaptiveEntity({
     </BaseEntityOrb>
   );
 }
+
+// Performance Optimization: Prevent unnecessary re-renders of 3D geometry
+// by safely memoizing the component and explicitly checking array/object contents.
+export const AdaptiveEntity = memo(AdaptiveEntityComponent, (prevProps, nextProps) => {
+  // Check simple props and perform referential check on the entity object
+  if (
+    prevProps.isVisible !== nextProps.isVisible ||
+    prevProps.showLabel !== nextProps.showLabel ||
+    prevProps.entity !== nextProps.entity ||
+    prevProps.onClick !== nextProps.onClick ||
+    prevProps.onMeshRef !== nextProps.onMeshRef
+  ) {
+    return false;
+  }
+
+  // Explicitly check position array values to avoid strict equality failure on new arrays
+  if (
+    prevProps.position[0] !== nextProps.position[0] ||
+    prevProps.position[1] !== nextProps.position[1] ||
+    prevProps.position[2] !== nextProps.position[2]
+  ) {
+    return false;
+  }
+
+  return true;
+});
