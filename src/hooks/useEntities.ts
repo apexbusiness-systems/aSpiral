@@ -119,13 +119,22 @@ export function useEntities() {
         };
     }, [entities, profile, invalidate]);
 
+    const meshCallbackCache = useRef<Map<string, (mesh: THREE.Mesh | null) => void>>(new Map());
+
     // Register mesh ref for direct physics updates
-    const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {
-        if (mesh) {
-            meshRefs.current.set(id, mesh);
-        } else {
-            meshRefs.current.delete(id);
+    const handleMeshRef = useCallback((id: string) => {
+        let callback = meshCallbackCache.current.get(id);
+        if (!callback) {
+            callback = (mesh: THREE.Mesh | null) => {
+                if (mesh) {
+                    meshRefs.current.set(id, mesh);
+                } else {
+                    meshRefs.current.delete(id);
+                }
+            };
+            meshCallbackCache.current.set(id, callback);
         }
+        return callback;
     }, []);
 
     // Memoize filtered connections for performance
