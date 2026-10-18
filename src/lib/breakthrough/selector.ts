@@ -262,16 +262,11 @@ function getEligibleVariants(context: SelectionContext): BaseVariant[] {
 /**
  * Select the best variant for the given context
  */
-export function selectVariant(context: SelectionContext): {
-  variant: MutatedVariant;
-  scores: Map<string, number>;
-} {
-  const history = getBreakthroughHistory();
 
-  // Refresh recency/fatigue signals from persisted history so callers with a stale context
-  // still get anti-repetition behavior across sequential selections.
-  // Performance Optimization: Replaced chained .slice().map() with single-pass loops
-  // to avoid intermediate array allocations and improve execution speed.
+/**
+ * Helper to extract recent history efficiently without intermediate arrays.
+ */
+function extractRecentHistory(history: BreakthroughHistory) {
   const recentVariantIdsCount = Math.min(history.entries.length, RECENCY_WINDOW);
   const recentVariantIds = new Array(recentVariantIdsCount);
   for (let i = 0; i < recentVariantIdsCount; i++) {
@@ -283,6 +278,19 @@ export function selectVariant(context: SelectionContext): {
   for (let i = 0; i < recentIntensitiesCount; i++) {
     recentIntensities[i] = history.entries[history.entries.length - recentIntensitiesCount + i].intensity;
   }
+
+  return { recentVariantIds, recentIntensities };
+}
+
+export function selectVariant(context: SelectionContext): {
+  variant: MutatedVariant;
+  scores: Map<string, number>;
+} {
+  const history = getBreakthroughHistory();
+
+  // Refresh recency/fatigue signals from persisted history so callers with a stale context
+  // still get anti-repetition behavior across sequential selections.
+  const { recentVariantIds, recentIntensities } = extractRecentHistory(history);
 
   const effectiveContext: SelectionContext = {
     ...context,
@@ -385,19 +393,7 @@ export function buildSelectionContext(
   const history = getBreakthroughHistory();
   
   // Extract recent variant IDs and intensities from history
-  // Performance Optimization: Replaced chained .slice().map() with single-pass loops
-  // to avoid intermediate array allocations and improve execution speed.
-  const recentVariantIdsCount = Math.min(history.entries.length, RECENCY_WINDOW);
-  const recentVariantIds = new Array(recentVariantIdsCount);
-  for (let i = 0; i < recentVariantIdsCount; i++) {
-    recentVariantIds[i] = history.entries[history.entries.length - recentVariantIdsCount + i].variantId;
-  }
-
-  const recentIntensitiesCount = Math.min(history.entries.length, FATIGUE_CONFIG.fatigueWindow);
-  const recentIntensities = new Array(recentIntensitiesCount);
-  for (let i = 0; i < recentIntensitiesCount; i++) {
-    recentIntensities[i] = history.entries[history.entries.length - recentIntensitiesCount + i].intensity;
-  }
+  const { recentVariantIds, recentIntensities } = extractRecentHistory(history);
   
   // Performance Optimization: Replaced chained .filter().map().reduce() with a single-pass loop
   // This computes sentiment, friction intensity, and the mapped entities array in true O(N) time
