@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
@@ -16,7 +16,7 @@ interface AdaptiveEntityProps {
   readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-export function AdaptiveEntity({
+export const AdaptiveEntity = React.memo(function AdaptiveEntity({
   entity,
   position,
   isVisible,
@@ -143,4 +143,22 @@ export function AdaptiveEntity({
       )}
     </BaseEntityOrb>
   );
-}
+}, (prevProps, nextProps) => {
+  // Performance Optimization: Custom comparator for React.memo to prevent
+  // re-renders when parent component (SpiralEntities) re-evaluates but entity data hasn't changed.
+  // We explicitly check referential equality for the entity object to ensure updates propagate.
+  // Note: Function references (onClick, onMeshRef) are safely memoized by the parent, so we don't
+  // ignore them here to prevent stale closure bugs.
+  return (
+    prevProps.entity === nextProps.entity &&
+    prevProps.isVisible === nextProps.isVisible &&
+    prevProps.showLabel === nextProps.showLabel &&
+    prevProps.onClick === nextProps.onClick &&
+    prevProps.onMeshRef === nextProps.onMeshRef &&
+    // Safely ignore position array reference changes if the coordinates haven't meaningfully changed
+    // (since getEntityPosition returns a new array on every call)
+    prevProps.position[0] === nextProps.position[0] &&
+    prevProps.position[1] === nextProps.position[1] &&
+    prevProps.position[2] === nextProps.position[2]
+  );
+});
