@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-10-23 - Memoize 3D Component Rendering Correctly
+**Learning:** In React applications using Three.js / React Three Fiber, if a parent component (like \`SpiralEntities\`) updates frequently due to off-thread physics loops but provides dynamically generated callback functions (like \`onMeshRef\`) to its children, those children will constantly re-render unless both the components are wrapped in \`React.memo()\` AND the parent correctly memoizes the callbacks maintaining referential equality (e.g., using a \`useRef<Map>\`).
+**Action:** When wrapping heavy child 3D components in \`React.memo()\`, ensure that any callbacks passed down from the parent are safely cached (using \`useRef\` or \`useCallback\`) so they maintain referential equality across renders, preventing severe performance degradation on the hot path.
