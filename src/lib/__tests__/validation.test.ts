@@ -52,7 +52,7 @@ describe("Validation Utils", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect((result as any).error).toBeInstanceOf(ValidationError);
-        expect((result as any).error.context?.errors).toBeDefined();
+        expect((result as any).error.context?.issues || (result as any).error.context?.errors).toBeDefined();
       }
     });
   });

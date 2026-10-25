@@ -62,7 +62,7 @@ export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
     return schema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError("Invalid input", error.errors);
+      throw new ValidationError("Invalid input", error.errors || error.issues);
     }
     throw error;
   }
@@ -82,7 +82,7 @@ export function safeValidate<T>(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: new ValidationError("Invalid input", error.errors),
+        error: new ValidationError("Invalid input", error.errors || error.issues),
       };
     }
     return {
