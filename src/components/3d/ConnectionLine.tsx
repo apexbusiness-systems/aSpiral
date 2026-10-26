@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
@@ -17,7 +17,7 @@ const connectionColors: Record<string, string> = {
   resolves: "#3b82f6",
 };
 
-export function ConnectionLine({
+export const ConnectionLine = React.memo(function ConnectionLine({
   connection,
   fromPosition,
   toPosition,
@@ -45,4 +45,14 @@ export function ConnectionLine({
       opacity={connection.strength}
     />
   );
-}
+}, (prev: ConnectionLineProps, next: ConnectionLineProps) => {
+  return (
+    prev.connection === next.connection &&
+    prev.fromPosition[0] === next.fromPosition[0] &&
+    prev.fromPosition[1] === next.fromPosition[1] &&
+    prev.fromPosition[2] === next.fromPosition[2] &&
+    prev.toPosition[0] === next.toPosition[0] &&
+    prev.toPosition[1] === next.toPosition[1] &&
+    prev.toPosition[2] === next.toPosition[2]
+  );
+});

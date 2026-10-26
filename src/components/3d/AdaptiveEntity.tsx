@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
@@ -16,7 +16,7 @@ interface AdaptiveEntityProps {
   readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-export function AdaptiveEntity({
+export const AdaptiveEntity = React.memo(function AdaptiveEntity({
   entity,
   position,
   isVisible,
@@ -143,4 +143,15 @@ export function AdaptiveEntity({
       )}
     </BaseEntityOrb>
   );
-}
+}, (prev: AdaptiveEntityProps, next: AdaptiveEntityProps) => {
+  return (
+    prev.entity === next.entity &&
+    prev.isVisible === next.isVisible &&
+    prev.showLabel === next.showLabel &&
+    prev.onClick === next.onClick &&
+    prev.onMeshRef === next.onMeshRef &&
+    prev.position[0] === next.position[0] &&
+    prev.position[1] === next.position[1] &&
+    prev.position[2] === next.position[2]
+  );
+});
