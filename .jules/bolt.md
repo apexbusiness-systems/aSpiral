@@ -21,7 +21,3 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
-
-## 2024-05-25 - Safe Memoization of R3F Components with Dynamic Arrays
-**Learning:** Heavy 3D components (`React.memo`) that receive newly instantiated arrays (like `[x, y, z]` coordinate tuples calculated on each physics tick) will still cause unnecessary React re-renders unless a custom comparator explicitly performs deep element-wise equality checks. Additionally, passing dynamically generated callbacks (e.g., `(mesh) => { meshRefs.set(id, mesh) }`) breaks memoization entirely unless the parent explicitly caches these closures per entity ID.
-**Action:** Always provide custom comparators using element-wise index checks for array position props, and use a `useRef<Map>` caching strategy in the parent to ensure referential equality of dynamically scoped callbacks.
