@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-10-27 - React.memo with Custom Comparators for 3D Components
+**Learning:** When passing inline arrays (like `[x, y, z]` position tuples) or newly generated callbacks to 3D elements (like `AdaptiveEntity` and `ConnectionLine`), `React.memo` will fail to prevent re-renders with standard strict referential checks. Custom comparators that deeply check element values of tuples are required. Furthermore, parent components providing dynamic callbacks (e.g. using an ID string argument to build a ref setter callback) must safely cache those callbacks using `useRef<Map>` to preserve referential equality without leaking stale closures.
+**Action:** When wrapping components in `React.memo` that receive tuples or dynamic callbacks, implement a custom comparator that checks tuple elements directly and ensure the parent caches the callbacks safely.
