@@ -120,12 +120,20 @@ export function useEntities() {
     }, [entities, profile, invalidate]);
 
     // Register mesh ref for direct physics updates
-    const handleMeshRef = useCallback((id: string) => (mesh: THREE.Mesh | null) => {
-        if (mesh) {
-            meshRefs.current.set(id, mesh);
-        } else {
-            meshRefs.current.delete(id);
+    const handleMeshRefCache = useRef<Map<string, (mesh: THREE.Mesh | null) => void>>(new Map());
+    const handleMeshRef = useCallback((id: string) => {
+        let callback = handleMeshRefCache.current.get(id);
+        if (!callback) {
+            callback = (mesh: THREE.Mesh | null) => {
+                if (mesh) {
+                    meshRefs.current.set(id, mesh);
+                } else {
+                    meshRefs.current.delete(id);
+                }
+            };
+            handleMeshRefCache.current.set(id, callback);
         }
+        return callback;
     }, []);
 
     // Memoize filtered connections for performance
