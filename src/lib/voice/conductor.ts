@@ -115,7 +115,16 @@ export function chunkForStreaming(text: string): SpeechChunk[] {
 function splitSentences(text: string): string[] {
   // Keep terminator with the sentence; don't split inside numbers (e.g. "3.14").
   const matches = text.match(/[^.!?]+(?:[.!?]+["')\]]?|$)/g) ?? [text];
-  return matches.map((s) => s.trim()).filter(Boolean);
+  // Performance Optimization: Replaced chained .map().filter() with a single-pass loop
+  // to avoid intermediate array allocations.
+  const result: string[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const trimmed = matches[i].trim();
+    if (trimmed) {
+      result.push(trimmed);
+    }
+  }
+  return result;
 }
 
 function splitOnClauses(sentence: string): string[] {
