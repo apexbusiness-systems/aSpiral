@@ -289,10 +289,16 @@ function splitIntoSentences(text: string): string[] {
 
   if (!sentences) return [text];
 
-  // Filter empty strings and trim
-  return sentences
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+  // Performance Optimization: Replaced chained .map().filter() with a single-pass loop
+  // to avoid intermediate array allocations.
+  const result: string[] = [];
+  for (let i = 0; i < sentences.length; i++) {
+    const trimmed = sentences[i].trim();
+    if (trimmed.length > 0) {
+      result.push(trimmed);
+    }
+  }
+  return result;
 }
 
 /**
