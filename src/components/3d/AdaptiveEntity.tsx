@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Entity } from "@/lib/types";
@@ -16,7 +16,8 @@ interface AdaptiveEntityProps {
   readonly onMeshRef?: (mesh: THREE.Mesh | null) => void;
 }
 
-export function AdaptiveEntity({
+export const AdaptiveEntity = React.memo(function AdaptiveEntity({
+
   entity,
   position,
   isVisible,
@@ -143,4 +144,21 @@ export function AdaptiveEntity({
       )}
     </BaseEntityOrb>
   );
-}
+}, (prevProps, nextProps) => {
+  // Compare primitive and referential props
+  if (prevProps.entity !== nextProps.entity) return false;
+  if (prevProps.isVisible !== nextProps.isVisible) return false;
+  if (prevProps.showLabel !== nextProps.showLabel) return false;
+  // Compare callbacks to avoid stale closures if parent re-creates them
+  if (prevProps.onClick !== nextProps.onClick) return false;
+  if (prevProps.onMeshRef !== nextProps.onMeshRef) return false;
+
+  // Deep compare position array since it frequently re-instantiates
+  if (prevProps.position[0] !== nextProps.position[0] ||
+      prevProps.position[1] !== nextProps.position[1] ||
+      prevProps.position[2] !== nextProps.position[2]) {
+    return false;
+  }
+
+  return true;
+});

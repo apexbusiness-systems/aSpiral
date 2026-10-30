@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-06-25 - React.memo with Custom Comparators on 3D Components
+**Learning:** Wrapping heavily used 3D components (like `AdaptiveEntity` in `@react-three/fiber`) in `React.memo` is an effective performance optimization, but requires a custom equality function if passing inline arrays (like `position={[x, y, z]}`). However, explicitly ignoring callback props (like `onMeshRef`) in the custom equality function creates severe stale closure risks.
+**Action:** When writing custom equality functions for `React.memo`, always explicitly compare callback props (e.g., `if (prevProps.onMeshRef !== nextProps.onMeshRef) return false;`) to ensure the component re-renders if the parent provides new closures.
