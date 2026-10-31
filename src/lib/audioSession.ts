@@ -509,13 +509,27 @@ function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): S
 
   const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
 
-  return (
-    pickFrom.find((v) => v.default) ||
-    pickFrom.find((v) => v.name.includes("Google")) ||
-    pickFrom.find((v) => v.name.includes("Samantha")) ||
-    pickFrom.find((v) => v.name.includes("Daniel")) ||
-    pickFrom[0]
-  );
+  // Performance Optimization: Replaced chained .find() calls with a single-pass loop
+  let bestVoice: SpeechSynthesisVoice | undefined = pickFrom[0];
+  let bestScore = -1;
+
+  for (let i = 0; i < pickFrom.length; i++) {
+    const v = pickFrom[i];
+    let score = 0;
+
+    if (v.default) score = 4;
+    else if (v.name.includes("Google")) score = 3;
+    else if (v.name.includes("Samantha")) score = 2;
+    else if (v.name.includes("Daniel")) score = 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestVoice = v;
+      if (score === 4) break; // Maximum possible score, early exit
+    }
+  }
+
+  return bestVoice;
 }
 
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
