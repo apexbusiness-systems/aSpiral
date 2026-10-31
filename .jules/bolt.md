@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-06-25 - Avoid redundant chained lookups in critical paths
+**Learning:** Chained `.find()` methods (e.g. `arr.find(A) || arr.find(B) || arr.find(C)`) iterate over the array multiple times, causing O(N*M) performance overhead.
+**Action:** When searching an array for the best match using a priority list, use a single-pass loop that assigns scores to each condition and selects the highest scoring element, exiting early if the maximum score is reached.
