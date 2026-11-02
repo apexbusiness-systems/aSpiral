@@ -509,13 +509,95 @@ function selectBestVoice(voices: SpeechSynthesisVoice[], desiredLang: string): S
 
   const pickFrom = matchingVoices.length > 0 ? matchingVoices : voices;
 
-  return (
-    pickFrom.find((v) => v.default) ||
-    pickFrom.find((v) => v.name.includes("Google")) ||
-    pickFrom.find((v) => v.name.includes("Samantha")) ||
-    pickFrom.find((v) => v.name.includes("Daniel")) ||
-    pickFrom[0]
-  );
+  // Performance Optimization: Replaced multiple chained .find() with a single-pass priority loop
+  let bestVoice = pickFrom[0];
+  let bestScore = -1;
+
+  for (const v of pickFrom) {
+    let score = 0;
+    if (v.default) {
+      score = 4;
+    } else if (v.name.includes("Google")) {
+      score = 3;
+    } else if (v.name.includes("Samantha")) {
+      score = 2;
+    } else if (v.name.includes("Daniel")) {
+      score = 1;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestVoice = v;
+      if (score === 4) break; // Maximum score, can't get better
+    }
+  }
+
+  return bestVoice;
+}
+
+function playSpeechUtterance(
+  text: string,
+  options: SpeakOptions,
+  preferredVoice: SpeechSynthesisVoice | undefined,
+  desiredLang: string,
+  requestId: number,
+  isFirstChunk: boolean,
+  isLastChunk: boolean,
+  useChunking: boolean
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = options.speed;
+    utterance.pitch = 1.0;
+    utterance.volume = options.volume ?? 1;
+
+    utterance.lang = preferredVoice?.lang ?? desiredLang;
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => {
+      if (requestId !== status.requestId) return;
+      if (isFirstChunk) {
+        markAudioPlaybackStart();
+        updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
+        useAssistantSpeakingStore.getState().startSpeaking();
+        audioDebug.log('tts_start', { backend: 'webSpeech', chunked: useChunking, syncStats: getSyncStats() });
+        options.onStart?.();
+      }
+    };
+
+    utterance.onend = () => {
+      if (requestId !== status.requestId) return;
+      if (isLastChunk) {
+        updateStatus({ isSpeaking: false, backend: 'webSpeech' });
+        useAssistantSpeakingStore.getState().stopSpeaking();
+        resumeListeningIfNeeded(requestId);
+        audioDebug.log('tts_end', { backend: 'webSpeech' });
+        options.onEnd?.();
+      }
+      resolve();
+    };
+
+    utterance.onerror = (event) => {
+      if (requestId !== status.requestId) return;
+      if (event.error === 'interrupted' && useChunking && !isLastChunk) {
+        resolve();
+        return;
+      }
+      const error = new Error(`Speech synthesis error: ${event.error}`);
+      updateStatus({ isSpeaking: false, isLoading: false, backend: 'webSpeech' });
+      useAssistantSpeakingStore.getState().stopSpeaking();
+      audioDebug.error('tts_error', { backend: 'webSpeech', error: event.error });
+      resumeListeningIfNeeded(requestId);
+      options.onError?.(error);
+      toast.error("TTS Error", { description: error.message });
+      reject(error);
+    };
+
+    speechUtterance = utterance;
+    window.speechSynthesis.speak(utterance);
+  });
 }
 
 async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Promise<void> {
@@ -555,7 +637,7 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
   const preferredVoice = selectBestVoice(voices, desiredLang);
 
   let isFirstChunk = true;
-  let hasErrored = false;
+  const hasErrored = false;
 
   // Speak each sentence sequentially
   for (let i = 0; i < chunks.length; i++) {
@@ -564,69 +646,14 @@ async function speakWithWebSpeech(requestId: number, options: SpeakOptions): Pro
     const chunk = chunks[i];
     const isLastChunk = i === chunks.length - 1;
 
-    await new Promise<void>((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(chunk.text);
-      utterance.rate = options.speed;
-      utterance.pitch = 1.0;
-      utterance.volume = options.volume ?? 1;
+    await playSpeechUtterance(chunk.text, options, preferredVoice, desiredLang, requestId, isFirstChunk, isLastChunk, useChunking);
+    isFirstChunk = false;
 
-      // ✅ Bind TTS language to active document/app language
-      utterance.lang = preferredVoice?.lang ?? desiredLang;
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-
-      utterance.onstart = () => {
-        if (requestId !== status.requestId) return;
-        if (isFirstChunk) {
-          // Mark playback start for adaptive sync latency measurement
-          markAudioPlaybackStart();
-          updateStatus({ isSpeaking: true, isLoading: false, backend: 'webSpeech' });
-          useAssistantSpeakingStore.getState().startSpeaking();
-          audioDebug.log('tts_start', { backend: 'webSpeech', chunked: useChunking, syncStats: getSyncStats() });
-          options.onStart?.();
-          isFirstChunk = false;
-        }
-      };
-
-      utterance.onend = () => {
-        if (requestId !== status.requestId) return;
-        if (isLastChunk) {
-          updateStatus({ isSpeaking: false, backend: 'webSpeech' });
-          useAssistantSpeakingStore.getState().stopSpeaking();
-          resumeListeningIfNeeded(requestId);
-          audioDebug.log('tts_end', { backend: 'webSpeech' });
-          options.onEnd?.();
-        }
-        resolve();
-      };
-
-      utterance.onerror = (event) => {
-        if (requestId !== status.requestId) return;
-        // On iOS, 'interrupted' errors are common during chunking - ignore them
-        if (event.error === 'interrupted' && useChunking && !isLastChunk) {
-          resolve();
-          return;
-        }
-        hasErrored = true;
-        const error = new Error(`Speech synthesis error: ${event.error}`);
-        updateStatus({ isSpeaking: false, isLoading: false, backend: 'webSpeech' });
-        useAssistantSpeakingStore.getState().stopSpeaking();
-        audioDebug.error('tts_error', { backend: 'webSpeech', error: event.error });
-        resumeListeningIfNeeded(requestId);
-        options.onError?.(error);
-        toast.error("TTS Error", { description: error.message });
-        reject(error);
-      };
-
-      speechUtterance = utterance;
-      window.speechSynthesis.speak(utterance);
-    });
+    if (hasErrored) break;
 
     // Adaptive pause based on utterance plan
     if (!isLastChunk && requestId === status.requestId && chunk.trailingPauseMs > 0) {
-      await new Promise(r => setTimeout(r, chunk.trailingPauseMs));
+      await new Promise(r => { setTimeout(r, chunk.trailingPauseMs); });
     }
   }
 }
@@ -716,7 +743,7 @@ async function processQueue() {
 
         if (!entry.options.forceWebSpeech && entry.options.fallbackToWebSpeech) {
           try {
-            await speakWithWebSpeech(requestId, entry.options);
+            await speakWithWebSpeech(requestId, entry.options).catch(e => { throw e; });
             entry.resolve();
           } catch (fallbackError) {
             const finalError = new Error(`TTS failed: ${(fallbackError as Error).message}`);
@@ -817,7 +844,7 @@ export function disposeAudioSession() {
   clearQueue();
   cancelActive('disposed', true);
   if (audioContext) {
-    audioContext.close();
+    audioContext.close().catch(console.error);
     audioContext = null;
   }
 }
