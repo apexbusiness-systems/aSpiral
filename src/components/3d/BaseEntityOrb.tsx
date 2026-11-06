@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, memo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Text, Float } from "@react-three/drei";
 import * as THREE from "three";
@@ -40,7 +40,9 @@ export const entitySizes: Record<string, number> = {
   grease: 0.45,
 };
 
-export function BaseEntityOrb({ 
+// ⚡ Bolt: Wrapped heavily used 3D component with React.memo to prevent unnecessary re-renders.
+// Custom comparator prevents re-renders when position array is re-instantiated with identical coordinates.
+export const BaseEntityOrb = memo(function BaseEntityOrb({
   entity, 
   position, 
   onClick, 
@@ -146,4 +148,21 @@ export function BaseEntityOrb({
       </group>
     </Float>
   );
-}
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.entity === nextProps.entity &&
+    prevProps.position[0] === nextProps.position[0] &&
+    prevProps.position[1] === nextProps.position[1] &&
+    prevProps.position[2] === nextProps.position[2] &&
+    prevProps.onClick === nextProps.onClick &&
+    prevProps.onHover === nextProps.onHover &&
+    prevProps.children === nextProps.children &&
+    prevProps.floatSpeed === nextProps.floatSpeed &&
+    prevProps.customColor === nextProps.customColor &&
+    prevProps.customSize === nextProps.customSize &&
+    prevProps.customGeometry === nextProps.customGeometry &&
+    prevProps.customMaterial === nextProps.customMaterial &&
+    prevProps.hideDefaultLabel === nextProps.hideDefaultLabel &&
+    prevProps.groupRef === nextProps.groupRef
+  );
+});
