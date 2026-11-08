@@ -18,7 +18,7 @@ concurrency:
 jobs:
   deno-tests:
     name: Deno Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -36,7 +36,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   build:
     name: Build & Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -93,7 +93,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   capacitor-check:
     name: Capacitor Sync Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -137,7 +137,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   ios-compliance-check:
     name: iOS Export Compliance Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -165,7 +165,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   android-check:
     name: Android Config Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -200,7 +200,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   lighthouse:
     name: Lighthouse Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -237,7 +237,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   ci-success:
     name: CI Success
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [deno-tests, build, capacitor-check, ios-compliance-check, android-check, lighthouse]
     if: always()
 
