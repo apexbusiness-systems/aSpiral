@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2024-06-25 - Hoist String Transformations Outside Inner Loops
+**Learning:** In iterative loops over object properties on hot paths (like in `Logger.sanitize`), executing string transformations like `key.toLowerCase()` inside a `.some()` callback causes redundant string allocations and function closure execution overhead for every element in the inner array.
+**Action:** Always hoist expensive string transformations outside of inner validation loops (e.g., before the `.some(...)` call) to compute them only once per outer iteration.
