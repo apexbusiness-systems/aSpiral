@@ -215,14 +215,18 @@ function pickTopVariant(
   mostRecentVariantId: string | undefined
 ): BaseVariant {
   const topN = Math.min(3, sortedVariants.length);
-  const topVariants = sortedVariants.slice(0, topN);
 
-  const candidateTopVariants =
-    mostRecentVariantId && topVariants.length > 1
-      ? topVariants.filter((variant) => variant.id !== mostRecentVariantId)
-      : topVariants;
+  // Performance Optimization: Replaced chained .slice().filter().reduce() with a single-pass loop
+  const candidateTopVariants: BaseVariant[] = [];
+  let totalTopScore = 0;
 
-  const totalTopScore = candidateTopVariants.reduce((sum, v) => sum + (scores.get(v.id) || 0), 0);
+  for (let i = 0; i < topN; i++) {
+    const variant = sortedVariants[i];
+    if (!mostRecentVariantId || topN <= 1 || variant.id !== mostRecentVariantId) {
+      candidateTopVariants.push(variant);
+      totalTopScore += scores.get(variant.id) || 0;
+    }
+  }
   let random = secureMathRandom() * totalTopScore;
 
   for (const variant of candidateTopVariants) {

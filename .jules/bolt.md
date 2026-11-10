@@ -21,3 +21,7 @@
 ## 2024-05-23 - Strict Dependency Installation Rule
 **Learning:** Running `npm install @eslint/js` (or similar packages) during routine environment setup aggressively modifies `package.json` and `package-lock.json`, unintentionally deleting large blocks of existing dependencies and causing severe compliance violations.
 **Action:** Never execute `npm install <package>` (or `npm i`) without the `--no-save` flag when installing temporary testing or linting dependencies to avoid destructive side-effects on project configurations.
+
+## 2025-01-13 - Avoid Multiple Passes in Top Variant Selection
+**Learning:** Replaced chained `.slice()`, `.filter()`, and `.reduce()` with a single-pass loop when calculating the top variant score. This avoids intermediate array allocations and reduces garbage collection pressure on a frequent selection path.
+**Action:** When filtering a subset of an array and then immediately aggregating its properties, prefer a standard single-pass `for` loop over chained array methods.
