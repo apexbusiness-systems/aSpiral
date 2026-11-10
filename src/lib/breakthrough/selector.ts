@@ -235,7 +235,7 @@ function pickTopVariant(
       return variant;
     }
   }
-  return candidateTopVariants[0] || topVariants[0];
+  return candidateTopVariants[0] || sortedVariants[0];
 }
 
 /**
